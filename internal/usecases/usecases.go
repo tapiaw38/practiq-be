@@ -3,6 +3,7 @@ package usecases
 import (
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
 	ucCourse "github.com/tapiaw38/practiq-be/internal/usecases/course"
+	ucLevel "github.com/tapiaw38/practiq-be/internal/usecases/course_level"
 	ucEnrollment "github.com/tapiaw38/practiq-be/internal/usecases/enrollment"
 	ucExercise "github.com/tapiaw38/practiq-be/internal/usecases/exercise"
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
@@ -76,6 +77,10 @@ type NotebookUsecases struct {
 	SaveSubmission ucNB.SaveSubmissionUsecase
 }
 
+type CourseLevelUsecases struct {
+	Get ucLevel.GetUsecase
+}
+
 type Usecases struct {
 	Course        CourseUsecases
 	Topic         TopicUsecases
@@ -87,6 +92,7 @@ type Usecases struct {
 	AI            AIUsecases
 	Profile       ProfileUsecases
 	Notebook      NotebookUsecases
+	CourseLevel   CourseLevelUsecases
 }
 
 func NewUsecases(factory appcontext.Factory) *Usecases {
@@ -142,6 +148,9 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			AddPage:        ucNB.NewAddPageUsecase(factory),
 			UpdatePage:     ucNB.NewUpdatePageUsecase(factory),
 			SaveSubmission: ucNB.NewSaveSubmissionUsecase(factory),
+		},
+		CourseLevel: CourseLevelUsecases{
+			Get: ucLevel.NewGetUsecase(factory),
 		},
 	}
 }

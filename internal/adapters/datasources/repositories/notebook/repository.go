@@ -29,18 +29,22 @@ func NewRepository(db *sql.DB) Repository {
 }
 
 func (r *repository) Create(ctx context.Context, n domain.Notebook) (string, error) {
+	level := n.Level
+	if level < 1 {
+		level = 1
+	}
 	var id string
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO notebooks (course_id, teacher_id, title, description)
-		VALUES ($1, $2, $3, $4) RETURNING id
-	`, n.CourseID, n.TeacherID, n.Title, n.Description).Scan(&id)
+		INSERT INTO notebooks (course_id, teacher_id, title, description, level)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id
+	`, n.CourseID, n.TeacherID, n.Title, n.Description, level).Scan(&id)
 	return id, err
 }
 
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebook, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, course_id, teacher_id, title, description, created_at, updated_at
-		FROM notebooks WHERE course_id = $1 ORDER BY created_at DESC
+		SELECT id, course_id, teacher_id, title, description, level, created_at, updated_at
+		FROM notebooks WHERE course_id = $1 ORDER BY level ASC, created_at DESC
 	`, courseID)
 	if err != nil {
 		return nil, err
@@ -50,7 +54,7 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 	var notebooks []domain.Notebook
 	for rows.Next() {
 		var nb domain.Notebook
-		if err := rows.Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.CreatedAt, &nb.UpdatedAt); err != nil {
+		if err := rows.Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt); err != nil {
 			return nil, err
 		}
 		notebooks = append(notebooks, nb)
@@ -61,9 +65,9 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 func (r *repository) Get(ctx context.Context, id string) (*domain.Notebook, error) {
 	var nb domain.Notebook
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, course_id, teacher_id, title, description, created_at, updated_at
+		SELECT id, course_id, teacher_id, title, description, level, created_at, updated_at
 		FROM notebooks WHERE id = $1
-	`, id).Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.CreatedAt, &nb.UpdatedAt)
+	`, id).Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

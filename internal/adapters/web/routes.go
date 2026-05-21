@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/exercise"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
+	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
@@ -63,6 +64,9 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.POST("/ai/conversations", ai.NewCreateConversationHandler(uc.AI.CreateConversation))
 	api.GET("/ai/conversations/:id/messages", ai.NewGetMessagesHandler(uc.AI.GetMessages))
 	api.POST("/ai/help", ai.NewHelpHandler(uc.AI.Help))
+
+	// Course levels
+	api.GET("/courses/:id/levels", courselevel.NewGetHandler(uc.CourseLevel.Get))
 
 	// Notebooks
 	api.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))

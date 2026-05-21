@@ -8,6 +8,7 @@ type Notebook struct {
 	TeacherID   string
 	Title       string
 	Description string
+	Level       int
 	Pages       []NotebookPage
 	CreatedAt   time.Time
 	UpdatedAt   time.Time

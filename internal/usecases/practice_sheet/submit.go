@@ -159,6 +159,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		CorrectAttempts: prevCorrect + correct,
 	})
 
+	// On level test pass, also advance the student's course-level progress
+	if ps.SheetType == "level_test" && shouldLevelUp {
+		app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel)
+	}
+
 	return &SubmitOutput{Data: SubmitResult{
 		Score:          sheetScore,
 		Correct:        correct,

@@ -5,6 +5,7 @@ import (
 
 	aiconversation "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/ai_conversation"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
+	courseprogress "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/exercise"
 	learningstrategy "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/learning_strategy"
@@ -30,6 +31,7 @@ type Repositories struct {
 	AIConversation   aiconversation.Repository
 	LearningStrategy learningstrategy.Repository
 	Notebook         notebook.Repository
+	CourseProgress   courseprogress.Repository
 }
 
 func NewRepositories(db *sql.DB) *Repositories {
@@ -46,5 +48,6 @@ func NewRepositories(db *sql.DB) *Repositories {
 		AIConversation:   aiconversation.NewRepository(db),
 		LearningStrategy: learningstrategy.NewRepository(db),
 		Notebook:         notebook.NewRepository(db),
+		CourseProgress:   courseprogress.NewRepository(db),
 	}
 }
