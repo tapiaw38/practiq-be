@@ -1,0 +1,17 @@
+DROP TABLE IF EXISTS ai_help_requests;
+DROP TABLE IF EXISTS ai_messages;
+DROP TABLE IF EXISTS ai_conversations;
+DROP TABLE IF EXISTS student_topic_progress;
+DROP TABLE IF EXISTS student_work_canvas;
+DROP TABLE IF EXISTS student_attempts;
+DROP TABLE IF EXISTS practice_sheet_exercises;
+DROP TABLE IF EXISTS practice_sheets;
+DROP TABLE IF EXISTS exercises;
+DROP TABLE IF EXISTS topics;
+DROP TABLE IF EXISTS materials;
+DROP TABLE IF EXISTS course_learning_strategies;
+DROP TABLE IF EXISTS learning_strategies;
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS courses;
+DROP TABLE IF EXISTS user_profiles;
+DROP EXTENSION IF EXISTS "uuid-ossp";
