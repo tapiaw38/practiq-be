@@ -18,10 +18,12 @@ type syncUsecase struct {
 }
 
 type SyncInput struct {
-	ID          string
-	Name        string
-	Email       string
-	ProfileType string
+	ID               string
+	Name             string
+	Email            string
+	ProfileType      string
+	AssistantBaseURL string
+	AssistantAPIKey  string
 }
 
 func NewSyncUsecase(factory appcontext.Factory) SyncUsecase {
@@ -40,10 +42,12 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*ProfileOut
 	}
 
 	p := domain.UserProfile{
-		ID:          input.ID,
-		Name:        input.Name,
-		Email:       input.Email,
-		ProfileType: profileType,
+		ID:               input.ID,
+		Name:             input.Name,
+		Email:            input.Email,
+		ProfileType:      profileType,
+		AssistantBaseURL: input.AssistantBaseURL,
+		AssistantAPIKey:  input.AssistantAPIKey,
 	}
 
 	if err := app.Repositories.UserProfile.Upsert(ctx, p); err != nil {

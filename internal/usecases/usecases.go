@@ -1,18 +1,21 @@
 package usecases
 
 import (
+	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
 	ucCourse "github.com/tapiaw38/practiq-be/internal/usecases/course"
 	ucLevel "github.com/tapiaw38/practiq-be/internal/usecases/course_level"
 	ucEnrollment "github.com/tapiaw38/practiq-be/internal/usecases/enrollment"
 	ucExercise "github.com/tapiaw38/practiq-be/internal/usecases/exercise"
+	ucGrade "github.com/tapiaw38/practiq-be/internal/usecases/grade"
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
+	ucSubject "github.com/tapiaw38/practiq-be/internal/usecases/subject"
+	ucAssignment "github.com/tapiaw38/practiq-be/internal/usecases/teacher_student_assignment"
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
 	ucProfile "github.com/tapiaw38/practiq-be/internal/usecases/user_profile"
-	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 )
 
 type CourseUsecases struct {
@@ -21,6 +24,31 @@ type CourseUsecases struct {
 	Get    ucCourse.GetUsecase
 	Update ucCourse.UpdateUsecase
 	Delete ucCourse.DeleteUsecase
+}
+
+type GradeUsecases struct {
+	Create         ucGrade.CreateUsecase
+	List           ucGrade.ListUsecase
+	Update         ucGrade.UpdateUsecase
+	Delete         ucGrade.DeleteUsecase
+	AssignMember   ucGrade.AssignMemberUsecase
+	ListMembers    ucGrade.ListMembersUsecase
+	RemoveMember   ucGrade.RemoveMemberUsecase
+	ListUserGrades ucGrade.ListUserGradesUsecase
+}
+
+type SubjectUsecases struct {
+	Create ucSubject.CreateUsecase
+	List   ucSubject.ListUsecase
+	Update ucSubject.UpdateUsecase
+	Delete ucSubject.DeleteUsecase
+}
+
+type AssignmentUsecases struct {
+	Assign       ucAssignment.AssignUsecase
+	Unassign     ucAssignment.UnassignUsecase
+	ListStudents ucAssignment.ListStudentsUsecase
+	ListTeachers ucAssignment.ListTeachersUsecase
 }
 
 type TopicUsecases struct {
@@ -64,8 +92,10 @@ type AIUsecases struct {
 }
 
 type ProfileUsecases struct {
-	Sync ucProfile.SyncUsecase
-	Get  ucProfile.GetUsecase
+	Sync                  ucProfile.SyncUsecase
+	Get                   ucProfile.GetUsecase
+	UpdateAssistantConfig ucProfile.UpdateAssistantConfigUsecase
+	UpdateAcademicStatus  ucProfile.UpdateAcademicStatusUsecase
 }
 
 type NotebookUsecases struct {
@@ -83,6 +113,9 @@ type CourseLevelUsecases struct {
 
 type Usecases struct {
 	Course        CourseUsecases
+	Grade         GradeUsecases
+	Subject       SubjectUsecases
+	Assignment    AssignmentUsecases
 	Topic         TopicUsecases
 	Exercise      ExerciseUsecases
 	Material      MaterialUsecases
@@ -103,6 +136,28 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			Get:    ucCourse.NewGetUsecase(factory),
 			Update: ucCourse.NewUpdateUsecase(factory),
 			Delete: ucCourse.NewDeleteUsecase(factory),
+		},
+		Grade: GradeUsecases{
+			Create:         ucGrade.NewCreateUsecase(factory),
+			List:           ucGrade.NewListUsecase(factory),
+			Update:         ucGrade.NewUpdateUsecase(factory),
+			Delete:         ucGrade.NewDeleteUsecase(factory),
+			AssignMember:   ucGrade.NewAssignMemberUsecase(factory),
+			ListMembers:    ucGrade.NewListMembersUsecase(factory),
+			RemoveMember:   ucGrade.NewRemoveMemberUsecase(factory),
+			ListUserGrades: ucGrade.NewListUserGradesUsecase(factory),
+		},
+		Subject: SubjectUsecases{
+			Create: ucSubject.NewCreateUsecase(factory),
+			List:   ucSubject.NewListUsecase(factory),
+			Update: ucSubject.NewUpdateUsecase(factory),
+			Delete: ucSubject.NewDeleteUsecase(factory),
+		},
+		Assignment: AssignmentUsecases{
+			Assign:       ucAssignment.NewAssignUsecase(factory),
+			Unassign:     ucAssignment.NewUnassignUsecase(factory),
+			ListStudents: ucAssignment.NewListStudentsUsecase(factory),
+			ListTeachers: ucAssignment.NewListTeachersUsecase(factory),
 		},
 		Topic: TopicUsecases{
 			Create: ucTopic.NewCreateUsecase(factory),
@@ -138,8 +193,10 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			Help:               ucAI.NewHelpUsecase(factory),
 		},
 		Profile: ProfileUsecases{
-			Sync: ucProfile.NewSyncUsecase(factory),
-			Get:  ucProfile.NewGetUsecase(factory),
+			Sync:                  ucProfile.NewSyncUsecase(factory),
+			Get:                   ucProfile.NewGetUsecase(factory),
+			UpdateAssistantConfig: ucProfile.NewUpdateAssistantConfigUsecase(factory),
+			UpdateAcademicStatus:  ucProfile.NewUpdateAcademicStatusUsecase(factory),
 		},
 		Notebook: NotebookUsecases{
 			Create:         ucNB.NewCreateUsecase(factory),

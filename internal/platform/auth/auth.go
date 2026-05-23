@@ -8,9 +8,15 @@ import (
 )
 
 type CustomClaims struct {
-	UserID       string `json:"user_id"`
-	TokenVersion uint   `json:"token_version"`
+	UserID       string      `json:"user_id"`
+	TokenVersion uint        `json:"token_version"`
+	Roles        []RoleClaim `json:"roles"`
 	jwt.StandardClaims
+}
+
+type RoleClaim struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func ValidateToken(tokenStr string) (*CustomClaims, error) {

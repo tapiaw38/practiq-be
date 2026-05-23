@@ -29,10 +29,13 @@ func (r *repository) Create(ctx context.Context, e domain.Enrollment) error {
 
 func (r *repository) ListStudents(ctx context.Context, courseID string) ([]domain.UserProfile, error) {
 	query := `
-		SELECT up.id, up.name, up.email, up.profile_type, up.created_at
+		SELECT DISTINCT up.id, up.name, up.email, up.profile_type, up.created_at
 		FROM user_profiles up
-		JOIN enrollments e ON e.student_id = up.id
-		WHERE e.course_id = $1
+		JOIN courses c ON c.id = $1
+		LEFT JOIN enrollments e ON e.course_id = c.id AND e.student_id = up.id
+		LEFT JOIN grade_memberships gm ON gm.grade_id = c.grade_id AND gm.user_id = up.id
+		WHERE up.profile_type = 'student'
+		  AND (e.student_id IS NOT NULL OR gm.user_id IS NOT NULL)
 		ORDER BY up.name ASC
 	`
 	rows, err := r.db.QueryContext(ctx, query, courseID)

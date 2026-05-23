@@ -1,0 +1,3 @@
+ALTER TABLE user_profiles
+ADD COLUMN IF NOT EXISTS assistant_base_url TEXT NOT NULL DEFAULT '',
+ADD COLUMN IF NOT EXISTS assistant_api_key TEXT NOT NULL DEFAULT '';

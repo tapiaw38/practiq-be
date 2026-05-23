@@ -17,6 +17,7 @@ type CreateInput struct {
 	CourseID    string
 	Title       string
 	Description string
+	Level       int
 }
 
 type createUsecase struct{ factory appcontext.Factory }
@@ -32,6 +33,7 @@ func (u *createUsecase) Execute(ctx context.Context, teacherID string, input Cre
 		TeacherID:   teacherID,
 		Title:       input.Title,
 		Description: input.Description,
+		Level:       input.Level,
 	})
 	if err != nil {
 		return nil, err
@@ -230,6 +232,7 @@ type NotebookData struct {
 	TeacherID   string       `json:"teacher_id"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
+	Level       int          `json:"level"`
 	Pages       []PageOutput `json:"pages"`
 	CreatedAt   string       `json:"created_at"`
 }
@@ -261,6 +264,7 @@ func toOutput(nb *domain.Notebook) *NotebookOutput {
 		TeacherID:   nb.TeacherID,
 		Title:       nb.Title,
 		Description: nb.Description,
+		Level:       nb.Level,
 		Pages:       pages,
 		CreatedAt:   nb.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}}

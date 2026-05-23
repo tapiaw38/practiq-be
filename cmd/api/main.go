@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/database"
 	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
@@ -32,7 +33,8 @@ func main() {
 
 	repos := repositories.NewRepositories(db)
 	kumon := strategy.NewKumonStrategy()
-	factory := appcontext.NewFactory(repos, kumon)
+	assistantService := assistant.NewService()
+	factory := appcontext.NewFactory(repos, kumon, assistantService)
 	uc := usecases.NewUsecases(factory)
 
 	app := gin.Default()

@@ -2,6 +2,7 @@ package course
 
 import (
 	"context"
+	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -18,6 +19,8 @@ type updateUsecase struct {
 }
 
 type UpdateInput struct {
+	GradeID     string `json:"grade_id"`
+	SubjectID   string `json:"subject_id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Level       string `json:"level"`
@@ -31,7 +34,16 @@ func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*CourseOutput, apperrors.ApplicationError) {
 	app := u.factory()
 
+	if strings.TrimSpace(input.GradeID) == "" {
+		return nil, apperrors.NewBadRequestError("grade_id is required")
+	}
+	if strings.TrimSpace(input.SubjectID) == "" {
+		return nil, apperrors.NewBadRequestError("subject_id is required")
+	}
+
 	if err := app.Repositories.Course.Update(ctx, id, domain.Course{
+		GradeID:     input.GradeID,
+		SubjectID:   input.SubjectID,
 		Title:       input.Title,
 		Description: input.Description,
 		Level:       input.Level,

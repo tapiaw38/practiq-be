@@ -32,6 +32,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("userID", claims.UserID)
+		c.Set("roles", claims.Roles)
 		c.Next()
 	}
 }
@@ -42,4 +43,35 @@ func GetUserID(c *gin.Context) string {
 		return id
 	}
 	return ""
+}
+
+func GetRoles(c *gin.Context) []auth.RoleClaim {
+	roles, _ := c.Get("roles")
+	if value, ok := roles.([]auth.RoleClaim); ok {
+		return value
+	}
+	return nil
+}
+
+func HasRole(c *gin.Context, expected ...string) bool {
+	roles := GetRoles(c)
+	for _, role := range roles {
+		for _, exp := range expected {
+			if role.Name == exp {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func RequireRoles(expected ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !HasRole(c, expected...) {
+			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "forbidden"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
 }

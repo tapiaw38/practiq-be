@@ -5,17 +5,61 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     name VARCHAR(150),
     email VARCHAR(150),
     profile_type VARCHAR(30) NOT NULL DEFAULT 'student' CHECK (profile_type IN ('teacher', 'student')),
+    academic_status VARCHAR(30) NOT NULL DEFAULT 'active' CHECK (academic_status IN ('active', 'blocked')),
+    assistant_base_url TEXT NOT NULL DEFAULT '',
+    assistant_api_key TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS grades (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL UNIQUE,
+    description TEXT,
+    created_by VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS grade_memberships (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    grade_id UUID NOT NULL REFERENCES grades(id) ON DELETE CASCADE,
+    user_id VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(grade_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS courses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     teacher_id VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+    grade_id UUID REFERENCES grades(id) ON DELETE SET NULL,
+    subject_id UUID,
     title VARCHAR(200) NOT NULL,
     description TEXT,
     level VARCHAR(50),
     subject VARCHAR(100),
     created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS subjects (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(150) NOT NULL UNIQUE,
+    description TEXT,
+    created_by VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+ALTER TABLE courses
+    DROP CONSTRAINT IF EXISTS courses_subject_id_fkey;
+
+ALTER TABLE courses
+    ADD CONSTRAINT courses_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS teacher_student_assignments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    teacher_id VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+    student_id VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+    status VARCHAR(30) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
+    created_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(teacher_id, student_id)
 );
 
 CREATE TABLE IF NOT EXISTS enrollments (
@@ -87,6 +131,8 @@ CREATE TABLE IF NOT EXISTS practice_sheets (
     strategy_id UUID REFERENCES learning_strategies(id) ON DELETE SET NULL,
     title VARCHAR(200) NOT NULL,
     level INT DEFAULT 1,
+    sheet_type VARCHAR(30) NOT NULL DEFAULT 'practice' CHECK (sheet_type IN ('practice', 'level_test')),
+    test_style VARCHAR(20) NOT NULL DEFAULT 'keyboard' CHECK (test_style IN ('keyboard', 'canvas')),
     created_by VARCHAR(30) DEFAULT 'teacher' CHECK (created_by IN ('teacher', 'ai')),
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -212,3 +258,8 @@ CREATE TABLE IF NOT EXISTS notebook_submissions (
 CREATE INDEX IF NOT EXISTS idx_notebooks_course ON notebooks(course_id);
 CREATE INDEX IF NOT EXISTS idx_notebook_pages_notebook ON notebook_pages(notebook_id);
 CREATE INDEX IF NOT EXISTS idx_notebook_submissions_page_student ON notebook_submissions(page_id, student_id);
+CREATE INDEX IF NOT EXISTS idx_grade_memberships_user_id ON grade_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_courses_grade_id ON courses(grade_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_teacher ON teacher_student_assignments(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_assignments_student ON teacher_student_assignments(student_id);
+CREATE INDEX IF NOT EXISTS idx_courses_subject_id ON courses(subject_id);

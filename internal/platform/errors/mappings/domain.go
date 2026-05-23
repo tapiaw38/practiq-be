@@ -35,6 +35,97 @@ var (
 		Message:    "failed to list courses",
 	}
 
+	// Grade errors
+	GradeCreateError = ErrorDetails{
+		Code:       "grade:create:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to create grade",
+	}
+	GradeListError = ErrorDetails{
+		Code:       "grade:list:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to list grades",
+	}
+	GradeGetError = ErrorDetails{
+		Code:       "grade:get:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to get grade",
+	}
+	GradeNotFoundError = ErrorDetails{
+		Code:       "grade:get:not-found",
+		StatusCode: http.StatusNotFound,
+		Message:    "grade not found",
+	}
+	GradeUpdateError = ErrorDetails{
+		Code:       "grade:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update grade",
+	}
+	GradeDeleteError = ErrorDetails{
+		Code:       "grade:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to delete grade",
+	}
+	GradeAssignMemberError = ErrorDetails{
+		Code:       "grade:assign-member:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to assign member to grade",
+	}
+	GradeListMembersError = ErrorDetails{
+		Code:       "grade:list-members:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to list grade members",
+	}
+
+	// Subject errors
+	SubjectCreateError = ErrorDetails{
+		Code:       "subject:create:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to create subject",
+	}
+	SubjectUpdateError = ErrorDetails{
+		Code:       "subject:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update subject",
+	}
+	SubjectDeleteError = ErrorDetails{
+		Code:       "subject:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to delete subject",
+	}
+	SubjectListError = ErrorDetails{
+		Code:       "subject:list:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to list subjects",
+	}
+	SubjectGetError = ErrorDetails{
+		Code:       "subject:get:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to get subject",
+	}
+	SubjectNotFoundError = ErrorDetails{
+		Code:       "subject:get:not-found",
+		StatusCode: http.StatusNotFound,
+		Message:    "subject not found",
+	}
+
+	// Teacher/student assignment errors
+	AssignmentCreateError = ErrorDetails{
+		Code:       "assignment:create:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to assign student to teacher",
+	}
+	AssignmentDeleteError = ErrorDetails{
+		Code:       "assignment:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to unassign student from teacher",
+	}
+	AssignmentListError = ErrorDetails{
+		Code:       "assignment:list:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to list assignments",
+	}
+
 	// Topic errors
 	TopicCreateError = ErrorDetails{
 		Code:       "topic:create:error",
@@ -164,5 +255,10 @@ var (
 		Code:       "profile:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get profile",
+	}
+	ProfileUpdateError = ErrorDetails{
+		Code:       "profile:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update profile",
 	}
 )

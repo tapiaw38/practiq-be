@@ -8,12 +8,45 @@ VALUES
     ('walter.tapia.srmeeypfkf', 'Walter Tapia',  'tapiaw38@gmail.com',  'student')
 ON CONFLICT (id) DO NOTHING;
 
+INSERT INTO grades (id, name, description, created_by)
+VALUES (
+    '10000000-0000-0000-0000-000000000001',
+    'Primer grado',
+    'Grado base de primaria para contenidos introductorios.',
+    'teacher_demo'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO grade_memberships (id, grade_id, user_id)
+VALUES (
+    '11000000-0000-0000-0000-000000000001',
+    '10000000-0000-0000-0000-000000000001',
+    'walter.tapia.srmeeypfkf'
+) ON CONFLICT (grade_id, user_id) DO NOTHING;
+
+INSERT INTO subjects (id, name, description, created_by)
+VALUES (
+    '12000000-0000-0000-0000-000000000001',
+    'Matematica',
+    'Materia base para operaciones, fracciones y calculo.',
+    'teacher_demo'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO teacher_student_assignments (id, teacher_id, student_id, status)
+VALUES (
+    '13000000-0000-0000-0000-000000000001',
+    'teacher_demo',
+    'walter.tapia.srmeeypfkf',
+    'active'
+) ON CONFLICT (teacher_id, student_id) DO NOTHING;
+
 -- ── Curso ────────────────────────────────────────────────────────────────────
 
-INSERT INTO courses (id, teacher_id, title, description, level, subject)
+INSERT INTO courses (id, teacher_id, grade_id, subject_id, title, description, level, subject)
 VALUES (
     '20000000-0000-0000-0000-000000000001',
     'teacher_demo',
+    '10000000-0000-0000-0000-000000000001',
+    '12000000-0000-0000-0000-000000000001',
     'Matematica base',
     'Curso de matematica con progresion por niveles. Fracciones, decimales y operaciones.',
     'Primaria',
@@ -92,6 +125,34 @@ VALUES
     ('70000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000006', 6),
     ('70000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000007', 7),
     ('70000000-0000-0000-0000-000000000002', '60000000-0000-0000-0000-000000000008', 8)
+ON CONFLICT (practice_sheet_id, exercise_id) DO NOTHING;
+
+-- Ejercicios canvas nivel 1
+INSERT INTO exercises (id, topic_id, type, question, correct_answer, explanation, difficulty, metadata)
+VALUES
+    ('60000000-0000-0000-0000-000000000009', '50000000-0000-0000-0000-000000000001', 'canvas', 'Dibuja y resuelve: 1/4 + 2/4',  '3/4',  'Suma los numeradores, el denominador se mantiene.', 1, '{}'),
+    ('60000000-0000-0000-0000-000000000010', '50000000-0000-0000-0000-000000000001', 'canvas', 'Dibuja y resuelve: 3/5 + 1/5',  '4/5',  'Suma los numeradores, el denominador se mantiene.', 1, '{}'),
+    ('60000000-0000-0000-0000-000000000011', '50000000-0000-0000-0000-000000000001', 'canvas', 'Dibuja y resuelve: 5/8 - 2/8',  '3/8',  'Resta los numeradores, el denominador se mantiene.', 1, '{}'),
+    ('60000000-0000-0000-0000-000000000012', '50000000-0000-0000-0000-000000000001', 'canvas', 'Dibuja y resuelve: 6/9 - 2/9',  '4/9',  'Resta los numeradores, el denominador se mantiene.', 2, '{}')
+ON CONFLICT (id) DO NOTHING;
+
+-- Practica canvas nivel 1
+INSERT INTO practice_sheets (id, course_id, topic_id, strategy_id, title, level, sheet_type, test_style, created_by)
+VALUES (
+    '70000000-0000-0000-0000-000000000003',
+    '20000000-0000-0000-0000-000000000001',
+    '50000000-0000-0000-0000-000000000001',
+    (SELECT id FROM learning_strategies WHERE code = 'kumon'),
+    'Practica de fracciones (canvas) - Nivel 1',
+    1, 'practice', 'canvas', 'teacher'
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO practice_sheet_exercises (practice_sheet_id, exercise_id, order_index)
+VALUES
+    ('70000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000009',  1),
+    ('70000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000010',  2),
+    ('70000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000011',  3),
+    ('70000000-0000-0000-0000-000000000003', '60000000-0000-0000-0000-000000000012',  4)
 ON CONFLICT (practice_sheet_id, exercise_id) DO NOTHING;
 
 -- Cuaderno nivel 1

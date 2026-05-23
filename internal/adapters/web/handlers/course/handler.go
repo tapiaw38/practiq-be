@@ -9,6 +9,8 @@ import (
 )
 
 type createInput struct {
+	GradeID     string `json:"grade_id" binding:"required"`
+	SubjectID   string `json:"subject_id" binding:"required"`
 	Title       string `json:"title" binding:"required"`
 	Description string `json:"description"`
 	Level       string `json:"level"`
@@ -26,6 +28,8 @@ func NewCreateHandler(uc ucCourse.CreateUsecase) gin.HandlerFunc {
 		userID := middlewares.GetUserID(c)
 		output, appErr := uc.Execute(c, ucCourse.CreateInput{
 			TeacherID:   userID,
+			GradeID:     input.GradeID,
+			SubjectID:   input.SubjectID,
 			Title:       input.Title,
 			Description: input.Description,
 			Level:       input.Level,
@@ -79,6 +83,8 @@ func NewGetHandler(uc ucCourse.GetUsecase) gin.HandlerFunc {
 }
 
 type updateInput struct {
+	GradeID     string `json:"grade_id"`
+	SubjectID   string `json:"subject_id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Level       string `json:"level"`
@@ -95,6 +101,8 @@ func NewUpdateHandler(uc ucCourse.UpdateUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, id, ucCourse.UpdateInput{
+			GradeID:     input.GradeID,
+			SubjectID:   input.SubjectID,
 			Title:       input.Title,
 			Description: input.Description,
 			Level:       input.Level,

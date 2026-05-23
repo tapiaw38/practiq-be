@@ -6,6 +6,7 @@ import (
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
@@ -22,7 +23,7 @@ type submitUsecase struct {
 type AttemptInput struct {
 	ExerciseID       string `json:"exercise_id"`
 	AnswerText       string `json:"answer_text"`
-	CanvasData       string `json:"canvas_data"`       // base64 PNG for canvas/handwritten exercises
+	CanvasData       string `json:"canvas_data"` // base64 PNG for canvas/handwritten exercises
 	TimeSpentSeconds int    `json:"time_spent_seconds"`
 	HintsUsed        int    `json:"hints_used"`
 }
@@ -52,6 +53,13 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		exerciseMap[pse.Exercise.ID] = pse.Exercise
 	}
 
+	profile, _ := app.Repositories.UserProfile.Get(ctx, studentID)
+	assistantCfg := assistant.Config{}
+	if profile != nil {
+		assistantCfg.BaseURL = profile.AssistantBaseURL
+		assistantCfg.APIKey = profile.AssistantAPIKey
+	}
+
 	correct := 0
 	total := len(input.Attempts)
 	totalHints := 0
@@ -60,10 +68,21 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	for _, attempt := range input.Attempts {
 		ex, ok := exerciseMap[attempt.ExerciseID]
 		isCorrect := false
+		answerText := attempt.AnswerText
+
+		if attempt.CanvasData != "" && app.AssistantService != nil && app.AssistantService.IsConfigured(assistantCfg) {
+			if recognizedText, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, attempt.CanvasData, ex.CorrectAnswer); recognizeErr == nil {
+				normalizedRecognized := normalizeCanvasAnswer(recognizedText)
+				if normalizedRecognized != "" && normalizedRecognized != "UNREADABLE" {
+					answerText = normalizedRecognized
+				}
+			}
+		}
+
 		if ok && ex.CorrectAnswer != "" {
 			isCorrect = strings.EqualFold(
-				strings.TrimSpace(attempt.AnswerText),
-				strings.TrimSpace(ex.CorrectAnswer),
+				normalizeCanvasAnswer(answerText),
+				normalizeCanvasAnswer(ex.CorrectAnswer),
 			)
 		}
 
@@ -80,7 +99,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			StudentID:       studentID,
 			ExerciseID:      attempt.ExerciseID,
 			PracticeSheetID: sheetID,
-			AnswerText:      attempt.AnswerText,
+			AnswerText:      answerText,
 			IsCorrect:       isCorrect,
 			Score:           score,
 			TimeSpentSecs:   attempt.TimeSpentSeconds,
@@ -196,4 +215,12 @@ func itoa(n int) string {
 		buf[pos] = '-'
 	}
 	return string(buf[pos:])
+}
+
+func normalizeCanvasAnswer(value string) string {
+	normalized := strings.TrimSpace(value)
+	normalized = strings.ReplaceAll(normalized, "\n", " ")
+	normalized = strings.ReplaceAll(normalized, "\t", " ")
+	normalized = strings.Join(strings.Fields(normalized), " ")
+	return normalized
 }

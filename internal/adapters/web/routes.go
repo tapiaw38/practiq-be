@@ -4,13 +4,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
 	handlerCourse "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course"
+	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/exercise"
+	handlerGrade "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/grade"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
-	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
+	handlerSubject "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subject"
+	handlerAssignment "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/teacher_student_assignment"
 	handlerTopic "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/topic"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
@@ -24,6 +27,12 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	// Profile
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
 	api.GET("/profile", userprofile.NewGetHandler(uc.Profile.Get))
+	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
+	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
+	adminOnly := api.Group("/")
+	adminOnly.Use(middlewares.RequireRoles("admin", "superadmin"))
+	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
+	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 
 	// Courses
 	api.POST("/courses", handlerCourse.NewCreateHandler(uc.Course.Create))
@@ -31,6 +40,29 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.GET("/courses/:id", handlerCourse.NewGetHandler(uc.Course.Get))
 	api.PUT("/courses/:id", handlerCourse.NewUpdateHandler(uc.Course.Update))
 	api.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
+
+	// Grades
+	api.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
+	api.GET("/grades", handlerGrade.NewListHandler(uc.Grade.List))
+	api.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
+	api.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
+	adminOnly.POST("/grades/:id/members", handlerGrade.NewAssignMemberHandler(uc.Grade.AssignMember))
+	api.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
+	adminOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
+	api.GET("/users/:userId/grades", handlerGrade.NewListUserGradesHandler(uc.Grade.ListUserGrades))
+
+	// Subjects
+	api.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
+	api.GET("/subjects", handlerSubject.NewListHandler(uc.Subject.List))
+	api.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
+	api.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
+
+	// Teacher/student assignments
+	adminOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
+	adminOnly.DELETE("/teacher-student-assignments/:teacherId/:studentId", handlerAssignment.NewUnassignHandler(uc.Assignment.Unassign))
+	adminOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
+	adminOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
+	api.GET("/teachers/me/students", handlerAssignment.NewListMyStudentsHandler(uc.Assignment.ListStudents))
 
 	// Enrollments
 	api.POST("/courses/:id/enroll", enrollment.NewEnrollHandler(uc.Enrollment.Enroll))
