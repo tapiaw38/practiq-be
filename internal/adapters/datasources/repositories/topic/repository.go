@@ -10,6 +10,9 @@ import (
 type Repository interface {
 	Create(context.Context, domain.Topic) (string, error)
 	List(context.Context, string) ([]domain.Topic, error)
+	Get(context.Context, string) (*domain.Topic, error)
+	Update(context.Context, string, domain.Topic) error
+	Delete(context.Context, string) error
 }
 
 type repository struct {
@@ -48,4 +51,32 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Topic,
 		topics = append(topics, t)
 	}
 	return topics, nil
+}
+
+func (r *repository) Get(ctx context.Context, id string) (*domain.Topic, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, course_id, title, description, order_index, created_at
+		FROM topics WHERE id = $1
+	`, id)
+
+	var t domain.Topic
+	if err := row.Scan(&t.ID, &t.CourseID, &t.Title, &t.Description, &t.OrderIndex, &t.CreatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &t, nil
+}
+
+func (r *repository) Update(ctx context.Context, id string, t domain.Topic) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE topics SET title = $1, description = $2, order_index = $3 WHERE id = $4
+	`, t.Title, t.Description, t.OrderIndex, id)
+	return err
+}
+
+func (r *repository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM topics WHERE id = $1`, id)
+	return err
 }

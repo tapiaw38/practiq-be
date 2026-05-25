@@ -137,6 +137,26 @@ var (
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list topics",
 	}
+	TopicGetError = ErrorDetails{
+		Code:       "topic:get:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to get topic",
+	}
+	TopicNotFoundError = ErrorDetails{
+		Code:       "topic:get:not-found",
+		StatusCode: http.StatusNotFound,
+		Message:    "topic not found",
+	}
+	TopicUpdateError = ErrorDetails{
+		Code:       "topic:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update topic",
+	}
+	TopicDeleteError = ErrorDetails{
+		Code:       "topic:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to delete topic",
+	}
 
 	// Exercise errors
 	ExerciseCreateError = ErrorDetails{
@@ -176,6 +196,26 @@ var (
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list materials",
 	}
+	MaterialGetError = ErrorDetails{
+		Code:       "material:get:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to get material",
+	}
+	MaterialNotFoundError = ErrorDetails{
+		Code:       "material:get:not-found",
+		StatusCode: http.StatusNotFound,
+		Message:    "material not found",
+	}
+	MaterialUpdateError = ErrorDetails{
+		Code:       "material:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update material",
+	}
+	MaterialDeleteError = ErrorDetails{
+		Code:       "material:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to delete material",
+	}
 
 	// Practice sheet errors
 	PracticeSheetCreateError = ErrorDetails{
@@ -197,6 +237,16 @@ var (
 		Code:       "practice-sheet:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "practice sheet not found",
+	}
+	PracticeSheetUpdateError = ErrorDetails{
+		Code:       "practice-sheet:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update practice sheet",
+	}
+	PracticeSheetDeleteError = ErrorDetails{
+		Code:       "practice-sheet:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to delete practice sheet",
 	}
 	PracticeSheetSubmitError = ErrorDetails{
 		Code:       "practice-sheet:submit:error",
@@ -260,5 +310,27 @@ var (
 		Code:       "profile:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update profile",
+	}
+
+	// Notebook errors
+	NotebookUpdateError = ErrorDetails{
+		Code:       "notebook:update:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to update notebook",
+	}
+	NotebookDeleteError = ErrorDetails{
+		Code:       "notebook:delete:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to delete notebook",
+	}
+	NotebookGetError = ErrorDetails{
+		Code:       "notebook:get:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to get notebook",
+	}
+	NotebookNotFoundError = ErrorDetails{
+		Code:       "notebook:get:not-found",
+		StatusCode: http.StatusNotFound,
+		Message:    "notebook not found",
 	}
 )

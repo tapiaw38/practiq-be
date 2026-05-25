@@ -11,6 +11,8 @@ type Repository interface {
 	Create(ctx context.Context, n domain.Notebook) (string, error)
 	List(ctx context.Context, courseID string) ([]domain.Notebook, error)
 	Get(ctx context.Context, id string) (*domain.Notebook, error)
+	Update(ctx context.Context, id string, n domain.Notebook) error
+	Delete(ctx context.Context, id string) error
 
 	CreatePage(ctx context.Context, p domain.NotebookPage) (string, error)
 	UpdatePage(ctx context.Context, p domain.NotebookPage) error
@@ -81,6 +83,18 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.Notebook, erro
 	}
 	nb.Pages = pages
 	return &nb, nil
+}
+
+func (r *repository) Update(ctx context.Context, id string, n domain.Notebook) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE notebooks SET title = $1, description = $2, updated_at = NOW() WHERE id = $3
+	`, n.Title, n.Description, id)
+	return err
+}
+
+func (r *repository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM notebooks WHERE id = $1`, id)
+	return err
 }
 
 func (r *repository) listPages(ctx context.Context, notebookID string) ([]domain.NotebookPage, error) {

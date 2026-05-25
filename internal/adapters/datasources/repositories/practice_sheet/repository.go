@@ -12,6 +12,8 @@ type Repository interface {
 	AddExercise(ctx context.Context, sheetID, exerciseID string, orderIndex int) error
 	Get(context.Context, string) (*domain.PracticeSheet, error)
 	List(context.Context, string) ([]domain.PracticeSheet, error)
+	Update(context.Context, string, domain.PracticeSheet) error
+	Delete(context.Context, string) error
 }
 
 type repository struct {
@@ -92,6 +94,18 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.PracticeSheet,
 		ps.Exercises = append(ps.Exercises, pse)
 	}
 	return &ps, nil
+}
+
+func (r *repository) Update(ctx context.Context, id string, ps domain.PracticeSheet) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE practice_sheets SET title = $1, topic_id = NULLIF($2,'')::uuid WHERE id = $3
+	`, ps.Title, ps.TopicID, id)
+	return err
+}
+
+func (r *repository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM practice_sheets WHERE id = $1`, id)
+	return err
 }
 
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.PracticeSheet, error) {

@@ -10,6 +10,9 @@ import (
 type Repository interface {
 	Create(context.Context, domain.Material) (string, error)
 	List(context.Context, string) ([]domain.Material, error)
+	Get(context.Context, string) (*domain.Material, error)
+	Update(context.Context, string, domain.Material) error
+	Delete(context.Context, string) error
 }
 
 type repository struct {
@@ -29,6 +32,34 @@ func (r *repository) Create(ctx context.Context, m domain.Material) (string, err
 	var id string
 	err := r.db.QueryRowContext(ctx, query, m.CourseID, m.TeacherID, m.Title, m.Type, m.FileURL, m.ExtractedText, m.Status).Scan(&id)
 	return id, err
+}
+
+func (r *repository) Get(ctx context.Context, id string) (*domain.Material, error) {
+	row := r.db.QueryRowContext(ctx, `
+		SELECT id, course_id, teacher_id, title, type, COALESCE(file_url,''), COALESCE(extracted_text,''), status, created_at
+		FROM materials WHERE id = $1
+	`, id)
+
+	var m domain.Material
+	if err := row.Scan(&m.ID, &m.CourseID, &m.TeacherID, &m.Title, &m.Type, &m.FileURL, &m.ExtractedText, &m.Status, &m.CreatedAt); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &m, nil
+}
+
+func (r *repository) Update(ctx context.Context, id string, m domain.Material) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE materials SET title = $1, extracted_text = $2 WHERE id = $3
+	`, m.Title, m.ExtractedText, id)
+	return err
+}
+
+func (r *repository) Delete(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `DELETE FROM materials WHERE id = $1`, id)
+	return err
 }
 
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.Material, error) {

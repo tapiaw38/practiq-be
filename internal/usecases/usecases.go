@@ -54,6 +54,8 @@ type AssignmentUsecases struct {
 type TopicUsecases struct {
 	Create ucTopic.CreateUsecase
 	List   ucTopic.ListUsecase
+	Update ucTopic.UpdateUsecase
+	Delete ucTopic.DeleteUsecase
 }
 
 type ExerciseUsecases struct {
@@ -66,6 +68,8 @@ type ExerciseUsecases struct {
 type MaterialUsecases struct {
 	Create ucMaterial.CreateUsecase
 	List   ucMaterial.ListUsecase
+	Update ucMaterial.UpdateUsecase
+	Delete ucMaterial.DeleteUsecase
 }
 
 type EnrollmentUsecases struct {
@@ -78,6 +82,8 @@ type PracticeSheetUsecases struct {
 	List   ucPracticeSheet.ListUsecase
 	Get    ucPracticeSheet.GetUsecase
 	Submit ucPracticeSheet.SubmitUsecase
+	Update ucPracticeSheet.UpdateUsecase
+	Delete ucPracticeSheet.DeleteUsecase
 }
 
 type ProgressUsecases struct {
@@ -102,6 +108,8 @@ type NotebookUsecases struct {
 	Create         ucNB.CreateUsecase
 	List           ucNB.ListUsecase
 	Get            ucNB.GetUsecase
+	Update         ucNB.UpdateUsecase
+	Delete         ucNB.DeleteUsecase
 	AddPage        ucNB.AddPageUsecase
 	UpdatePage     ucNB.UpdatePageUsecase
 	SaveSubmission ucNB.SaveSubmissionUsecase
@@ -162,6 +170,8 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 		Topic: TopicUsecases{
 			Create: ucTopic.NewCreateUsecase(factory),
 			List:   ucTopic.NewListUsecase(factory),
+			Update: ucTopic.NewUpdateUsecase(factory),
+			Delete: ucTopic.NewDeleteUsecase(factory),
 		},
 		Exercise: ExerciseUsecases{
 			Create: ucExercise.NewCreateUsecase(factory),
@@ -172,6 +182,8 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 		Material: MaterialUsecases{
 			Create: ucMaterial.NewCreateUsecase(factory),
 			List:   ucMaterial.NewListUsecase(factory),
+			Update: ucMaterial.NewUpdateUsecase(factory),
+			Delete: ucMaterial.NewDeleteUsecase(factory),
 		},
 		Enrollment: EnrollmentUsecases{
 			Enroll:       ucEnrollment.NewEnrollUsecase(factory),
@@ -182,6 +194,8 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			List:   ucPracticeSheet.NewListUsecase(factory),
 			Get:    ucPracticeSheet.NewGetUsecase(factory),
 			Submit: ucPracticeSheet.NewSubmitUsecase(factory),
+			Update: ucPracticeSheet.NewUpdateUsecase(factory),
+			Delete: ucPracticeSheet.NewDeleteUsecase(factory),
 		},
 		Progress: ProgressUsecases{
 			GetMy:     ucProgress.NewGetMyProgressUsecase(factory),
@@ -202,6 +216,8 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			Create:         ucNB.NewCreateUsecase(factory),
 			List:           ucNB.NewListUsecase(factory),
 			Get:            ucNB.NewGetUsecase(factory),
+			Update:         ucNB.NewUpdateUsecase(factory),
+			Delete:         ucNB.NewDeleteUsecase(factory),
 			AddPage:        ucNB.NewAddPageUsecase(factory),
 			UpdatePage:     ucNB.NewUpdatePageUsecase(factory),
 			SaveSubmission: ucNB.NewSaveSubmissionUsecase(factory),

@@ -203,6 +203,55 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	})
 }
 
+// ── Update Notebook ───────────────────────────────────────────────────
+
+type UpdateUsecase interface {
+	Execute(ctx context.Context, id string, input UpdateInput) (*NotebookOutput, error)
+}
+
+type UpdateInput struct {
+	Title       string
+	Description string
+}
+
+type updateUsecase struct{ factory appcontext.Factory }
+
+func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{factory: factory}
+}
+
+func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*NotebookOutput, error) {
+	app := u.factory()
+	if err := app.Repositories.Notebook.Update(ctx, id, domain.Notebook{
+		Title:       input.Title,
+		Description: input.Description,
+	}); err != nil {
+		return nil, err
+	}
+	nb, err := app.Repositories.Notebook.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return toOutput(nb), nil
+}
+
+// ── Delete Notebook ───────────────────────────────────────────────────
+
+type DeleteUsecase interface {
+	Execute(ctx context.Context, id string) error
+}
+
+type deleteUsecase struct{ factory appcontext.Factory }
+
+func NewDeleteUsecase(factory appcontext.Factory) DeleteUsecase {
+	return &deleteUsecase{factory: factory}
+}
+
+func (u *deleteUsecase) Execute(ctx context.Context, id string) error {
+	app := u.factory()
+	return app.Repositories.Notebook.Delete(ctx, id)
+}
+
 // ── Output types ──────────────────────────────────────────────────────
 
 type SubmissionOutput struct {

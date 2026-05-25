@@ -71,10 +71,14 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	// Materials
 	api.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
 	api.GET("/courses/:id/materials", material.NewListHandler(uc.Material.List))
+	api.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
+	api.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
 
 	// Topics
 	api.POST("/courses/:id/topics", handlerTopic.NewCreateHandler(uc.Topic.Create))
 	api.GET("/courses/:id/topics", handlerTopic.NewListHandler(uc.Topic.List))
+	api.PUT("/topics/:id", handlerTopic.NewUpdateHandler(uc.Topic.Update))
+	api.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
 
 	// Exercises
 	api.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
@@ -86,6 +90,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.POST("/courses/:id/practice-sheets", practicesheet.NewCreateHandler(uc.PracticeSheet.Create))
 	api.GET("/courses/:id/practice-sheets", practicesheet.NewListHandler(uc.PracticeSheet.List))
 	api.GET("/practice-sheets/:id", practicesheet.NewGetHandler(uc.PracticeSheet.Get))
+	api.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
+	api.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
 
 	// Student Progress
@@ -104,6 +110,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))
 	api.GET("/courses/:id/notebooks", handlerNB.NewListHandler(uc.Notebook.List))
 	api.GET("/notebooks/:id", handlerNB.NewGetHandler(uc.Notebook.Get))
+	api.PUT("/notebooks/:id", handlerNB.NewUpdateHandler(uc.Notebook.Update))
+	api.DELETE("/notebooks/:id", handlerNB.NewDeleteHandler(uc.Notebook.Delete))
 	api.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
 	api.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
 	api.POST("/notebook-pages/:id/submit", handlerNB.NewSaveSubmissionHandler(uc.Notebook.SaveSubmission))

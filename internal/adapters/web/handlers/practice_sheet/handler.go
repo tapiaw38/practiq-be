@@ -75,6 +75,46 @@ func NewGetHandler(uc ucPS.GetUsecase) gin.HandlerFunc {
 	}
 }
 
+type updateSheetInput struct {
+	Title   string `json:"title" binding:"required"`
+	TopicID string `json:"topic_id"`
+}
+
+func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		var input updateSheetInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+
+		output, appErr := uc.Execute(c, id, ucPS.UpdateInput{
+			Title:   input.Title,
+			TopicID: input.TopicID,
+		})
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, output)
+	}
+}
+
+func NewDeleteHandler(uc ucPS.DeleteUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id := c.Param("id")
+		if appErr := uc.Execute(c, id); appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "practice sheet deleted"})
+	}
+}
+
 type submitInput struct {
 	Attempts []ucPS.AttemptInput `json:"attempts"`
 }
