@@ -76,8 +76,12 @@ func NewGetHandler(uc ucPS.GetUsecase) gin.HandlerFunc {
 }
 
 type updateSheetInput struct {
-	Title   string `json:"title" binding:"required"`
-	TopicID string `json:"topic_id"`
+	Title       string   `json:"title" binding:"required"`
+	TopicID     string   `json:"topic_id"`
+	Level       int      `json:"level"`
+	SheetType   string   `json:"sheet_type"`
+	TestStyle   string   `json:"test_style"`
+	ExerciseIDs []string `json:"exercise_ids"`
 }
 
 func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
@@ -90,8 +94,12 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, id, ucPS.UpdateInput{
-			Title:   input.Title,
-			TopicID: input.TopicID,
+			Title:       input.Title,
+			TopicID:     input.TopicID,
+			Level:       input.Level,
+			SheetType:   input.SheetType,
+			TestStyle:   input.TestStyle,
+			ExerciseIDs: input.ExerciseIDs,
 		})
 		if appErr != nil {
 			appErr.Log(c)

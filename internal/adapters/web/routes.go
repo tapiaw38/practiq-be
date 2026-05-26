@@ -94,9 +94,14 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
 
-	// Student Progress
+	// Student Progress (self-service)
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
 	api.GET("/students/me/courses/:id/progress", studentprogress.NewGetCourseProgressHandler(uc.Progress.GetCourse))
+
+	// Teacher view of student progress
+	api.GET("/teachers/me/students/:studentId/progress", studentprogress.NewGetStudentProgressHandler(uc.Progress.GetStudentProgress))
+	api.GET("/teachers/me/students/:studentId/courses/:courseId/progress", studentprogress.NewGetStudentCourseProgressHandler(uc.Progress.GetStudentCourseProgress))
+	api.GET("/teachers/me/students/:studentId/attempts", studentprogress.NewGetStudentAttemptsHandler(uc.Progress.GetStudentAttempts))
 
 	// AI Tutor
 	api.POST("/ai/conversations", ai.NewCreateConversationHandler(uc.AI.CreateConversation))

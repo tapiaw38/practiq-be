@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/lib/pq"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
 type Repository interface {
 	Create(context.Context, domain.PracticeSheet) (string, error)
 	AddExercise(ctx context.Context, sheetID, exerciseID string, orderIndex int) error
+	ReplaceExercises(ctx context.Context, sheetID string, exerciseIDs []string) error
 	Get(context.Context, string) (*domain.PracticeSheet, error)
 	List(context.Context, string) ([]domain.PracticeSheet, error)
 	Update(context.Context, string, domain.PracticeSheet) error
@@ -97,10 +99,36 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.PracticeSheet,
 }
 
 func (r *repository) Update(ctx context.Context, id string, ps domain.PracticeSheet) error {
+	sheetType := ps.SheetType
+	if sheetType != "level_test" {
+		sheetType = "practice"
+	}
+	testStyle := ps.TestStyle
+	if testStyle != "canvas" {
+		testStyle = "keyboard"
+	}
+	level := ps.Level
+	if level < 1 {
+		level = 1
+	}
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE practice_sheets SET title = $1, topic_id = NULLIF($2,'')::uuid WHERE id = $3
-	`, ps.Title, ps.TopicID, id)
+		UPDATE practice_sheets
+		SET title = $1, topic_id = NULLIF($2,'')::uuid, level = $3, sheet_type = $4, test_style = $5
+		WHERE id = $6
+	`, ps.Title, ps.TopicID, level, sheetType, testStyle, id)
 	return err
+}
+
+func (r *repository) ReplaceExercises(ctx context.Context, sheetID string, exerciseIDs []string) error {
+	if _, err := r.db.ExecContext(ctx, `DELETE FROM practice_sheet_exercises WHERE practice_sheet_id = $1`, sheetID); err != nil {
+		return err
+	}
+	for i, eid := range exerciseIDs {
+		if err := r.AddExercise(ctx, sheetID, eid, i); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *repository) Delete(ctx context.Context, id string) error {
@@ -128,6 +156,51 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Practi
 			return nil, err
 		}
 		sheets = append(sheets, ps)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	exQuery := `
+		SELECT pse.id, pse.practice_sheet_id, pse.order_index,
+		       e.id, e.topic_id, COALESCE(e.material_id::text,''), e.type, e.question,
+		       COALESCE(e.correct_answer,''), COALESCE(e.explanation,''), e.difficulty, e.metadata::text, e.created_at
+		FROM practice_sheet_exercises pse
+		JOIN exercises e ON e.id = pse.exercise_id
+		WHERE pse.practice_sheet_id = ANY($1)
+		ORDER BY pse.practice_sheet_id, pse.order_index ASC
+	`
+	ids := make([]string, len(sheets))
+	for i, s := range sheets {
+		ids[i] = s.ID
+	}
+	if len(ids) == 0 {
+		return sheets, nil
+	}
+
+	exRows, err := r.db.QueryContext(ctx, exQuery, pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	defer exRows.Close()
+
+	index := make(map[string]int, len(sheets))
+	for i, s := range sheets {
+		index[s.ID] = i
+	}
+	for exRows.Next() {
+		var pse domain.PracticeSheetExercise
+		if err := exRows.Scan(
+			&pse.ID, &pse.PracticeSheetID, &pse.OrderIndex,
+			&pse.Exercise.ID, &pse.Exercise.TopicID, &pse.Exercise.MaterialID, &pse.Exercise.Type,
+			&pse.Exercise.Question, &pse.Exercise.CorrectAnswer, &pse.Exercise.Explanation,
+			&pse.Exercise.Difficulty, &pse.Exercise.Metadata, &pse.Exercise.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if i, ok := index[pse.PracticeSheetID]; ok {
+			sheets[i].Exercises = append(sheets[i].Exercises, pse)
+		}
 	}
 	return sheets, nil
 }

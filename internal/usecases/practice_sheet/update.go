@@ -18,8 +18,12 @@ type updateUsecase struct {
 }
 
 type UpdateInput struct {
-	Title   string
-	TopicID string
+	Title       string
+	TopicID     string
+	Level       int
+	SheetType   string
+	TestStyle   string
+	ExerciseIDs []string
 }
 
 func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
@@ -30,9 +34,16 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 	app := u.factory()
 
 	if err := app.Repositories.PracticeSheet.Update(ctx, id, domain.PracticeSheet{
-		Title:   input.Title,
-		TopicID: input.TopicID,
+		Title:     input.Title,
+		TopicID:   input.TopicID,
+		Level:     input.Level,
+		SheetType: input.SheetType,
+		TestStyle: input.TestStyle,
 	}); err != nil {
+		return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
+	}
+
+	if err := app.Repositories.PracticeSheet.ReplaceExercises(ctx, id, input.ExerciseIDs); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
 	}
 

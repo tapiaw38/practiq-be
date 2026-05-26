@@ -87,8 +87,11 @@ type PracticeSheetUsecases struct {
 }
 
 type ProgressUsecases struct {
-	GetMy     ucProgress.GetMyProgressUsecase
-	GetCourse ucProgress.GetCourseProgressUsecase
+	GetMy                   ucProgress.GetMyProgressUsecase
+	GetCourse               ucProgress.GetCourseProgressUsecase
+	GetStudentProgress      ucProgress.GetStudentProgressUsecase
+	GetStudentCourseProgress ucProgress.GetStudentCourseProgressUsecase
+	GetStudentAttempts      ucProgress.GetStudentAttemptsUsecase
 }
 
 type AIUsecases struct {
@@ -198,8 +201,11 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			Delete: ucPracticeSheet.NewDeleteUsecase(factory),
 		},
 		Progress: ProgressUsecases{
-			GetMy:     ucProgress.NewGetMyProgressUsecase(factory),
-			GetCourse: ucProgress.NewGetCourseProgressUsecase(factory),
+			GetMy:                    ucProgress.NewGetMyProgressUsecase(factory),
+			GetCourse:                ucProgress.NewGetCourseProgressUsecase(factory),
+			GetStudentProgress:       ucProgress.NewGetStudentProgressUsecase(factory),
+			GetStudentCourseProgress: ucProgress.NewGetStudentCourseProgressUsecase(factory),
+			GetStudentAttempts:       ucProgress.NewGetStudentAttemptsUsecase(factory),
 		},
 		AI: AIUsecases{
 			CreateConversation: ucAI.NewCreateConversationUsecase(factory),
