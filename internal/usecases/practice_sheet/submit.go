@@ -64,26 +64,43 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	total := len(input.Attempts)
 	totalHints := 0
 	totalTime := 0
+	resultAIFeedback := ""
 
 	for _, attempt := range input.Attempts {
 		ex, ok := exerciseMap[attempt.ExerciseID]
 		isCorrect := false
 		answerText := attempt.AnswerText
+		aiFeedback := ""
+		hasTextAnswer := strings.TrimSpace(answerText) != ""
+		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
 
-		if attempt.CanvasData != "" && app.AssistantService != nil && app.AssistantService.IsConfigured(assistantCfg) {
+		if hasCanvasAnswer && app.AssistantService != nil && app.AssistantService.IsConfigured(assistantCfg) {
 			if recognizedText, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, attempt.CanvasData, ex.CorrectAnswer); recognizeErr == nil {
 				normalizedRecognized := normalizeCanvasAnswer(recognizedText)
 				if normalizedRecognized != "" && normalizedRecognized != "UNREADABLE" {
 					answerText = normalizedRecognized
+					hasTextAnswer = true
 				}
 			}
 		}
 
-		if ok && ex.CorrectAnswer != "" {
+		if ok {
+			normalizedCorrect := normalizeCanvasAnswer(ex.CorrectAnswer)
 			isCorrect = strings.EqualFold(
 				normalizeCanvasAnswer(answerText),
-				normalizeCanvasAnswer(ex.CorrectAnswer),
+				normalizedCorrect,
 			)
+
+			canEvaluateWithAI := app.AssistantService != nil && app.AssistantService.IsConfigured(assistantCfg) && hasTextAnswer && !isDataURIAnswer(answerText)
+			if canEvaluateWithAI {
+				if evaluation, aiErr := app.AssistantService.EvaluatePracticeAnswer(ctx, assistantCfg, ex.Question, ex.CorrectAnswer, answerText); aiErr == nil {
+					isCorrect = evaluation.IsCorrect
+					aiFeedback = evaluation.Feedback
+					if resultAIFeedback == "" && aiFeedback != "" {
+						resultAIFeedback = aiFeedback
+					}
+				}
+			}
 		}
 
 		score := 0.0
@@ -100,6 +117,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			ExerciseID:      attempt.ExerciseID,
 			PracticeSheetID: sheetID,
 			AnswerText:      answerText,
+			AIFeedback:      aiFeedback,
 			IsCorrect:       isCorrect,
 			Score:           score,
 			TimeSpentSecs:   attempt.TimeSpentSeconds,
@@ -189,6 +207,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		Total:          total,
 		MasteryScore:   newMastery,
 		Recommendation: recommendation,
+		AIFeedback:     resultAIFeedback,
 		ShouldLevelUp:  shouldLevelUp,
 		ShouldRepeat:   shouldRepeat,
 		NextLevel:      nextLevel,
@@ -223,4 +242,9 @@ func normalizeCanvasAnswer(value string) string {
 	normalized = strings.ReplaceAll(normalized, "\t", " ")
 	normalized = strings.Join(strings.Fields(normalized), " ")
 	return normalized
+}
+
+func isDataURIAnswer(value string) bool {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	return strings.HasPrefix(trimmed, "data:image/")
 }

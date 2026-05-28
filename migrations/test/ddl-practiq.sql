@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS student_attempts (
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     practice_sheet_id UUID REFERENCES practice_sheets(id) ON DELETE SET NULL,
     answer_text TEXT,
+    ai_feedback TEXT NOT NULL DEFAULT '',
     is_correct BOOLEAN,
     score NUMERIC(5,2),
     time_spent_seconds INT DEFAULT 0,
@@ -250,6 +251,10 @@ CREATE TABLE IF NOT EXISTS notebook_submissions (
     student_id   VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
     canvas_data  TEXT DEFAULT '',
     answer_text  TEXT DEFAULT '',
+    ai_recognized_text TEXT DEFAULT '',
+    ai_is_correct BOOLEAN,
+    ai_feedback TEXT DEFAULT '',
+    ai_reviewed_at TIMESTAMP,
     submitted_at TIMESTAMP DEFAULT NOW(),
     updated_at   TIMESTAMP DEFAULT NOW(),
     UNIQUE(page_id, student_id)

@@ -1,0 +1,2 @@
+ALTER TABLE student_attempts
+ADD COLUMN IF NOT EXISTS ai_feedback TEXT NOT NULL DEFAULT '';

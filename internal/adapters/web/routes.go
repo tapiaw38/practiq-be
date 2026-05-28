@@ -93,6 +93,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
 	api.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
+	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit))
+	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler())
 
 	// Student Progress (self-service)
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
@@ -120,4 +122,6 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
 	api.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
 	api.POST("/notebook-pages/:id/submit", handlerNB.NewSaveSubmissionHandler(uc.Notebook.SaveSubmission))
+	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission))
+	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler())
 }

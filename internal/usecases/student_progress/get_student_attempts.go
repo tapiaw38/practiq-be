@@ -11,16 +11,17 @@ import (
 )
 
 type AttemptData struct {
-	ID              string `json:"id"`
-	StudentID       string `json:"student_id"`
-	ExerciseID      string `json:"exercise_id"`
-	PracticeSheetID string `json:"practice_sheet_id"`
-	AnswerText      string `json:"answer_text"`
-	IsCorrect       bool   `json:"is_correct"`
+	ID              string  `json:"id"`
+	StudentID       string  `json:"student_id"`
+	ExerciseID      string  `json:"exercise_id"`
+	PracticeSheetID string  `json:"practice_sheet_id"`
+	AnswerText      string  `json:"answer_text"`
+	AIFeedback      string  `json:"ai_feedback,omitempty"`
+	IsCorrect       bool    `json:"is_correct"`
 	Score           float64 `json:"score"`
-	TimeSpentSecs   int    `json:"time_spent_seconds"`
-	HintsUsed       int    `json:"hints_used"`
-	CreatedAt       string `json:"created_at"`
+	TimeSpentSecs   int     `json:"time_spent_seconds"`
+	HintsUsed       int     `json:"hints_used"`
+	CreatedAt       string  `json:"created_at"`
 }
 
 type AttemptListOutput struct {
@@ -34,6 +35,7 @@ func toAttemptData(a domain.StudentAttempt) AttemptData {
 		ExerciseID:      a.ExerciseID,
 		PracticeSheetID: a.PracticeSheetID,
 		AnswerText:      a.AnswerText,
+		AIFeedback:      a.AIFeedback,
 		IsCorrect:       a.IsCorrect,
 		Score:           a.Score,
 		TimeSpentSecs:   a.TimeSpentSecs,

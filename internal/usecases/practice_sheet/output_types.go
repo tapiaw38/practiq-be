@@ -47,6 +47,7 @@ type SubmitResult struct {
 	Total          int     `json:"total"`
 	MasteryScore   float64 `json:"mastery_score"`
 	Recommendation string  `json:"recommendation"`
+	AIFeedback     string  `json:"ai_feedback,omitempty"`
 	ShouldLevelUp  bool    `json:"should_level_up"`
 	ShouldRepeat   bool    `json:"should_repeat"`
 	NextLevel      int     `json:"next_level"`

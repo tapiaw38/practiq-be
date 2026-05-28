@@ -15,6 +15,7 @@ type Repository interface {
 	Delete(ctx context.Context, id string) error
 
 	CreatePage(ctx context.Context, p domain.NotebookPage) (string, error)
+	GetPage(ctx context.Context, pageID string) (*domain.NotebookPage, error)
 	UpdatePage(ctx context.Context, p domain.NotebookPage) error
 	DeletePage(ctx context.Context, pageID string) error
 
@@ -172,6 +173,21 @@ func (r *repository) CreatePage(ctx context.Context, p domain.NotebookPage) (str
 	return id, err
 }
 
+func (r *repository) GetPage(ctx context.Context, pageID string) (*domain.NotebookPage, error) {
+	var p domain.NotebookPage
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, notebook_id, page_number, title, content_type, content_data, instructions, created_at
+		FROM notebook_pages WHERE id = $1
+	`, pageID).Scan(&p.ID, &p.NotebookID, &p.PageNumber, &p.Title, &p.ContentType, &p.ContentData, &p.Instructions, &p.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (r *repository) UpdatePage(ctx context.Context, p domain.NotebookPage) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE notebook_pages
@@ -188,20 +204,20 @@ func (r *repository) DeletePage(ctx context.Context, pageID string) error {
 
 func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubmission) error {
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO notebook_submissions (page_id, student_id, canvas_data, answer_text)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO notebook_submissions (page_id, student_id, canvas_data, answer_text, ai_recognized_text, ai_is_correct, ai_feedback, ai_reviewed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (page_id, student_id)
-		DO UPDATE SET canvas_data = EXCLUDED.canvas_data, answer_text = EXCLUDED.answer_text, updated_at = NOW()
-	`, s.PageID, s.StudentID, s.CanvasData, s.AnswerText)
+		DO UPDATE SET canvas_data = EXCLUDED.canvas_data, answer_text = EXCLUDED.answer_text, ai_recognized_text = EXCLUDED.ai_recognized_text, ai_is_correct = EXCLUDED.ai_is_correct, ai_feedback = EXCLUDED.ai_feedback, ai_reviewed_at = EXCLUDED.ai_reviewed_at, updated_at = NOW()
+	`, s.PageID, s.StudentID, s.CanvasData, s.AnswerText, s.AIRecognizedText, s.AIIsCorrect, s.AIFeedback, s.AIReviewedAt)
 	return err
 }
 
 func (r *repository) GetSubmission(ctx context.Context, pageID, studentID string) (*domain.NotebookSubmission, error) {
 	var s domain.NotebookSubmission
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, page_id, student_id, canvas_data, answer_text, submitted_at, updated_at
+		SELECT id, page_id, student_id, canvas_data, answer_text, COALESCE(ai_recognized_text,''), ai_is_correct, ai_feedback, ai_reviewed_at, submitted_at, updated_at
 		FROM notebook_submissions WHERE page_id = $1 AND student_id = $2
-	`, pageID, studentID).Scan(&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText, &s.SubmittedAt, &s.UpdatedAt)
+	`, pageID, studentID).Scan(&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText, &s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt, &s.SubmittedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
