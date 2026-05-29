@@ -3,6 +3,7 @@ package practicesheet
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -186,6 +187,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 	}
 
+	newStreak := calcStreak(currentProgress)
+
 	app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
 		StudentID:       studentID,
 		TopicID:         ps.TopicID,
@@ -194,6 +197,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		CurrentLevel:    nextLevel,
 		TotalAttempts:   prevTotal + total,
 		CorrectAttempts: prevCorrect + correct,
+		StreakDays:      newStreak,
 	})
 
 	// On level test pass, also advance the student's course-level progress
@@ -247,4 +251,26 @@ func normalizeCanvasAnswer(value string) string {
 func isDataURIAnswer(value string) bool {
 	trimmed := strings.TrimSpace(strings.ToLower(value))
 	return strings.HasPrefix(trimmed, "data:image/")
+}
+
+func calcStreak(current *domain.StudentTopicProgress) int {
+	if current == nil || current.LastPracticedAt == nil {
+		return 1
+	}
+	now := time.Now().UTC()
+	last := current.LastPracticedAt.UTC()
+
+	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, time.UTC)
+
+	diff := int(nowDay.Sub(lastDay).Hours() / 24)
+
+	switch {
+	case diff == 0:
+		return current.StreakDays
+	case diff == 1:
+		return current.StreakDays + 1
+	default:
+		return 1
+	}
 }
