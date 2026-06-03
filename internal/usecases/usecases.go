@@ -87,17 +87,18 @@ type PracticeSheetUsecases struct {
 }
 
 type ProgressUsecases struct {
-	GetMy                   ucProgress.GetMyProgressUsecase
-	GetCourse               ucProgress.GetCourseProgressUsecase
-	GetStudentProgress      ucProgress.GetStudentProgressUsecase
+	GetMy                    ucProgress.GetMyProgressUsecase
+	GetCourse                ucProgress.GetCourseProgressUsecase
+	GetStudentProgress       ucProgress.GetStudentProgressUsecase
 	GetStudentCourseProgress ucProgress.GetStudentCourseProgressUsecase
-	GetStudentAttempts      ucProgress.GetStudentAttemptsUsecase
+	GetStudentAttempts       ucProgress.GetStudentAttemptsUsecase
 }
 
 type AIUsecases struct {
 	CreateConversation ucAI.CreateConversationUsecase
 	GetMessages        ucAI.GetMessagesUsecase
 	Help               ucAI.HelpUsecase
+	Proxy              ucAI.ProxyUsecase
 }
 
 type ProfileUsecases struct {
@@ -211,6 +212,7 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			CreateConversation: ucAI.NewCreateConversationUsecase(factory),
 			GetMessages:        ucAI.NewGetMessagesUsecase(factory),
 			Help:               ucAI.NewHelpUsecase(factory),
+			Proxy:              ucAI.NewProxyUsecase(factory),
 		},
 		Profile: ProfileUsecases{
 			Sync:                  ucProfile.NewSyncUsecase(factory),
