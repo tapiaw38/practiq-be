@@ -2,33 +2,19 @@ package practicesheet
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"log"
 	"net/http"
-	"sync"
 	"time"
 
-	"crypto/rand"
-
 	"github.com/gin-gonic/gin"
+	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
+	"github.com/tapiaw38/practiq-be/internal/domain"
 	ucPS "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 )
-
-type submitJob struct {
-	Status    string             `json:"status"`
-	Result    *ucPS.SubmitOutput `json:"result,omitempty"`
-	ErrorCode string             `json:"error_code,omitempty"`
-	Message   string             `json:"message,omitempty"`
-	CreatedAt time.Time          `json:"created_at"`
-	UpdatedAt time.Time          `json:"updated_at"`
-}
-
-var submitJobs = struct {
-	mu   sync.RWMutex
-	data map[string]submitJob
-}{
-	data: make(map[string]submitJob),
-}
 
 func newSubmitJobID() string {
 	b := make([]byte, 16)
@@ -36,19 +22,6 @@ func newSubmitJobID() string {
 		return hex.EncodeToString([]byte(time.Now().Format(time.RFC3339Nano)))
 	}
 	return hex.EncodeToString(b)
-}
-
-func setSubmitJob(id string, job submitJob) {
-	submitJobs.mu.Lock()
-	defer submitJobs.mu.Unlock()
-	submitJobs.data[id] = job
-}
-
-func getSubmitJob(id string) (submitJob, bool) {
-	submitJobs.mu.RLock()
-	defer submitJobs.mu.RUnlock()
-	job, ok := submitJobs.data[id]
-	return job, ok
 }
 
 type createInput struct {
@@ -193,7 +166,7 @@ func NewSubmitHandler(uc ucPS.SubmitUsecase) gin.HandlerFunc {
 	}
 }
 
-func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase) gin.HandlerFunc {
+func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		studentID := middlewares.GetUserID(c)
@@ -205,31 +178,37 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase) gin.HandlerFunc {
 
 		jobID := newSubmitJobID()
 		now := time.Now().UTC()
-		setSubmitJob(jobID, submitJob{
+		if err := repo.Create(c.Request.Context(), domain.SubmitJob{
+			ID:        jobID,
+			Kind:      "practice_sheet",
 			Status:    "processing",
 			CreatedAt: now,
 			UpdatedAt: now,
-		})
+		}); err != nil {
+			log.Printf("failed to create submit job: %v", err)
+		}
 
 		go func(sheetID, uid, jid string, payload submitInput) {
 			output, appErr := uc.Execute(context.Background(), sheetID, uid, ucPS.SubmitInput{Attempts: payload.Attempts})
-			updated := time.Now().UTC()
 			if appErr != nil {
-				setSubmitJob(jid, submitJob{
+				if err := repo.Update(context.Background(), domain.SubmitJob{
+					ID:        jid,
 					Status:    "failed",
 					ErrorCode: "practice_sheet:submit-failed",
 					Message:   appErr.Error(),
-					CreatedAt: now,
-					UpdatedAt: updated,
-				})
+				}); err != nil {
+					log.Printf("failed to update submit job: %v", err)
+				}
 				return
 			}
-			setSubmitJob(jid, submitJob{
-				Status:    "done",
-				Result:    output,
-				CreatedAt: now,
-				UpdatedAt: updated,
-			})
+			resultJSON, _ := json.Marshal(output)
+			if err := repo.Update(context.Background(), domain.SubmitJob{
+				ID:     jid,
+				Status: "done",
+				Result: resultJSON,
+			}); err != nil {
+				log.Printf("failed to update submit job: %v", err)
+			}
 		}(id, studentID, jobID, input)
 
 		c.JSON(http.StatusAccepted, gin.H{
@@ -241,14 +220,37 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase) gin.HandlerFunc {
 	}
 }
 
-func NewGetSubmitJobHandler() gin.HandlerFunc {
+func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		jobID := c.Param("jobId")
-		job, ok := getSubmitJob(jobID)
-		if !ok {
+		job, err := repo.GetByID(c.Request.Context(), jobID)
+		if err != nil {
+			log.Printf("failed to get submit job: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "common:internal-error", "message": "failed to get submit job"})
+			return
+		}
+		if job == nil {
 			c.JSON(http.StatusNotFound, gin.H{"code": "practice_sheet:submit-job-not-found", "message": "submit job not found"})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"data": job})
+		// Preserve original JSON response shape
+		response := gin.H{
+			"status":     job.Status,
+			"created_at": job.CreatedAt,
+			"updated_at": job.UpdatedAt,
+		}
+		if job.ErrorCode != "" {
+			response["error_code"] = job.ErrorCode
+		}
+		if job.Message != "" {
+			response["message"] = job.Message
+		}
+		if len(job.Result) > 0 {
+			var result ucPS.SubmitOutput
+			if err := json.Unmarshal(job.Result, &result); err == nil {
+				response["result"] = &result
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"data": response})
 	}
 }

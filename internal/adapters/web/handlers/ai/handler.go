@@ -49,9 +49,10 @@ func NewGetMessagesHandler(uc ucAI.GetMessagesUsecase) gin.HandlerFunc {
 }
 
 type helpInput struct {
-	ExerciseID string `json:"exercise_id"`
-	Question   string `json:"question" binding:"required"`
-	HelpType   string `json:"help_type"`
+	ExerciseID     string `json:"exercise_id"`
+	Question       string `json:"question" binding:"required"`
+	HelpType       string `json:"help_type"`
+	ConversationID string `json:"conversation_id"`
 }
 
 func NewHelpHandler(uc ucAI.HelpUsecase) gin.HandlerFunc {
@@ -64,10 +65,11 @@ func NewHelpHandler(uc ucAI.HelpUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, ucAI.HelpInput{
-			StudentID:  studentID,
-			ExerciseID: input.ExerciseID,
-			Question:   input.Question,
-			HelpType:   input.HelpType,
+			StudentID:      studentID,
+			ExerciseID:     input.ExerciseID,
+			Question:       input.Question,
+			HelpType:       input.HelpType,
+			ConversationID: input.ConversationID,
 		})
 		if appErr != nil {
 			appErr.Log(c)

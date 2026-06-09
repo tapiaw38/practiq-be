@@ -48,10 +48,15 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
 
-	// Build exercise map for quick lookup
+	// Build exercise map for quick lookup and derive topic_id if needed
 	exerciseMap := map[string]domain.Exercise{}
+	derivedTopicID := ps.TopicID
 	for _, pse := range ps.Exercises {
 		exerciseMap[pse.Exercise.ID] = pse.Exercise
+		// Derive topic_id from exercise if practice sheet has no topic
+		if derivedTopicID == "" && pse.Exercise.TopicID != "" {
+			derivedTopicID = pse.Exercise.TopicID
+		}
 	}
 
 	profile, _ := app.Repositories.UserProfile.Get(ctx, studentID)
@@ -136,7 +141,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	kumon := app.KumonStrategy
-	currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, ps.TopicID)
+	currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
 	currentScore := 0.0
 	currentLevel := 1
 	prevTotal := 0
@@ -189,16 +194,22 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	newStreak := calcStreak(currentProgress)
 
-	app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
-		StudentID:       studentID,
-		TopicID:         ps.TopicID,
-		StrategyID:      ps.StrategyID,
-		MasteryScore:    newMastery,
-		CurrentLevel:    nextLevel,
-		TotalAttempts:   prevTotal + total,
-		CorrectAttempts: prevCorrect + correct,
-		StreakDays:      newStreak,
-	})
+	// Only update progress if we have a valid topic_id (skip silently otherwise)
+	if derivedTopicID != "" {
+		if err := app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
+			StudentID:       studentID,
+			TopicID:         derivedTopicID,
+			StrategyID:      ps.StrategyID,
+			MasteryScore:    newMastery,
+			CurrentLevel:    nextLevel,
+			TotalAttempts:   prevTotal + total,
+			CorrectAttempts: prevCorrect + correct,
+			StreakDays:      newStreak,
+		}); err != nil {
+			// Log error but don't fail the submit - progress update failure should not break submit
+			_ = err
+		}
+	}
 
 	// On level test pass, also advance the student's course-level progress
 	if ps.SheetType == "level_test" && shouldLevelUp {

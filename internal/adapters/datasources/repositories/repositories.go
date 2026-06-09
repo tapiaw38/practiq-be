@@ -16,6 +16,7 @@ import (
 	studentattempt "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_attempt"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/subject"
+	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	teacherstudentassignment "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/teacher_student_assignment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/topic"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
@@ -38,6 +39,7 @@ type Repositories struct {
 	LearningStrategy         learningstrategy.Repository
 	Notebook                 notebook.Repository
 	CourseProgress           courseprogress.Repository
+	SubmitJob                submitjob.Repository
 }
 
 func NewRepositories(db *sql.DB) *Repositories {
@@ -58,5 +60,6 @@ func NewRepositories(db *sql.DB) *Repositories {
 		LearningStrategy:         learningstrategy.NewRepository(db),
 		Notebook:                 notebook.NewRepository(db),
 		CourseProgress:           courseprogress.NewRepository(db),
+		SubmitJob:                submitjob.NewRepository(db),
 	}
 }

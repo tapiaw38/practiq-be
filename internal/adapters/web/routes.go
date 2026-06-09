@@ -2,6 +2,7 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
 	handlerCourse "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course"
 	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
@@ -20,7 +21,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository) {
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware())
 
@@ -93,8 +94,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
 	api.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
-	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit))
-	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler())
+	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit, submitJobRepo))
+	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler(submitJobRepo))
 
 	// Student Progress (self-service)
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
@@ -126,6 +127,6 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
 	api.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
 	api.POST("/notebook-pages/:id/submit", handlerNB.NewSaveSubmissionHandler(uc.Notebook.SaveSubmission))
-	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission))
-	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler())
+	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission, submitJobRepo))
+	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler(submitJobRepo))
 }

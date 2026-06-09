@@ -27,6 +27,7 @@ type Service interface {
 	IsConfigured(cfg Config) bool
 	AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, correctAnswer string) (string, error)
 	EvaluatePracticeAnswer(ctx context.Context, cfg Config, question, correctAnswer, studentAnswer string) (EvaluationResult, error)
+	AskHelp(ctx context.Context, cfg Config, prompt string) (string, error)
 	Proxy(ctx context.Context, cfg Config, method, path, contentType string, body []byte) (*ProxyResponse, error)
 }
 
@@ -144,6 +145,31 @@ func (s *service) EvaluatePracticeAnswer(ctx context.Context, cfg Config, questi
 	}
 	log.Printf("[assistant] evaluate_answer success conversation_id=%s is_correct=%t feedback=%q", conversationID, evaluation.IsCorrect, evaluation.Feedback)
 	return evaluation, nil
+}
+
+func (s *service) AskHelp(ctx context.Context, cfg Config, prompt string) (string, error) {
+	if !s.IsConfigured(cfg) {
+		return "", errors.New("assistant service not configured")
+	}
+
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	apiKey := strings.TrimSpace(cfg.APIKey)
+
+	conversationID, err := s.createConversation(ctx, baseURL, apiKey)
+	if err != nil {
+		log.Printf("[assistant] ask_help create_conversation_error host=%s err=%v", baseURL, err)
+		return "", err
+	}
+	log.Printf("[assistant] ask_help conversation_created host=%s conversation_id=%s", baseURL, conversationID)
+
+	log.Printf("[assistant] ask_help prompt=%q", truncateForLog(prompt, 700))
+	response, err := s.sendTextMessage(ctx, baseURL, apiKey, conversationID, prompt)
+	if err != nil {
+		log.Printf("[assistant] ask_help send_text_error conversation_id=%s err=%v", conversationID, err)
+		return "", err
+	}
+	log.Printf("[assistant] ask_help success conversation_id=%s response=%q", conversationID, truncateForLog(response, 200))
+	return response, nil
 }
 
 func (s *service) createConversation(ctx context.Context, baseURL, apiKey string) (string, error) {
