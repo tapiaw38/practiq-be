@@ -55,6 +55,21 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Course
 		return nil, apperrors.NewApplicationError(mappings.CourseCreateError, err)
 	}
 
+	defaultStrategy, err := app.Repositories.LearningStrategy.GetByCode(ctx, "kumon")
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.LearningStrategyGetError, err)
+	}
+	if defaultStrategy != nil {
+		if _, err := app.Repositories.LearningStrategy.AssignToCourse(ctx, domain.CourseLearningStrategy{
+			CourseID:   id,
+			StrategyID: defaultStrategy.ID,
+			IsDefault:  true,
+			Config:     "{}",
+		}); err != nil {
+			return nil, apperrors.NewApplicationError(mappings.LearningStrategyAssignError, err)
+		}
+	}
+
 	c, err := app.Repositories.Course.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
