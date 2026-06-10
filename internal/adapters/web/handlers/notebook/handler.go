@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -285,4 +286,88 @@ func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, gin.H{"data": response})
 	}
+}
+
+func NewListSubmissionsHandler(uc ucNB.ListSubmissionsUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		reviewed := ""
+		if raw, ok := c.GetQuery("reviewed"); ok {
+			if raw == "true" {
+				reviewed = "reviewed"
+			} else if raw == "false" {
+				reviewed = "unreviewed"
+			}
+		}
+		teacherID := ""
+		if !middlewares.HasRole(c, "admin", "superadmin") {
+			teacherID = middlewares.GetUserID(c)
+		}
+		output, err := uc.Execute(c, ucNB.ListSubmissionsInput{
+			NotebookID: strings.TrimSpace(c.Query("notebook_id")),
+			StudentID:  strings.TrimSpace(c.Query("student_id")),
+			CourseID:   strings.TrimSpace(c.Query("course_id")),
+			Reviewed:   reviewed,
+			TeacherID:  teacherID,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "notebook:list-submissions-error", "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, output)
+	}
+}
+
+func NewReviewSubmissionHandler(uc ucNB.ReviewSubmissionUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		submissionID := c.Param("id")
+		teacherID := ""
+		if !middlewares.HasRole(c, "admin", "superadmin") {
+			teacherID = middlewares.GetUserID(c)
+		}
+		output, err := uc.Execute(c, submissionID, teacherID)
+		if err != nil {
+			if err.Error() == "submission not found" {
+				c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submission-not-found", "message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "notebook:review-error", "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": output})
+	}
+}
+
+func NewTeacherReviewSubmissionHandler(uc ucNB.TeacherReviewSubmissionUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		submissionID := c.Param("id")
+		var input struct {
+			TeacherIsCorrect bool   `json:"teacher_is_correct"`
+			TeacherFeedback  string `json:"teacher_feedback"`
+		}
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+		output, err := uc.Execute(c, submissionID, ucNB.TeacherReviewInput{
+			IsCorrect: input.TeacherIsCorrect,
+			Feedback:  input.TeacherFeedback,
+			TeacherID: teacherIDForReview(c),
+		})
+		if err != nil {
+			if err.Error() == "submission not found" {
+				c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submission-not-found", "message": err.Error()})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "notebook:teacher-review-error", "message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": output})
+	}
+}
+
+func teacherIDForReview(c *gin.Context) string {
+	if middlewares.HasRole(c, "admin", "superadmin") {
+		return ""
+	}
+	return middlewares.GetUserID(c)
 }

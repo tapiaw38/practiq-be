@@ -193,6 +193,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	newStreak := calcStreak(currentProgress)
+	now := time.Now()
 
 	// Only update progress if we have a valid topic_id (skip silently otherwise)
 	if derivedTopicID != "" {
@@ -205,6 +206,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			TotalAttempts:   prevTotal + total,
 			CorrectAttempts: prevCorrect + correct,
 			StreakDays:      newStreak,
+			LastPracticedAt: &now,
 		}); err != nil {
 			// Log error but don't fail the submit - progress update failure should not break submit
 			_ = err

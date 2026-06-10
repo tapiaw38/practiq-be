@@ -33,30 +33,9 @@ func (r *repository) Create(ctx context.Context, a domain.StudentAttempt) (strin
 }
 
 func (r *repository) SaveCanvasWork(ctx context.Context, attemptID, imageData string) error {
-	updateQuery := `
-		UPDATE student_work_canvas
-		SET image_url = $2
-		WHERE attempt_id = $1::uuid
-	`
-	result, err := r.db.ExecContext(ctx, updateQuery, attemptID, imageData)
-	if err != nil {
-		return err
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows > 0 {
-		return nil
-	}
-
-	insertQuery := `
-		INSERT INTO student_work_canvas (attempt_id, image_url)
-		VALUES ($1::uuid, $2)
-	`
-	_, err = r.db.ExecContext(ctx, insertQuery, attemptID, imageData)
-	return err
+	// Canvas payload is already persisted in student_attempts.answer_text.
+	// student_work_canvas was removed because it duplicated that data.
+	return nil
 }
 
 func (r *repository) ListBySheet(ctx context.Context, studentID, sheetID string) ([]domain.StudentAttempt, error) {

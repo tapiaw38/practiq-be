@@ -24,6 +24,18 @@ func newSubmitJobID() string {
 	return hex.EncodeToString(b)
 }
 
+// validateSheetTypeAndTestStyle validates sheet_type and test_style fields.
+// Returns an error message if invalid, or empty string if valid.
+func validateSheetTypeAndTestStyle(sheetType, testStyle string) string {
+	if sheetType != "" && sheetType != "practice" && sheetType != "level_test" {
+		return "sheet_type must be 'practice' or 'level_test'"
+	}
+	if testStyle != "" && testStyle != "keyboard" && testStyle != "canvas" {
+		return "test_style must be 'keyboard' or 'canvas'"
+	}
+	return ""
+}
+
 type createInput struct {
 	TopicID     string   `json:"topic_id"`
 	StrategyID  string   `json:"strategy_id"`
@@ -40,6 +52,11 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 		var input createInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+
+		if validationErr := validateSheetTypeAndTestStyle(input.SheetType, input.TestStyle); validationErr != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": validationErr})
 			return
 		}
 
@@ -106,6 +123,11 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 		var input updateSheetInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+
+		if validationErr := validateSheetTypeAndTestStyle(input.SheetType, input.TestStyle); validationErr != "" {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": validationErr})
 			return
 		}
 

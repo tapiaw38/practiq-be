@@ -27,15 +27,30 @@ type NotebookPage struct {
 }
 
 type NotebookSubmission struct {
-	ID               string
-	PageID           string
-	StudentID        string
-	CanvasData       string
-	AnswerText       string
-	AIRecognizedText string
-	AIIsCorrect      *bool
-	AIFeedback       string
-	AIReviewedAt     *time.Time
-	SubmittedAt      time.Time
-	UpdatedAt        time.Time
+	ID                string
+	PageID            string
+	StudentID         string
+	CanvasData        string
+	AnswerText        string
+	AIRecognizedText  string
+	AIIsCorrect       *bool
+	AIFeedback        string
+	AIReviewedAt      *time.Time
+	TeacherIsCorrect  *bool
+	TeacherFeedback   string
+	TeacherReviewedAt *time.Time
+	SubmittedAt       time.Time
+	UpdatedAt         time.Time
+}
+
+type NotebookSubmissionFull struct {
+	NotebookSubmission
+	StudentName   string
+	StudentEmail  string
+	NotebookID    string
+	NotebookTitle string
+	PageTitle     string
+	PageNumber    int
+	CourseID      string
+	TeacherID     string
 }

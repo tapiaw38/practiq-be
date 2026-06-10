@@ -6,9 +6,11 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
 	handlerCourse "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course"
 	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
+	handlerCP "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/exercise"
 	handlerGrade "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/grade"
+	handlerLS "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
@@ -32,6 +34,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly := api.Group("/")
 	adminOnly.Use(middlewares.RequireRoles("admin", "superadmin"))
+	teacherOnly := api.Group("/")
+	teacherOnly.Use(middlewares.RequireRoles("teacher", "admin", "superadmin"))
 	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 
@@ -129,4 +133,23 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.POST("/notebook-pages/:id/submit", handlerNB.NewSaveSubmissionHandler(uc.Notebook.SaveSubmission))
 	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission, submitJobRepo))
 	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler(submitJobRepo))
+	teacherOnly.GET("/notebook-submissions", handlerNB.NewListSubmissionsHandler(uc.Notebook.ListSubmissions))
+	teacherOnly.POST("/notebook-submissions/:id/review", handlerNB.NewReviewSubmissionHandler(uc.Notebook.ReviewSubmission))
+	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
+
+	// Learning Strategies
+	api.GET("/learning-strategies", handlerLS.NewListHandler(uc.LearningStrategy.List))
+	api.GET("/learning-strategies/:id", handlerLS.NewGetHandler(uc.LearningStrategy.Get))
+	adminOnly.POST("/learning-strategies", handlerLS.NewCreateHandler(uc.LearningStrategy.Create))
+	adminOnly.PUT("/learning-strategies/:id", handlerLS.NewUpdateHandler(uc.LearningStrategy.Update))
+	adminOnly.DELETE("/learning-strategies/:id", handlerLS.NewDeleteHandler(uc.LearningStrategy.Delete))
+
+	// Course Learning Strategies
+	api.GET("/courses/:id/strategies", handlerLS.NewListByCourseHandler(uc.LearningStrategy.ListByCourse))
+	teacherOnly.POST("/courses/:id/strategies", handlerLS.NewAssignToCourseHandler(uc.LearningStrategy.AssignToCourse))
+	teacherOnly.DELETE("/course-learning-strategies/:id", handlerLS.NewUnassignFromCourseHandler(uc.LearningStrategy.UnassignFromCourse))
+
+	// Course Progress
+	teacherOnly.GET("/students/:studentId/courses/:courseId/progress", handlerCP.NewGetForStudentHandler(uc.CourseProgress.GetForStudent))
+	teacherOnly.GET("/students/:studentId/progress", handlerCP.NewListForStudentHandler(uc.CourseProgress.ListForStudent))
 }

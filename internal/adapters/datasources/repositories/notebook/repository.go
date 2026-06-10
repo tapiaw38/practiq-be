@@ -21,6 +21,19 @@ type Repository interface {
 
 	UpsertSubmission(ctx context.Context, s domain.NotebookSubmission) error
 	GetSubmission(ctx context.Context, pageID, studentID string) (*domain.NotebookSubmission, error)
+	GetSubmissionByID(ctx context.Context, id string) (*domain.NotebookSubmission, error)
+	GetFullSubmissionByID(ctx context.Context, id string) (*domain.NotebookSubmissionFull, error)
+	ListSubmissions(ctx context.Context, filter SubmissionFilter) ([]domain.NotebookSubmissionFull, error)
+	UpdateSubmissionAIReview(ctx context.Context, id string, recognizedText string, isCorrect *bool, feedback string) error
+	UpdateSubmissionTeacherReview(ctx context.Context, id string, isCorrect bool, feedback string) error
+}
+
+type SubmissionFilter struct {
+	NotebookID string
+	StudentID  string
+	CourseID   string
+	Reviewed   string
+	TeacherID  string
 }
 
 type repository struct {
@@ -215,11 +228,119 @@ func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubm
 func (r *repository) GetSubmission(ctx context.Context, pageID, studentID string) (*domain.NotebookSubmission, error) {
 	var s domain.NotebookSubmission
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, page_id, student_id, canvas_data, answer_text, COALESCE(ai_recognized_text,''), ai_is_correct, ai_feedback, ai_reviewed_at, submitted_at, updated_at
+		SELECT id, page_id, student_id, canvas_data, answer_text, COALESCE(ai_recognized_text,''), ai_is_correct, ai_feedback, ai_reviewed_at,
+		       teacher_is_correct, COALESCE(teacher_feedback,''), teacher_reviewed_at, submitted_at, updated_at
 		FROM notebook_submissions WHERE page_id = $1 AND student_id = $2
-	`, pageID, studentID).Scan(&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText, &s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt, &s.SubmittedAt, &s.UpdatedAt)
+	`, pageID, studentID).Scan(&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText, &s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt, &s.TeacherIsCorrect, &s.TeacherFeedback, &s.TeacherReviewedAt, &s.SubmittedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	return &s, err
+}
+
+func (r *repository) GetSubmissionByID(ctx context.Context, id string) (*domain.NotebookSubmission, error) {
+	var s domain.NotebookSubmission
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, page_id, student_id, canvas_data, answer_text, COALESCE(ai_recognized_text,''), ai_is_correct, ai_feedback, ai_reviewed_at,
+		       teacher_is_correct, COALESCE(teacher_feedback,''), teacher_reviewed_at, submitted_at, updated_at
+		FROM notebook_submissions WHERE id = $1
+	`, id).Scan(&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText, &s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt, &s.TeacherIsCorrect, &s.TeacherFeedback, &s.TeacherReviewedAt, &s.SubmittedAt, &s.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
+func (r *repository) GetFullSubmissionByID(ctx context.Context, id string) (*domain.NotebookSubmissionFull, error) {
+	var s domain.NotebookSubmissionFull
+	err := r.db.QueryRowContext(ctx, `
+		SELECT ns.id, ns.page_id, ns.student_id, ns.canvas_data, ns.answer_text,
+		       COALESCE(ns.ai_recognized_text,''), ns.ai_is_correct, COALESCE(ns.ai_feedback,''), ns.ai_reviewed_at,
+		       ns.teacher_is_correct, COALESCE(ns.teacher_feedback,''), ns.teacher_reviewed_at,
+		       ns.submitted_at, ns.updated_at,
+		       COALESCE(up.name,''), COALESCE(up.email,''),
+		       n.id, n.title, COALESCE(np.title,''), np.page_number, n.course_id::text, n.teacher_id
+		FROM notebook_submissions ns
+		JOIN notebook_pages np ON np.id = ns.page_id
+		JOIN notebooks n ON n.id = np.notebook_id
+		LEFT JOIN user_profiles up ON up.id = ns.student_id
+		WHERE ns.id = $1
+	`, id).Scan(
+		&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText,
+		&s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt,
+		&s.TeacherIsCorrect, &s.TeacherFeedback, &s.TeacherReviewedAt,
+		&s.SubmittedAt, &s.UpdatedAt,
+		&s.StudentName, &s.StudentEmail,
+		&s.NotebookID, &s.NotebookTitle, &s.PageTitle, &s.PageNumber, &s.CourseID, &s.TeacherID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
+func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilter) ([]domain.NotebookSubmissionFull, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT ns.id, ns.page_id, ns.student_id, ns.canvas_data, ns.answer_text,
+		       COALESCE(ns.ai_recognized_text,''), ns.ai_is_correct, COALESCE(ns.ai_feedback,''), ns.ai_reviewed_at,
+		       ns.teacher_is_correct, COALESCE(ns.teacher_feedback,''), ns.teacher_reviewed_at,
+		       ns.submitted_at, ns.updated_at,
+		       COALESCE(up.name,''), COALESCE(up.email,''),
+		       n.id, n.title, COALESCE(np.title,''), np.page_number, n.course_id::text, n.teacher_id
+		FROM notebook_submissions ns
+		JOIN notebook_pages np ON np.id = ns.page_id
+		JOIN notebooks n ON n.id = np.notebook_id
+		LEFT JOIN user_profiles up ON up.id = ns.student_id
+		WHERE ($1 = '' OR n.id::text = $1)
+		  AND ($2 = '' OR ns.student_id = $2)
+		  AND ($3 = '' OR n.course_id::text = $3)
+		  AND ($4 = '' OR ($4 = 'reviewed' AND ns.ai_reviewed_at IS NOT NULL) OR ($4 = 'unreviewed' AND ns.ai_reviewed_at IS NULL))
+		  AND ($5 = '' OR n.teacher_id = $5)
+		ORDER BY ns.submitted_at DESC
+	`, filter.NotebookID, filter.StudentID, filter.CourseID, filter.Reviewed, filter.TeacherID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []domain.NotebookSubmissionFull
+	for rows.Next() {
+		var s domain.NotebookSubmissionFull
+		if err := rows.Scan(
+			&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText,
+			&s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt,
+			&s.TeacherIsCorrect, &s.TeacherFeedback, &s.TeacherReviewedAt,
+			&s.SubmittedAt, &s.UpdatedAt,
+			&s.StudentName, &s.StudentEmail,
+			&s.NotebookID, &s.NotebookTitle, &s.PageTitle, &s.PageNumber, &s.CourseID, &s.TeacherID,
+		); err != nil {
+			return nil, err
+		}
+		list = append(list, s)
+	}
+	return list, rows.Err()
+}
+
+func (r *repository) UpdateSubmissionAIReview(ctx context.Context, id string, recognizedText string, isCorrect *bool, feedback string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE notebook_submissions
+		SET ai_recognized_text = $1, ai_is_correct = $2, ai_feedback = $3, ai_reviewed_at = NOW(), updated_at = NOW()
+		WHERE id = $4
+	`, recognizedText, isCorrect, feedback, id)
+	return err
+}
+
+func (r *repository) UpdateSubmissionTeacherReview(ctx context.Context, id string, isCorrect bool, feedback string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE notebook_submissions
+		SET teacher_is_correct = $1, teacher_feedback = $2, teacher_reviewed_at = NOW(), updated_at = NOW()
+		WHERE id = $3
+	`, isCorrect, feedback, id)
+	return err
 }

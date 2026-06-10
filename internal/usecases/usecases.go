@@ -5,9 +5,11 @@ import (
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
 	ucCourse "github.com/tapiaw38/practiq-be/internal/usecases/course"
 	ucLevel "github.com/tapiaw38/practiq-be/internal/usecases/course_level"
+	ucCourseProgress "github.com/tapiaw38/practiq-be/internal/usecases/course_progress"
 	ucEnrollment "github.com/tapiaw38/practiq-be/internal/usecases/enrollment"
 	ucExercise "github.com/tapiaw38/practiq-be/internal/usecases/exercise"
 	ucGrade "github.com/tapiaw38/practiq-be/internal/usecases/grade"
+	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
@@ -109,35 +111,56 @@ type ProfileUsecases struct {
 }
 
 type NotebookUsecases struct {
-	Create         ucNB.CreateUsecase
-	List           ucNB.ListUsecase
-	Get            ucNB.GetUsecase
-	Update         ucNB.UpdateUsecase
-	Delete         ucNB.DeleteUsecase
-	AddPage        ucNB.AddPageUsecase
-	UpdatePage     ucNB.UpdatePageUsecase
-	SaveSubmission ucNB.SaveSubmissionUsecase
+	Create           ucNB.CreateUsecase
+	List             ucNB.ListUsecase
+	Get              ucNB.GetUsecase
+	Update           ucNB.UpdateUsecase
+	Delete           ucNB.DeleteUsecase
+	AddPage          ucNB.AddPageUsecase
+	UpdatePage       ucNB.UpdatePageUsecase
+	SaveSubmission   ucNB.SaveSubmissionUsecase
+	ListSubmissions  ucNB.ListSubmissionsUsecase
+	ReviewSubmission ucNB.ReviewSubmissionUsecase
+	TeacherReview    ucNB.TeacherReviewSubmissionUsecase
 }
 
 type CourseLevelUsecases struct {
 	Get ucLevel.GetUsecase
 }
 
+type LearningStrategyUsecases struct {
+	List               ucLS.ListUsecase
+	Get                ucLS.GetUsecase
+	Create             ucLS.CreateUsecase
+	Update             ucLS.UpdateUsecase
+	Delete             ucLS.DeleteUsecase
+	ListByCourse       ucLS.ListByCourseUsecase
+	AssignToCourse     ucLS.AssignToCourseUsecase
+	UnassignFromCourse ucLS.UnassignFromCourseUsecase
+}
+
+type CourseProgressUsecases struct {
+	GetForStudent  ucCourseProgress.GetForStudentUsecase
+	ListForStudent ucCourseProgress.ListForStudentUsecase
+}
+
 type Usecases struct {
-	Course        CourseUsecases
-	Grade         GradeUsecases
-	Subject       SubjectUsecases
-	Assignment    AssignmentUsecases
-	Topic         TopicUsecases
-	Exercise      ExerciseUsecases
-	Material      MaterialUsecases
-	Enrollment    EnrollmentUsecases
-	PracticeSheet PracticeSheetUsecases
-	Progress      ProgressUsecases
-	AI            AIUsecases
-	Profile       ProfileUsecases
-	Notebook      NotebookUsecases
-	CourseLevel   CourseLevelUsecases
+	Course           CourseUsecases
+	Grade            GradeUsecases
+	Subject          SubjectUsecases
+	Assignment       AssignmentUsecases
+	Topic            TopicUsecases
+	Exercise         ExerciseUsecases
+	Material         MaterialUsecases
+	Enrollment       EnrollmentUsecases
+	PracticeSheet    PracticeSheetUsecases
+	Progress         ProgressUsecases
+	AI               AIUsecases
+	Profile          ProfileUsecases
+	Notebook         NotebookUsecases
+	CourseLevel      CourseLevelUsecases
+	LearningStrategy LearningStrategyUsecases
+	CourseProgress   CourseProgressUsecases
 }
 
 func NewUsecases(factory appcontext.Factory) *Usecases {
@@ -221,17 +244,34 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 			UpdateAcademicStatus:  ucProfile.NewUpdateAcademicStatusUsecase(factory),
 		},
 		Notebook: NotebookUsecases{
-			Create:         ucNB.NewCreateUsecase(factory),
-			List:           ucNB.NewListUsecase(factory),
-			Get:            ucNB.NewGetUsecase(factory),
-			Update:         ucNB.NewUpdateUsecase(factory),
-			Delete:         ucNB.NewDeleteUsecase(factory),
-			AddPage:        ucNB.NewAddPageUsecase(factory),
-			UpdatePage:     ucNB.NewUpdatePageUsecase(factory),
-			SaveSubmission: ucNB.NewSaveSubmissionUsecase(factory),
+			Create:           ucNB.NewCreateUsecase(factory),
+			List:             ucNB.NewListUsecase(factory),
+			Get:              ucNB.NewGetUsecase(factory),
+			Update:           ucNB.NewUpdateUsecase(factory),
+			Delete:           ucNB.NewDeleteUsecase(factory),
+			AddPage:          ucNB.NewAddPageUsecase(factory),
+			UpdatePage:       ucNB.NewUpdatePageUsecase(factory),
+			SaveSubmission:   ucNB.NewSaveSubmissionUsecase(factory),
+			ListSubmissions:  ucNB.NewListSubmissionsUsecase(factory),
+			ReviewSubmission: ucNB.NewReviewSubmissionUsecase(factory),
+			TeacherReview:    ucNB.NewTeacherReviewSubmissionUsecase(factory),
 		},
 		CourseLevel: CourseLevelUsecases{
 			Get: ucLevel.NewGetUsecase(factory),
+		},
+		LearningStrategy: LearningStrategyUsecases{
+			List:               ucLS.NewListUsecase(factory),
+			Get:                ucLS.NewGetUsecase(factory),
+			Create:             ucLS.NewCreateUsecase(factory),
+			Update:             ucLS.NewUpdateUsecase(factory),
+			Delete:             ucLS.NewDeleteUsecase(factory),
+			ListByCourse:       ucLS.NewListByCourseUsecase(factory),
+			AssignToCourse:     ucLS.NewAssignToCourseUsecase(factory),
+			UnassignFromCourse: ucLS.NewUnassignFromCourseUsecase(factory),
+		},
+		CourseProgress: CourseProgressUsecases{
+			GetForStudent:  ucCourseProgress.NewGetForStudentUsecase(factory),
+			ListForStudent: ucCourseProgress.NewListForStudentUsecase(factory),
 		},
 	}
 }

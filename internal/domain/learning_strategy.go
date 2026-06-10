@@ -10,3 +10,15 @@ type LearningStrategy struct {
 	Status      string
 	CreatedAt   time.Time
 }
+
+type CourseLearningStrategy struct {
+	ID                  string
+	CourseID            string
+	StrategyID          string
+	IsDefault           bool
+	Config              string // JSON string
+	CreatedAt           time.Time
+	StrategyName        string
+	StrategyCode        string
+	StrategyDescription string
+}

@@ -28,7 +28,7 @@ func (r *repository) Create(ctx context.Context, job domain.SubmitJob) error {
 		VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), $6, $7, $8)
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		job.ID, job.Kind, job.Status, job.ErrorCode, job.Message, job.Result, job.CreatedAt, job.UpdatedAt,
+		job.ID, job.Kind, job.Status, job.ErrorCode, job.Message, nullableJSON(job.Result), job.CreatedAt, job.UpdatedAt,
 	)
 	return err
 }
@@ -40,7 +40,7 @@ func (r *repository) Update(ctx context.Context, job domain.SubmitJob) error {
 		WHERE id = $1
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		job.ID, job.Status, job.ErrorCode, job.Message, job.Result, time.Now().UTC(),
+		job.ID, job.Status, job.ErrorCode, job.Message, nullableJSON(job.Result), time.Now().UTC(),
 	)
 	return err
 }
@@ -61,4 +61,11 @@ func (r *repository) GetByID(ctx context.Context, id string) (*domain.SubmitJob,
 		return nil, err
 	}
 	return &job, nil
+}
+
+func nullableJSON(raw []byte) any {
+	if len(raw) == 0 {
+		return nil
+	}
+	return raw
 }

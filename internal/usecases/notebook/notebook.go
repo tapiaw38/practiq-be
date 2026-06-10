@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	notebookrepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notebook"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
@@ -351,16 +352,231 @@ func (u *deleteUsecase) Execute(ctx context.Context, id string) error {
 	return app.Repositories.Notebook.Delete(ctx, id)
 }
 
+// ── List Submissions ────────────────────────────────────────────────
+
+type ListSubmissionsUsecase interface {
+	Execute(ctx context.Context, input ListSubmissionsInput) (*NotebookSubmissionListOutput, error)
+}
+
+type ListSubmissionsInput struct {
+	NotebookID string
+	StudentID  string
+	CourseID   string
+	Reviewed   string
+	TeacherID  string
+}
+
+type listSubmissionsUsecase struct{ factory appcontext.Factory }
+
+func NewListSubmissionsUsecase(factory appcontext.Factory) ListSubmissionsUsecase {
+	return &listSubmissionsUsecase{factory: factory}
+}
+
+func (u *listSubmissionsUsecase) Execute(ctx context.Context, input ListSubmissionsInput) (*NotebookSubmissionListOutput, error) {
+	app := u.factory()
+	items, err := app.Repositories.Notebook.ListSubmissions(ctx, notebookrepo.SubmissionFilter{
+		NotebookID: input.NotebookID,
+		StudentID:  input.StudentID,
+		CourseID:   input.CourseID,
+		Reviewed:   input.Reviewed,
+		TeacherID:  input.TeacherID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	data := make([]NotebookSubmissionFullOutput, 0, len(items))
+	for _, item := range items {
+		data = append(data, toFullSubmissionOutput(item))
+	}
+	return &NotebookSubmissionListOutput{Data: data}, nil
+}
+
+// ── Teacher Review Submission ───────────────────────────────────────
+
+type TeacherReviewSubmissionUsecase interface {
+	Execute(ctx context.Context, submissionID string, input TeacherReviewInput) (*NotebookSubmissionFullOutput, error)
+}
+
+type TeacherReviewInput struct {
+	IsCorrect bool
+	Feedback  string
+	TeacherID string
+}
+
+type teacherReviewSubmissionUsecase struct{ factory appcontext.Factory }
+
+func NewTeacherReviewSubmissionUsecase(factory appcontext.Factory) TeacherReviewSubmissionUsecase {
+	return &teacherReviewSubmissionUsecase{factory: factory}
+}
+
+func (u *teacherReviewSubmissionUsecase) Execute(ctx context.Context, submissionID string, input TeacherReviewInput) (*NotebookSubmissionFullOutput, error) {
+	app := u.factory()
+	submission, err := app.Repositories.Notebook.GetFullSubmissionByID(ctx, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	if submission == nil || (input.TeacherID != "" && submission.TeacherID != input.TeacherID) {
+		return nil, fmt.Errorf("submission not found")
+	}
+	if err := app.Repositories.Notebook.UpdateSubmissionTeacherReview(ctx, submissionID, input.IsCorrect, strings.TrimSpace(input.Feedback)); err != nil {
+		return nil, err
+	}
+	updated, err := app.Repositories.Notebook.GetFullSubmissionByID(ctx, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, fmt.Errorf("submission not found")
+	}
+	output := toFullSubmissionOutput(*updated)
+	return &output, nil
+}
+
+// ── Review Submission ───────────────────────────────────────────────
+
+type ReviewSubmissionUsecase interface {
+	Execute(ctx context.Context, submissionID string, teacherID string) (*NotebookSubmissionFullOutput, error)
+}
+
+type reviewSubmissionUsecase struct{ factory appcontext.Factory }
+
+func NewReviewSubmissionUsecase(factory appcontext.Factory) ReviewSubmissionUsecase {
+	return &reviewSubmissionUsecase{factory: factory}
+}
+
+func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID string, teacherID string) (*NotebookSubmissionFullOutput, error) {
+	app := u.factory()
+
+	submission, err := app.Repositories.Notebook.GetFullSubmissionByID(ctx, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	if submission == nil || (teacherID != "" && submission.TeacherID != teacherID) {
+		return nil, fmt.Errorf("submission not found")
+	}
+
+	page, err := app.Repositories.Notebook.GetPage(ctx, submission.PageID)
+	if err != nil {
+		return nil, err
+	}
+	if page == nil {
+		return nil, fmt.Errorf("page not found")
+	}
+
+	profile, _ := app.Repositories.UserProfile.Get(ctx, submission.StudentID)
+	assistantCfg := assistant.Config{}
+	if profile != nil {
+		assistantCfg.BaseURL = profile.AssistantBaseURL
+		assistantCfg.APIKey = profile.AssistantAPIKey
+	}
+
+	if app.AssistantService == nil || !app.AssistantService.IsConfigured(assistantCfg) {
+		return nil, fmt.Errorf("assistant service not configured")
+	}
+
+	expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
+	if expectedAnswer == "" {
+		expectedAnswer = "[sin respuesta esperada]"
+	}
+
+	var recognizedText string
+	var isCorrect *bool
+	var feedback string
+
+	studentAnswer := strings.TrimSpace(submission.AnswerText)
+
+	// If there's canvas data but no text answer, try to recognize the handwriting
+	if studentAnswer == "" && strings.TrimSpace(submission.CanvasData) != "" {
+		recognized, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, submission.CanvasData, expectedAnswer)
+		if recognizeErr != nil {
+			feedback = "Gillie: no se pudo analizar la imagen del cuaderno"
+		} else {
+			recognizedText = strings.TrimSpace(recognized)
+			studentAnswer = recognizedText
+		}
+	}
+
+	// If the recognized answer is unreadable, report that
+	if strings.EqualFold(studentAnswer, "UNREADABLE") {
+		feedback = "Gillie: respuesta no legible (UNREADABLE)"
+		isCorrect = nil
+	} else if studentAnswer != "" {
+		// Evaluate the answer with AI
+		promptContext := buildNotebookPromptContext(page)
+		evaluation, aiErr := app.AssistantService.EvaluatePracticeAnswer(ctx, assistantCfg, promptContext, expectedAnswer, studentAnswer)
+		if aiErr != nil {
+			feedback = "Gillie: no se pudo evaluar la respuesta"
+		} else {
+			isCorrect = &evaluation.IsCorrect
+			if strings.TrimSpace(evaluation.Feedback) != "" {
+				feedback = evaluation.Feedback
+			} else if evaluation.IsCorrect {
+				feedback = "Gillie: respuesta evaluada como correcta"
+			} else {
+				feedback = "Gillie: respuesta evaluada como incorrecta"
+			}
+		}
+	} else {
+		feedback = "Gillie: no se encontro respuesta para evaluar"
+	}
+
+	// Update the submission with the AI review results
+	if err := app.Repositories.Notebook.UpdateSubmissionAIReview(ctx, submissionID, recognizedText, isCorrect, feedback); err != nil {
+		return nil, err
+	}
+
+	updated, err := app.Repositories.Notebook.GetFullSubmissionByID(ctx, submissionID)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, fmt.Errorf("submission not found")
+	}
+	output := toFullSubmissionOutput(*updated)
+	return &output, nil
+}
+
 // ── Output types ──────────────────────────────────────────────────────
 
 type SubmissionOutput struct {
-	ID               string `json:"id"`
-	CanvasData       string `json:"canvas_data"`
-	AnswerText       string `json:"answer_text"`
-	AIRecognizedText string `json:"ai_recognized_text,omitempty"`
-	AIIsCorrect      *bool  `json:"ai_is_correct,omitempty"`
-	AIFeedback       string `json:"ai_feedback,omitempty"`
-	AIReviewedAt     string `json:"ai_reviewed_at,omitempty"`
+	ID                string `json:"id"`
+	CanvasData        string `json:"canvas_data"`
+	AnswerText        string `json:"answer_text"`
+	AIRecognizedText  string `json:"ai_recognized_text,omitempty"`
+	AIIsCorrect       *bool  `json:"ai_is_correct,omitempty"`
+	AIFeedback        string `json:"ai_feedback,omitempty"`
+	AIReviewedAt      string `json:"ai_reviewed_at,omitempty"`
+	TeacherIsCorrect  *bool  `json:"teacher_is_correct,omitempty"`
+	TeacherFeedback   string `json:"teacher_feedback,omitempty"`
+	TeacherReviewedAt string `json:"teacher_reviewed_at,omitempty"`
+}
+
+type NotebookSubmissionFullOutput struct {
+	ID                string `json:"id"`
+	PageID            string `json:"page_id"`
+	StudentID         string `json:"student_id"`
+	StudentName       string `json:"student_name,omitempty"`
+	StudentEmail      string `json:"student_email,omitempty"`
+	NotebookID        string `json:"notebook_id"`
+	NotebookTitle     string `json:"notebook_title,omitempty"`
+	PageTitle         string `json:"page_title,omitempty"`
+	PageNumber        int    `json:"page_number"`
+	CourseID          string `json:"course_id"`
+	CanvasData        string `json:"canvas_data"`
+	AnswerText        string `json:"answer_text"`
+	AIRecognizedText  string `json:"ai_recognized_text,omitempty"`
+	AIIsCorrect       *bool  `json:"ai_is_correct,omitempty"`
+	AIFeedback        string `json:"ai_feedback,omitempty"`
+	AIReviewedAt      string `json:"ai_reviewed_at,omitempty"`
+	TeacherIsCorrect  *bool  `json:"teacher_is_correct,omitempty"`
+	TeacherFeedback   string `json:"teacher_feedback,omitempty"`
+	TeacherReviewedAt string `json:"teacher_reviewed_at,omitempty"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at,omitempty"`
+}
+
+type NotebookSubmissionListOutput struct {
+	Data []NotebookSubmissionFullOutput `json:"data"`
 }
 
 type PageOutput struct {
@@ -407,13 +623,16 @@ func toOutput(nb *domain.Notebook) *NotebookOutput {
 				aiReviewedAt = p.Submission.AIReviewedAt.Format("2006-01-02T15:04:05Z")
 			}
 			po.Submission = &SubmissionOutput{
-				ID:               p.Submission.ID,
-				CanvasData:       p.Submission.CanvasData,
-				AnswerText:       p.Submission.AnswerText,
-				AIRecognizedText: p.Submission.AIRecognizedText,
-				AIIsCorrect:      p.Submission.AIIsCorrect,
-				AIFeedback:       p.Submission.AIFeedback,
-				AIReviewedAt:     aiReviewedAt,
+				ID:                p.Submission.ID,
+				CanvasData:        p.Submission.CanvasData,
+				AnswerText:        p.Submission.AnswerText,
+				AIRecognizedText:  p.Submission.AIRecognizedText,
+				AIIsCorrect:       p.Submission.AIIsCorrect,
+				AIFeedback:        p.Submission.AIFeedback,
+				AIReviewedAt:      aiReviewedAt,
+				TeacherIsCorrect:  p.Submission.TeacherIsCorrect,
+				TeacherFeedback:   p.Submission.TeacherFeedback,
+				TeacherReviewedAt: formatTimePtr(p.Submission.TeacherReviewedAt),
 			}
 		}
 		pages = append(pages, po)
@@ -428,4 +647,37 @@ func toOutput(nb *domain.Notebook) *NotebookOutput {
 		Pages:       pages,
 		CreatedAt:   nb.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}}
+}
+
+func toFullSubmissionOutput(s domain.NotebookSubmissionFull) NotebookSubmissionFullOutput {
+	return NotebookSubmissionFullOutput{
+		ID:                s.ID,
+		PageID:            s.PageID,
+		StudentID:         s.StudentID,
+		StudentName:       s.StudentName,
+		StudentEmail:      s.StudentEmail,
+		NotebookID:        s.NotebookID,
+		NotebookTitle:     s.NotebookTitle,
+		PageTitle:         s.PageTitle,
+		PageNumber:        s.PageNumber,
+		CourseID:          s.CourseID,
+		CanvasData:        s.CanvasData,
+		AnswerText:        s.AnswerText,
+		AIRecognizedText:  s.AIRecognizedText,
+		AIIsCorrect:       s.AIIsCorrect,
+		AIFeedback:        s.AIFeedback,
+		AIReviewedAt:      formatTimePtr(s.AIReviewedAt),
+		TeacherIsCorrect:  s.TeacherIsCorrect,
+		TeacherFeedback:   s.TeacherFeedback,
+		TeacherReviewedAt: formatTimePtr(s.TeacherReviewedAt),
+		CreatedAt:         s.SubmittedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:         s.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+func formatTimePtr(t *time.Time) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02T15:04:05Z")
 }
