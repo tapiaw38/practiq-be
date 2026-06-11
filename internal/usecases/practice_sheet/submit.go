@@ -2,6 +2,7 @@ package practicesheet
 
 import (
 	"context"
+	"log"
 	"strings"
 	"time"
 
@@ -76,6 +77,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		ex, ok := exerciseMap[attempt.ExerciseID]
 		isCorrect := false
 		answerText := attempt.AnswerText
+		imageURL := ""
 		aiFeedback := ""
 		hasTextAnswer := strings.TrimSpace(answerText) != ""
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
@@ -109,6 +111,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
+		if hasCanvasAnswer && isDataURIAnswer(attempt.CanvasData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+			if uploaded, uploadErr := app.ImageStorage.UploadDataURI(ctx, "practice", studentID, attempt.CanvasData); uploadErr == nil {
+				imageURL = uploaded
+			} else {
+				log.Printf("[image_storage] practice attempt upload failed student_id=%s exercise_id=%s err=%v", studentID, attempt.ExerciseID, uploadErr)
+			}
+		}
+
 		score := 0.0
 		if isCorrect {
 			correct++
@@ -123,6 +133,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			ExerciseID:      attempt.ExerciseID,
 			PracticeSheetID: sheetID,
 			AnswerText:      answerText,
+			ImageURL:        imageURL,
 			AIFeedback:      aiFeedback,
 			IsCorrect:       isCorrect,
 			Score:           score,

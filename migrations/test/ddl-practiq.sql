@@ -151,6 +151,7 @@ CREATE TABLE IF NOT EXISTS student_attempts (
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     practice_sheet_id UUID REFERENCES practice_sheets(id) ON DELETE SET NULL,
     answer_text TEXT,
+    image_url TEXT DEFAULT '',
     ai_feedback TEXT NOT NULL DEFAULT '',
     is_correct BOOLEAN,
     score NUMERIC(5,2),

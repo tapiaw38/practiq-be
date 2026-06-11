@@ -14,8 +14,18 @@ type (
 		DatabaseURL string
 	}
 
+	S3Config struct {
+		AWSRegion          string
+		AWSAccessKeyID     string
+		AWSSecretAccessKey string
+		AWSSessionToken    string
+		AWSBucket          string
+		AWSEndpoint        string
+	}
+
 	Config struct {
 		ServerConfig   ServerConfig
 		DatabaseConfig DatabaseConfig
+		S3Config       S3Config
 	}
 )

@@ -29,6 +29,7 @@ type StudentAttempt struct {
 	ExerciseID      string
 	PracticeSheetID string
 	AnswerText      string
+	ImageURL        string
 	AIFeedback      string
 	IsCorrect       bool
 	Score           float64

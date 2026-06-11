@@ -17,6 +17,14 @@ func InitConfigService() {
 		DatabaseConfig: DatabaseConfig{
 			DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:54323/practiq-db?sslmode=disable"),
 		},
+		S3Config: S3Config{
+			AWSRegion:          getEnv("AWS_REGION", ""),
+			AWSBucket:          getEnv("AWS_BUCKET", ""),
+			AWSAccessKeyID:     getEnv("AWS_ACCESS_KEY_ID", ""),
+			AWSSecretAccessKey: getEnv("AWS_SECRET_ACCESS_KEY", ""),
+			AWSSessionToken:    getEnv("AWS_SESSION_TOKEN", ""),
+			AWSEndpoint:        getEnv("AWS_ENDPOINT", ""),
+		},
 	}
 }
 

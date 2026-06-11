@@ -11,6 +11,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/database"
+	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
@@ -34,7 +35,8 @@ func main() {
 	repos := repositories.NewRepositories(db)
 	kumon := strategy.NewKumonStrategy()
 	assistantService := assistant.NewService()
-	factory := appcontext.NewFactory(repos, kumon, assistantService)
+	imageStorage := storage.NewS3ImageStorage(cfg.S3Config)
+	factory := appcontext.NewFactory(repos, kumon, assistantService, imageStorage)
 	uc := usecases.NewUsecases(factory)
 
 	app := gin.Default()

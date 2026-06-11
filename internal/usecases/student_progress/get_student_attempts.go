@@ -16,6 +16,7 @@ type AttemptData struct {
 	ExerciseID      string  `json:"exercise_id"`
 	PracticeSheetID string  `json:"practice_sheet_id"`
 	AnswerText      string  `json:"answer_text"`
+	ImageURL        string  `json:"image_url,omitempty"`
 	AIFeedback      string  `json:"ai_feedback,omitempty"`
 	IsCorrect       bool    `json:"is_correct"`
 	Score           float64 `json:"score"`
@@ -35,6 +36,7 @@ func toAttemptData(a domain.StudentAttempt) AttemptData {
 		ExerciseID:      a.ExerciseID,
 		PracticeSheetID: a.PracticeSheetID,
 		AnswerText:      a.AnswerText,
+		ImageURL:        a.ImageURL,
 		AIFeedback:      a.AIFeedback,
 		IsCorrect:       a.IsCorrect,
 		Score:           a.Score,

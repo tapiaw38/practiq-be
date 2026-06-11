@@ -3,6 +3,7 @@ package notebook
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -132,19 +133,35 @@ func NewAddPageUsecase(factory appcontext.Factory) AddPageUsecase {
 
 func (u *addPageUsecase) Execute(ctx context.Context, input AddPageInput) (*PageOutput, error) {
 	app := u.factory()
+	contentData := input.ContentData
+	if isLikelyImageData(contentData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+		notebook, err := app.Repositories.Notebook.Get(ctx, input.NotebookID)
+		if err != nil {
+			return nil, err
+		}
+		userID := "unknown"
+		if notebook != nil {
+			userID = notebook.TeacherID
+		}
+		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", userID, contentData); err == nil {
+			contentData = uploaded
+		} else {
+			log.Printf("[image_storage] notebook page upload failed notebook_id=%s err=%v", input.NotebookID, err)
+		}
+	}
 	id, err := app.Repositories.Notebook.CreatePage(ctx, domain.NotebookPage{
 		NotebookID:   input.NotebookID,
 		PageNumber:   input.PageNumber,
 		Title:        input.Title,
 		ContentType:  input.ContentType,
-		ContentData:  input.ContentData,
+		ContentData:  contentData,
 		Instructions: input.Instructions,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &PageOutput{ID: id, NotebookID: input.NotebookID, PageNumber: input.PageNumber,
-		Title: input.Title, ContentType: input.ContentType, ContentData: input.ContentData,
+		Title: input.Title, ContentType: input.ContentType, ContentData: contentData,
 		Instructions: input.Instructions}, nil
 }
 
@@ -170,11 +187,33 @@ func NewUpdatePageUsecase(factory appcontext.Factory) UpdatePageUsecase {
 
 func (u *updatePageUsecase) Execute(ctx context.Context, input UpdatePageInput) error {
 	app := u.factory()
+	contentData := input.ContentData
+	if isLikelyImageData(contentData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+		userID := "unknown"
+		page, err := app.Repositories.Notebook.GetPage(ctx, input.PageID)
+		if err != nil {
+			return err
+		}
+		if page != nil {
+			notebook, err := app.Repositories.Notebook.Get(ctx, page.NotebookID)
+			if err != nil {
+				return err
+			}
+			if notebook != nil {
+				userID = notebook.TeacherID
+			}
+		}
+		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", userID, contentData); err == nil {
+			contentData = uploaded
+		} else {
+			log.Printf("[image_storage] notebook page update upload failed page_id=%s err=%v", input.PageID, err)
+		}
+	}
 	return app.Repositories.Notebook.UpdatePage(ctx, domain.NotebookPage{
 		ID:           input.PageID,
 		Title:        input.Title,
 		ContentType:  input.ContentType,
-		ContentData:  input.ContentData,
+		ContentData:  contentData,
 		Instructions: input.Instructions,
 	})
 }
@@ -200,6 +239,7 @@ func NewSaveSubmissionUsecase(factory appcontext.Factory) SaveSubmissionUsecase 
 
 func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissionInput) error {
 	app := u.factory()
+	canvasForOCR := input.CanvasData
 	submission := domain.NotebookSubmission{
 		PageID:     input.PageID,
 		StudentID:  input.StudentID,
@@ -219,8 +259,13 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 		if expectedAnswer != "" {
 			studentAnswer := strings.TrimSpace(input.AnswerText)
-			if studentAnswer == "" && strings.TrimSpace(input.CanvasData) != "" {
-				if recognizedRaw, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, input.CanvasData, expectedAnswer); recognizeErr == nil {
+			if studentAnswer == "" && strings.TrimSpace(canvasForOCR) != "" {
+				if resolved, err := resolveImageForOCR(ctx, app, canvasForOCR); err == nil {
+					canvasForOCR = resolved
+				} else {
+					log.Printf("[image_storage] notebook submission resolve failed page_id=%s err=%v", input.PageID, err)
+				}
+				if recognizedRaw, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, canvasForOCR, expectedAnswer); recognizeErr == nil {
 					recognizedText := strings.TrimSpace(recognizedRaw)
 					submission.AIRecognizedText = recognizedText
 					studentAnswer = recognizedText
@@ -248,6 +293,14 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					}
 				}
 			}
+		}
+	}
+
+	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
+			submission.CanvasData = uploaded
+		} else {
+			log.Printf("[image_storage] notebook submission upload failed page_id=%s student_id=%s err=%v", input.PageID, input.StudentID, err)
 		}
 	}
 
@@ -487,7 +540,12 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 
 	// If there's canvas data but no text answer, try to recognize the handwriting
 	if studentAnswer == "" && strings.TrimSpace(submission.CanvasData) != "" {
-		recognized, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, submission.CanvasData, expectedAnswer)
+		canvasData, resolveErr := resolveImageForOCR(ctx, app, submission.CanvasData)
+		if resolveErr != nil {
+			log.Printf("[image_storage] notebook review resolve failed submission_id=%s err=%v", submissionID, resolveErr)
+			canvasData = submission.CanvasData
+		}
+		recognized, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, canvasData, expectedAnswer)
 		if recognizeErr != nil {
 			feedback = "Gillie: no se pudo analizar la imagen del cuaderno"
 		} else {
@@ -534,6 +592,13 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	}
 	output := toFullSubmissionOutput(*updated)
 	return &output, nil
+}
+
+func resolveImageForOCR(ctx context.Context, app *appcontext.Context, value string) (string, error) {
+	if app.ImageStorage == nil || !app.ImageStorage.IsConfigured() {
+		return value, nil
+	}
+	return app.ImageStorage.ResolveDataURI(ctx, value)
 }
 
 // ── Output types ──────────────────────────────────────────────────────
