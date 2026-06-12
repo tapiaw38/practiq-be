@@ -15,4 +15,15 @@ WHERE a.student_id = b.student_id
        OR (a.updated_at = b.updated_at AND a.id < b.id));
 
 -- Add new unique constraint on (student_id, topic_id) only
-ALTER TABLE student_topic_progress ADD CONSTRAINT student_topic_progress_student_id_topic_id_key UNIQUE (student_id, topic_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'student_topic_progress_student_id_topic_id_key'
+      AND conrelid = 'student_topic_progress'::regclass
+  ) THEN
+    ALTER TABLE student_topic_progress
+      ADD CONSTRAINT student_topic_progress_student_id_topic_id_key UNIQUE (student_id, topic_id);
+  END IF;
+END $$;
