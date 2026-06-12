@@ -1,8 +1,11 @@
 package ai
 
 import (
+	"bytes"
 	"io"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
@@ -16,6 +19,7 @@ func proxyToAssistant(uc ucAI.ProxyUsecase, pathBuilder func(*gin.Context) strin
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "invalid request body"})
 			return
 		}
+		logAssistantProxyBody(c, body)
 
 		output, appErr := uc.Execute(c, ucAI.ProxyInput{
 			UserID:      middlewares.GetUserID(c),
@@ -35,6 +39,51 @@ func proxyToAssistant(uc ucAI.ProxyUsecase, pathBuilder func(*gin.Context) strin
 		}
 		c.Data(output.StatusCode, output.ContentType, output.Body)
 	}
+}
+
+func logAssistantProxyBody(c *gin.Context, body []byte) {
+	contentType := c.GetHeader("Content-Type")
+	if !strings.Contains(contentType, "multipart/form-data") {
+		log.Printf("[assistant_proxy] method=%s path=%s content_type=%q body_bytes=%d", c.Request.Method, c.Request.URL.RequestURI(), contentType, len(body))
+		return
+	}
+
+	req, err := http.NewRequest(c.Request.Method, c.Request.URL.String(), bytes.NewReader(body))
+	if err != nil {
+		log.Printf("[assistant_proxy] method=%s path=%s multipart_parse_request_error=%v body_bytes=%d", c.Request.Method, c.Request.URL.RequestURI(), err, len(body))
+		return
+	}
+	req.Header.Set("Content-Type", contentType)
+	if err := req.ParseMultipartForm(int64(len(body) + 1024)); err != nil {
+		log.Printf("[assistant_proxy] method=%s path=%s multipart_parse_error=%v body_bytes=%d", c.Request.Method, c.Request.URL.RequestURI(), err, len(body))
+		return
+	}
+
+	imageCount := 0
+	imageBytes := int64(0)
+	imageNames := []string{}
+	if req.MultipartForm != nil {
+		for field, files := range req.MultipartForm.File {
+			for _, file := range files {
+				if field != "image_content" {
+					continue
+				}
+				imageCount++
+				imageBytes += file.Size
+				imageNames = append(imageNames, file.Filename)
+			}
+		}
+	}
+
+	log.Printf("[assistant_proxy] method=%s path=%s content_type=%q body_bytes=%d image_count=%d image_bytes=%d image_names=%v",
+		c.Request.Method,
+		c.Request.URL.RequestURI(),
+		contentType,
+		len(body),
+		imageCount,
+		imageBytes,
+		imageNames,
+	)
 }
 
 func NewProxyListConversationsHandler(uc ucAI.ProxyUsecase) gin.HandlerFunc {
