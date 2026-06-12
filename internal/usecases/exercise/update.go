@@ -23,6 +23,7 @@ type UpdateInput struct {
 	CorrectAnswer string `json:"correct_answer"`
 	Explanation   string `json:"explanation"`
 	Difficulty    int    `json:"difficulty"`
+	Metadata      string `json:"metadata"`
 }
 
 func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
@@ -38,6 +39,7 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		CorrectAnswer: input.CorrectAnswer,
 		Explanation:   input.Explanation,
 		Difficulty:    input.Difficulty,
+		Metadata:      input.Metadata,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ExerciseUpdateError, err)
 	}

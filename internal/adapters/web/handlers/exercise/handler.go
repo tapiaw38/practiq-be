@@ -64,6 +64,7 @@ type updateInput struct {
 	CorrectAnswer string `json:"correct_answer"`
 	Explanation   string `json:"explanation"`
 	Difficulty    int    `json:"difficulty"`
+	Metadata      string `json:"metadata"`
 }
 
 func NewUpdateHandler(uc ucExercise.UpdateUsecase) gin.HandlerFunc {
@@ -81,6 +82,7 @@ func NewUpdateHandler(uc ucExercise.UpdateUsecase) gin.HandlerFunc {
 			CorrectAnswer: input.CorrectAnswer,
 			Explanation:   input.Explanation,
 			Difficulty:    input.Difficulty,
+			Metadata:      input.Metadata,
 		})
 		if appErr != nil {
 			appErr.Log(c)
