@@ -11,6 +11,7 @@ type Repository interface {
 	Create(context.Context, domain.StudentAttempt) (string, error)
 	ListBySheet(ctx context.Context, studentID, sheetID string) ([]domain.StudentAttempt, error)
 	SaveCanvasWork(ctx context.Context, attemptID, imageData string) error
+	GetLastPracticedSheetID(ctx context.Context, studentID string) (string, error)
 }
 
 type repository struct {
@@ -60,4 +61,20 @@ func (r *repository) ListBySheet(ctx context.Context, studentID, sheetID string)
 		attempts = append(attempts, a)
 	}
 	return attempts, nil
+}
+
+func (r *repository) GetLastPracticedSheetID(ctx context.Context, studentID string) (string, error) {
+	query := `
+		SELECT COALESCE(practice_sheet_id::text, '')
+		FROM student_attempts
+		WHERE student_id = $1 AND practice_sheet_id IS NOT NULL
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+	var sheetID string
+	err := r.db.QueryRowContext(ctx, query, studentID).Scan(&sheetID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return sheetID, err
 }

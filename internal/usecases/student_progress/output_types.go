@@ -19,7 +19,8 @@ type ProgressData struct {
 }
 
 type ProgressListOutput struct {
-	Data []ProgressData `json:"data"`
+	Data                  []ProgressData `json:"data"`
+	LastPracticedSheetID  string         `json:"last_practiced_sheet_id,omitempty"`
 }
 
 // effectiveStreak returns 0 when the streak is broken: the stored value is
