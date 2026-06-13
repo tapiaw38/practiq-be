@@ -15,6 +15,7 @@ import (
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
+	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
 	handlerSubject "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subject"
 	handlerAssignment "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/teacher_student_assignment"
 	handlerTopic "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/topic"
@@ -109,6 +110,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/teachers/me/students/:studentId/progress", studentprogress.NewGetStudentProgressHandler(uc.Progress.GetStudentProgress))
 	api.GET("/teachers/me/students/:studentId/courses/:courseId/progress", studentprogress.NewGetStudentCourseProgressHandler(uc.Progress.GetStudentCourseProgress))
 	api.GET("/teachers/me/students/:studentId/attempts", studentprogress.NewGetStudentAttemptsHandler(uc.Progress.GetStudentAttempts))
+	teacherOnly.GET("/teachers/me/students/:studentId/report.pdf", studentreport.NewGeneratePDFHandler(uc.Report.GeneratePDF))
 
 	// AI Tutor
 	api.POST("/ai/conversations", ai.NewCreateConversationHandler(uc.AI.CreateConversation))

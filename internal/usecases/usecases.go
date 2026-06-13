@@ -14,6 +14,7 @@ import (
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
+	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
 	ucSubject "github.com/tapiaw38/practiq-be/internal/usecases/subject"
 	ucAssignment "github.com/tapiaw38/practiq-be/internal/usecases/teacher_student_assignment"
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
@@ -144,6 +145,10 @@ type CourseProgressUsecases struct {
 	ListForStudent ucCourseProgress.ListForStudentUsecase
 }
 
+type ReportUsecases struct {
+	GeneratePDF ucReport.GeneratePDFUsecase
+}
+
 type Usecases struct {
 	Course           CourseUsecases
 	Grade            GradeUsecases
@@ -161,6 +166,7 @@ type Usecases struct {
 	CourseLevel      CourseLevelUsecases
 	LearningStrategy LearningStrategyUsecases
 	CourseProgress   CourseProgressUsecases
+	Report           ReportUsecases
 }
 
 func NewUsecases(factory appcontext.Factory) *Usecases {
@@ -272,6 +278,9 @@ func NewUsecases(factory appcontext.Factory) *Usecases {
 		CourseProgress: CourseProgressUsecases{
 			GetForStudent:  ucCourseProgress.NewGetForStudentUsecase(factory),
 			ListForStudent: ucCourseProgress.NewListForStudentUsecase(factory),
+		},
+		Report: ReportUsecases{
+			GeneratePDF: ucReport.NewGeneratePDFUsecase(factory),
 		},
 	}
 }
