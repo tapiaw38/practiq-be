@@ -2,6 +2,7 @@ package studentreport
 
 import (
 	"bytes"
+	"fmt"
 	"sort"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -10,22 +11,25 @@ import (
 )
 
 var (
-	colorPrimary   = drawing.Color{R: 124, G: 58, B: 237, A: 255}  // violet
-	colorSecondary = drawing.Color{R: 99, G: 102, B: 241, A: 255}  // indigo
-	colorSuccess   = drawing.Color{R: 34, G: 197, B: 94, A: 255}   // green
-	colorWarning   = drawing.Color{R: 234, G: 179, B: 8, A: 255}   // yellow
-	colorError     = drawing.Color{R: 239, G: 68, B: 68, A: 255}   // red
-	colorGray      = drawing.Color{R: 156, G: 163, B: 175, A: 255} // gray
+	chartColorPrimary   = drawing.Color{R: 99, G: 102, B: 241, A: 255}  // Indigo
+	chartColorSecondary = drawing.Color{R: 124, G: 58, B: 237, A: 255}  // Violet
+	chartColorSuccess   = drawing.Color{R: 16, G: 185, B: 129, A: 255}  // Green
+	chartColorWarning   = drawing.Color{R: 245, G: 158, B: 11, A: 255}  // Amber
+	chartColorError     = drawing.Color{R: 239, G: 68, B: 68, A: 255}   // Red
+	chartColorMuted     = drawing.Color{R: 148, G: 163, B: 184, A: 255} // Slate 400
+	chartColorDark      = drawing.Color{R: 51, G: 65, B: 85, A: 255}    // Slate 700
+	chartColorLight     = drawing.Color{R: 241, G: 245, B: 249, A: 255} // Slate 100
+	chartColorBg        = drawing.Color{R: 255, G: 255, B: 255, A: 255}
 )
 
 func masteryColor(score float64) drawing.Color {
 	if score >= 80 {
-		return colorSuccess
+		return chartColorSuccess
 	}
 	if score >= 50 {
-		return colorWarning
+		return chartColorWarning
 	}
-	return colorError
+	return chartColorError
 }
 
 func GenerateMasteryBarChart(topics []domain.StudentTopicProgress, width, height int) ([]byte, error) {
@@ -46,8 +50,8 @@ func GenerateMasteryBarChart(topics []domain.StudentTopicProgress, width, height
 	var bars []chart.Value
 	for _, t := range sorted {
 		label := t.TopicTitle
-		if len(label) > 20 {
-			label = label[:17] + "..."
+		if len(label) > 18 {
+			label = label[:15] + "..."
 		}
 		bars = append(bars, chart.Value{
 			Label: label,
@@ -61,17 +65,40 @@ func GenerateMasteryBarChart(topics []domain.StudentTopicProgress, width, height
 	}
 
 	barChart := chart.BarChart{
-		Title:      "Dominio por Tema (Top 10)",
-		TitleStyle: chart.Style{FontSize: 12, FontColor: drawing.ColorBlack},
-		Width:      width,
-		Height:     height,
-		BarWidth:   30,
+		Title: "",
+		Background: chart.Style{
+			FillColor: chartColorBg,
+			Padding: chart.Box{
+				Top:    20,
+				Left:   10,
+				Right:  10,
+				Bottom: 40,
+			},
+		},
+		Canvas: chart.Style{
+			FillColor: chartColorBg,
+		},
+		Width:    width,
+		Height:   height,
+		BarWidth: 35,
+		BarSpacing: 8,
 		XAxis: chart.Style{
-			FontSize: 8,
+			FontSize:  8,
+			FontColor: chartColorDark,
 		},
 		YAxis: chart.YAxis{
 			Range: &chart.ContinuousRange{Min: 0, Max: 100},
-			Style: chart.Style{FontSize: 9},
+			Style: chart.Style{
+				FontSize:  9,
+				FontColor: chartColorMuted,
+			},
+			ValueFormatter: func(v interface{}) string {
+				return fmt.Sprintf("%.0f%%", v.(float64))
+			},
+			GridMajorStyle: chart.Style{
+				StrokeColor: chartColorLight,
+				StrokeWidth: 1,
+			},
 		},
 		Bars: bars,
 	}
@@ -95,6 +122,11 @@ func GenerateDailyAttemptsLineChart(daily []domain.DailyAttemptCount, width, hei
 		return sorted[i].Date.Before(sorted[j].Date)
 	})
 
+	// Limit to last 14 days for cleaner chart
+	if len(sorted) > 14 {
+		sorted = sorted[len(sorted)-14:]
+	}
+
 	var xValues []float64
 	var totalValues []float64
 	var correctValues []float64
@@ -106,12 +138,26 @@ func GenerateDailyAttemptsLineChart(daily []domain.DailyAttemptCount, width, hei
 	}
 
 	lineChart := chart.Chart{
-		Title:      "Intentos por Dia",
-		TitleStyle: chart.Style{FontSize: 12, FontColor: drawing.ColorBlack},
-		Width:      width,
-		Height:     height,
+		Title: "",
+		Background: chart.Style{
+			FillColor: chartColorBg,
+			Padding: chart.Box{
+				Top:    15,
+				Left:   10,
+				Right:  15,
+				Bottom: 30,
+			},
+		},
+		Canvas: chart.Style{
+			FillColor: chartColorBg,
+		},
+		Width:  width,
+		Height: height,
 		XAxis: chart.XAxis{
-			Style: chart.Style{FontSize: 8},
+			Style: chart.Style{
+				FontSize:  8,
+				FontColor: chartColorMuted,
+			},
 			ValueFormatter: func(v interface{}) string {
 				idx := int(v.(float64))
 				if idx >= 0 && idx < len(sorted) {
@@ -119,9 +165,20 @@ func GenerateDailyAttemptsLineChart(daily []domain.DailyAttemptCount, width, hei
 				}
 				return ""
 			},
+			GridMajorStyle: chart.Style{
+				StrokeColor: chartColorLight,
+				StrokeWidth: 1,
+			},
 		},
 		YAxis: chart.YAxis{
-			Style: chart.Style{FontSize: 9},
+			Style: chart.Style{
+				FontSize:  9,
+				FontColor: chartColorMuted,
+			},
+			GridMajorStyle: chart.Style{
+				StrokeColor: chartColorLight,
+				StrokeWidth: 1,
+			},
 		},
 		Series: []chart.Series{
 			chart.ContinuousSeries{
@@ -129,8 +186,10 @@ func GenerateDailyAttemptsLineChart(daily []domain.DailyAttemptCount, width, hei
 				XValues: xValues,
 				YValues: totalValues,
 				Style: chart.Style{
-					StrokeColor: colorPrimary,
-					StrokeWidth: 2,
+					StrokeColor: chartColorPrimary,
+					StrokeWidth: 2.5,
+					DotColor:    chartColorPrimary,
+					DotWidth:    4,
 				},
 			},
 			chart.ContinuousSeries{
@@ -138,15 +197,17 @@ func GenerateDailyAttemptsLineChart(daily []domain.DailyAttemptCount, width, hei
 				XValues: xValues,
 				YValues: correctValues,
 				Style: chart.Style{
-					StrokeColor: colorSuccess,
-					StrokeWidth: 2,
+					StrokeColor: chartColorSuccess,
+					StrokeWidth: 2.5,
+					DotColor:    chartColorSuccess,
+					DotWidth:    4,
 				},
 			},
 		},
 	}
 
 	lineChart.Elements = []chart.Renderable{
-		chart.Legend(&lineChart),
+		chart.LegendThin(&lineChart),
 	}
 
 	buf := bytes.NewBuffer(nil)
