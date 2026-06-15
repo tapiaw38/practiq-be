@@ -10,26 +10,32 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type AssignToCourseUsecase interface {
-	Execute(context.Context, string, AssignToCourseInput) (*CourseLearningStrategyOutput, apperrors.ApplicationError)
+type (
+	AssignToCourseUsecase interface {
+		Execute(context.Context, string, AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError)
+	}
+
+	assignToCourseUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	AssignToCourseInput struct {
+		StrategyID string `json:"strategy_id"`
+		IsDefault  bool   `json:"is_default"`
+		Config     string `json:"config"`
+	}
+
+	AssignToCourseOutput struct {
+		Data CourseLearningStrategyData `json:"data"`
+	}
+)
+
+func NewAssignToCourseUsecase(contextFactory appcontext.Factory) AssignToCourseUsecase {
+	return &assignToCourseUsecase{contextFactory: contextFactory}
 }
 
-type assignToCourseUsecase struct {
-	factory appcontext.Factory
-}
-
-type AssignToCourseInput struct {
-	StrategyID string `json:"strategy_id"`
-	IsDefault  bool   `json:"is_default"`
-	Config     string `json:"config"`
-}
-
-func NewAssignToCourseUsecase(factory appcontext.Factory) AssignToCourseUsecase {
-	return &assignToCourseUsecase{factory: factory}
-}
-
-func (u *assignToCourseUsecase) Execute(ctx context.Context, courseID string, input AssignToCourseInput) (*CourseLearningStrategyOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *assignToCourseUsecase) Execute(ctx context.Context, courseID string, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if strings.TrimSpace(input.StrategyID) == "" {
 		return nil, apperrors.NewBadRequestError("strategy_id is required")
@@ -73,5 +79,5 @@ func (u *assignToCourseUsecase) Execute(ctx context.Context, courseID string, in
 		return nil, apperrors.NewApplicationError(mappings.LearningStrategyGetError, err)
 	}
 
-	return &CourseLearningStrategyOutput{Data: toCourseStrategyData(*cls)}, nil
+	return &AssignToCourseOutput{Data: toCourseStrategyData(*cls)}, nil
 }

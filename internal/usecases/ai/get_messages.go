@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetMessagesUsecase interface {
-	Execute(context.Context, string) (*MessagesListOutput, apperrors.ApplicationError)
+type (
+	GetMessagesUsecase interface {
+		Execute(context.Context, string) (*GetMessagesOutput, apperrors.ApplicationError)
+	}
+
+	getMessagesUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetMessagesOutput struct {
+		Data []MessageData `json:"data"`
+	}
+)
+
+func NewGetMessagesUsecase(contextFactory appcontext.Factory) GetMessagesUsecase {
+	return &getMessagesUsecase{contextFactory: contextFactory}
 }
 
-type getMessagesUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetMessagesUsecase(factory appcontext.Factory) GetMessagesUsecase {
-	return &getMessagesUsecase{factory: factory}
-}
-
-func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID string) (*MessagesListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID string) (*GetMessagesOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	messages, err := app.Repositories.AIConversation.ListMessages(ctx, conversationID)
 	if err != nil {
@@ -36,5 +42,5 @@ func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID string)
 		data = []MessageData{}
 	}
 
-	return &MessagesListOutput{Data: data}, nil
+	return &GetMessagesOutput{Data: data}, nil
 }

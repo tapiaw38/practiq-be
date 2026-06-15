@@ -9,31 +9,37 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateUsecase interface {
-	Execute(context.Context, CreateInput) (*PracticeSheetOutput, apperrors.ApplicationError)
+type (
+	CreateUsecase interface {
+		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+	}
+
+	createUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateInput struct {
+		CourseID    string
+		TopicID     string   `json:"topic_id"`
+		StrategyID  string   `json:"strategy_id"`
+		Title       string   `json:"title"`
+		Level       int      `json:"level"`
+		SheetType   string   `json:"sheet_type"`
+		TestStyle   string   `json:"test_style"`
+		ExerciseIDs []string `json:"exercise_ids"`
+	}
+
+	CreateOutput struct {
+		Data PracticeSheetData `json:"data"`
+	}
+)
+
+func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
+	return &createUsecase{contextFactory: contextFactory}
 }
 
-type createUsecase struct {
-	factory appcontext.Factory
-}
-
-type CreateInput struct {
-	CourseID    string
-	TopicID     string   `json:"topic_id"`
-	StrategyID  string   `json:"strategy_id"`
-	Title       string   `json:"title"`
-	Level       int      `json:"level"`
-	SheetType   string   `json:"sheet_type"`
-	TestStyle   string   `json:"test_style"`
-	ExerciseIDs []string `json:"exercise_ids"`
-}
-
-func NewCreateUsecase(factory appcontext.Factory) CreateUsecase {
-	return &createUsecase{factory: factory}
-}
-
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*PracticeSheetOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	level := input.Level
 	if level < 1 {
@@ -73,5 +79,5 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Practi
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
 	}
 
-	return &PracticeSheetOutput{Data: toSheetData(*ps)}, nil
+	return &CreateOutput{Data: toSheetData(*ps)}, nil
 }

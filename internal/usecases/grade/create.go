@@ -9,26 +9,32 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateUsecase interface {
-	Execute(context.Context, CreateInput) (*GradeOutput, apperrors.ApplicationError)
+type (
+	CreateUsecase interface {
+		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+	}
+
+	createUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateInput struct {
+		Name        string
+		Description string
+		CreatedBy   string
+	}
+
+	CreateOutput struct {
+		Data GradeData `json:"data"`
+	}
+)
+
+func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
+	return &createUsecase{contextFactory: contextFactory}
 }
 
-type createUsecase struct {
-	factory appcontext.Factory
-}
-
-type CreateInput struct {
-	Name        string
-	Description string
-	CreatedBy   string
-}
-
-func NewCreateUsecase(factory appcontext.Factory) CreateUsecase {
-	return &createUsecase{factory: factory}
-}
-
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*GradeOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	id, err := app.Repositories.Grade.Create(ctx, domain.Grade{
 		Name:        input.Name,
@@ -47,5 +53,5 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*GradeO
 		return nil, apperrors.NewApplicationError(mappings.GradeNotFoundError, nil)
 	}
 
-	return &GradeOutput{Data: toGradeData(*grade)}, nil
+	return &CreateOutput{Data: toGradeData(*grade)}, nil
 }

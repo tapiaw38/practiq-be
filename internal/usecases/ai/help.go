@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"strings"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
@@ -34,28 +34,34 @@ var mockResponses = map[string][]string{
 	},
 }
 
-type HelpUsecase interface {
-	Execute(context.Context, HelpInput) (*HelpOutput, apperrors.ApplicationError)
-}
+type (
+	HelpUsecase interface {
+		Execute(context.Context, HelpInput) (*HelpOutput, apperrors.ApplicationError)
+	}
 
-type helpUsecase struct {
-	factory appcontext.Factory
-}
+	helpUsecase struct {
+		contextFactory appcontext.Factory
+	}
 
-type HelpInput struct {
-	StudentID      string
-	ExerciseID     string `json:"exercise_id"`
-	Question       string `json:"question"`
-	HelpType       string `json:"help_type"`
-	ConversationID string `json:"conversation_id"`
-}
+	HelpInput struct {
+		StudentID      string
+		ExerciseID     string `json:"exercise_id"`
+		Question       string `json:"question"`
+		HelpType       string `json:"help_type"`
+		ConversationID string `json:"conversation_id"`
+	}
 
-func NewHelpUsecase(factory appcontext.Factory) HelpUsecase {
-	return &helpUsecase{factory: factory}
+	HelpOutput struct {
+		Data HelpData `json:"data"`
+	}
+)
+
+func NewHelpUsecase(contextFactory appcontext.Factory) HelpUsecase {
+	return &helpUsecase{contextFactory: contextFactory}
 }
 
 func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
 
 	helpType := input.HelpType
 	if helpType == "" {
@@ -79,11 +85,7 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 		u.persistMessages(ctx, app, input.ConversationID, input.Question, helpType, response)
 	}
 
-	return &HelpOutput{Data: HelpData{
-		ID:       id,
-		Response: response,
-		HelpType: helpType,
-	}}, nil
+	return &HelpOutput{Data: toHelpOutputData(id, response, helpType)}, nil
 }
 
 func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context, input HelpInput, helpType string) string {
@@ -112,7 +114,7 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 		APIKey:  profile.AssistantAPIKey,
 	}
 
-	aiResponse, err := app.AssistantService.AskHelp(ctx, cfg, prompt)
+	aiResponse, err := app.Integrations.AssistantGateway.AskHelp(ctx, cfg, prompt)
 	if err != nil {
 		log.Printf("[ai_help] warning: assistant call failed student_id=%s err=%v, falling back to mock", input.StudentID, err)
 		return getMockResponse(helpType)

@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListUsecase interface {
-	Execute(context.Context, string) (*ExerciseListOutput, apperrors.ApplicationError)
+type (
+	ListUsecase interface {
+		Execute(context.Context, string) (*ListOutput, apperrors.ApplicationError)
+	}
+
+	listUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListOutput struct {
+		Data []ExerciseData `json:"data"`
+	}
+)
+
+func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
+	return &listUsecase{contextFactory: contextFactory}
 }
 
-type listUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewListUsecase(factory appcontext.Factory) ListUsecase {
-	return &listUsecase{factory: factory}
-}
-
-func (u *listUsecase) Execute(ctx context.Context, topicID string) (*ExerciseListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *listUsecase) Execute(ctx context.Context, topicID string) (*ListOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	exercises, err := app.Repositories.Exercise.List(ctx, topicID)
 	if err != nil {
@@ -36,5 +42,5 @@ func (u *listUsecase) Execute(ctx context.Context, topicID string) (*ExerciseLis
 		data = []ExerciseData{}
 	}
 
-	return &ExerciseListOutput{Data: data}, nil
+	return &ListOutput{Data: data}, nil
 }

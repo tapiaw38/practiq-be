@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListMembersUsecase interface {
-	Execute(context.Context, string) (*GradeMembersOutput, apperrors.ApplicationError)
+type (
+	ListMembersUsecase interface {
+		Execute(context.Context, string) (*ListMembersOutput, apperrors.ApplicationError)
+	}
+
+	listMembersUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListMembersOutput struct {
+		Data []GradeMemberData `json:"data"`
+	}
+)
+
+func NewListMembersUsecase(contextFactory appcontext.Factory) ListMembersUsecase {
+	return &listMembersUsecase{contextFactory: contextFactory}
 }
 
-type listMembersUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewListMembersUsecase(factory appcontext.Factory) ListMembersUsecase {
-	return &listMembersUsecase{factory: factory}
-}
-
-func (u *listMembersUsecase) Execute(ctx context.Context, gradeID string) (*GradeMembersOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *listMembersUsecase) Execute(ctx context.Context, gradeID string) (*ListMembersOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)
 	if err != nil {
@@ -41,5 +47,5 @@ func (u *listMembersUsecase) Execute(ctx context.Context, gradeID string) (*Grad
 		data = append(data, toGradeMemberData(member))
 	}
 
-	return &GradeMembersOutput{Data: data}, nil
+	return &ListMembersOutput{Data: data}, nil
 }

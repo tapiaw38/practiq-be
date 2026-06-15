@@ -10,27 +10,33 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*LearningStrategyOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Name        string `json:"name"`
+		Code        string `json:"code"`
+		Description string `json:"description"`
+		Status      string `json:"status"`
+	}
+
+	UpdateOutput struct {
+		Data LearningStrategyData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
-
-type UpdateInput struct {
-	Name        string `json:"name"`
-	Code        string `json:"code"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-}
-
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*LearningStrategyOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	existing, err := app.Repositories.LearningStrategy.Get(ctx, id)
 	if err != nil {
@@ -67,5 +73,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.LearningStrategyGetError, err)
 	}
 
-	return &LearningStrategyOutput{Data: toStrategyData(*strategy)}, nil
+	return &UpdateOutput{Data: toStrategyData(*strategy)}, nil
 }

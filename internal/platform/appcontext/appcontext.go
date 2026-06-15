@@ -2,26 +2,23 @@ package appcontext
 
 import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/platform/storage"
-	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
 )
 
 type Context struct {
-	Repositories     *repositories.Repositories
-	KumonStrategy    strategy.LearningStrategyService
-	AssistantService assistant.Service
-	ImageStorage     storage.ImageStorage
+	Repositories *repositories.Repositories
+	Integrations *integrations.Integrations
+	ImageStorage storage.ImageStorage
 }
 
 type Factory func() *Context
 
-func NewFactory(repos *repositories.Repositories, kumon strategy.LearningStrategyService, assistantService assistant.Service, imageStorage storage.ImageStorage) Factory {
+func NewFactory(repos *repositories.Repositories, integ *integrations.Integrations, imageStorage storage.ImageStorage) Factory {
 	ctx := &Context{
-		Repositories:     repos,
-		KumonStrategy:    kumon,
-		AssistantService: assistantService,
-		ImageStorage:     imageStorage,
+		Repositories: repos,
+		Integrations: integ,
+		ImageStorage: imageStorage,
 	}
 	return func() *Context {
 		return ctx

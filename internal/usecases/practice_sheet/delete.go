@@ -8,20 +8,22 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type DeleteUsecase interface {
-	Execute(context.Context, string) apperrors.ApplicationError
-}
+type (
+	DeleteUsecase interface {
+		Execute(context.Context, string) apperrors.ApplicationError
+	}
 
-type deleteUsecase struct {
-	factory appcontext.Factory
-}
+	deleteUsecase struct {
+		contextFactory appcontext.Factory
+	}
+)
 
-func NewDeleteUsecase(factory appcontext.Factory) DeleteUsecase {
-	return &deleteUsecase{factory: factory}
+func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
+	return &deleteUsecase{contextFactory: contextFactory}
 }
 
 func (u *deleteUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
-	app := u.factory()
+	app := u.contextFactory()
 
 	if err := app.Repositories.PracticeSheet.Delete(ctx, id); err != nil {
 		return apperrors.NewApplicationError(mappings.PracticeSheetDeleteError, err)

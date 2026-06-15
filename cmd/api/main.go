@@ -5,14 +5,14 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/database"
 	"github.com/tapiaw38/practiq-be/internal/platform/storage"
-	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
 
@@ -32,11 +32,12 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	repos := repositories.NewRepositories(db)
-	kumon := strategy.NewKumonStrategy()
-	assistantService := assistant.NewService()
+	ds := datasources.CreateDatasources(db)
+	reposFactory := repositories.NewFactory(ds)
+	repos := reposFactory()
+	integ := integrations.CreateIntegrations()
 	imageStorage := storage.NewS3ImageStorage(cfg.S3Config)
-	factory := appcontext.NewFactory(repos, kumon, assistantService, imageStorage)
+	factory := appcontext.NewFactory(repos, integ, imageStorage)
 	uc := usecases.NewUsecases(factory)
 
 	app := gin.Default()

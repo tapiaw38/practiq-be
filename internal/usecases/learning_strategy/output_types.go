@@ -2,42 +2,28 @@ package learningstrategy
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
-type LearningStrategyData struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Code        string `json:"code"`
-	Description string `json:"description"`
-	Status      string `json:"status"`
-	CreatedAt   string `json:"created_at"`
-}
+type (
+	LearningStrategyData struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Code        string `json:"code"`
+		Description string `json:"description"`
+		Status      string `json:"status"`
+		CreatedAt   string `json:"created_at"`
+	}
 
-type LearningStrategyOutput struct {
-	Data LearningStrategyData `json:"data"`
-}
-
-type LearningStrategyListOutput struct {
-	Data []LearningStrategyData `json:"data"`
-}
-
-type CourseLearningStrategyData struct {
-	ID                  string `json:"id"`
-	CourseID            string `json:"course_id"`
-	StrategyID          string `json:"strategy_id"`
-	IsDefault           bool   `json:"is_default"`
-	Config              string `json:"config"`
-	CreatedAt           string `json:"created_at"`
-	StrategyName        string `json:"strategy_name"`
-	StrategyCode        string `json:"strategy_code"`
-	StrategyDescription string `json:"strategy_description"`
-}
-
-type CourseLearningStrategyOutput struct {
-	Data CourseLearningStrategyData `json:"data"`
-}
-
-type CourseLearningStrategyListOutput struct {
-	Data []CourseLearningStrategyData `json:"data"`
-}
+	CourseLearningStrategyData struct {
+		ID                  string `json:"id"`
+		CourseID            string `json:"course_id"`
+		StrategyID          string `json:"strategy_id"`
+		IsDefault           bool   `json:"is_default"`
+		Config              string `json:"config"`
+		CreatedAt           string `json:"created_at"`
+		StrategyName        string `json:"strategy_name"`
+		StrategyCode        string `json:"strategy_code"`
+		StrategyDescription string `json:"strategy_description"`
+	}
+)
 
 func toStrategyData(s domain.LearningStrategy) LearningStrategyData {
 	return LearningStrategyData{

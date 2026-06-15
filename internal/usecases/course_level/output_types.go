@@ -2,35 +2,32 @@ package courselevel
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
-type SheetData struct {
-	ID        string `json:"id"`
-	Title     string `json:"title"`
-	Level     int    `json:"level"`
-	SheetType string `json:"sheet_type"`
-	TestStyle string `json:"test_style"`
-	Exercises int    `json:"exercises"`
-}
+type (
+	SheetData struct {
+		ID        string `json:"id"`
+		Title     string `json:"title"`
+		Level     int    `json:"level"`
+		SheetType string `json:"sheet_type"`
+		TestStyle string `json:"test_style"`
+		Exercises int    `json:"exercises"`
+	}
 
-type NotebookData struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Level       int    `json:"level"`
-	Pages       int    `json:"pages"`
-}
+	NotebookData struct {
+		ID          string `json:"id"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Level       int    `json:"level"`
+		Pages       int    `json:"pages"`
+	}
 
-type LevelData struct {
-	Level     int          `json:"level"`
-	Unlocked  bool         `json:"unlocked"`
-	Practices []SheetData  `json:"practices"`
-	LevelTest *SheetData   `json:"level_test"`
-	Notebooks []NotebookData `json:"notebooks"`
-}
-
-type CourseLevelsOutput struct {
-	CurrentLevel int         `json:"current_level"`
-	Levels       []LevelData `json:"levels"`
-}
+	LevelData struct {
+		Level     int            `json:"level"`
+		Unlocked  bool           `json:"unlocked"`
+		Practices []SheetData    `json:"practices"`
+		LevelTest *SheetData     `json:"level_test"`
+		Notebooks []NotebookData `json:"notebooks"`
+	}
+)
 
 func toSheetData(s domain.PracticeSheet) SheetData {
 	return SheetData{

@@ -9,25 +9,31 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*GradeOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Name        string
+		Description string
+	}
+
+	UpdateOutput struct {
+		Data GradeData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
-
-type UpdateInput struct {
-	Name        string
-	Description string
-}
-
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*GradeOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if err := app.Repositories.Grade.Update(ctx, id, domain.Grade{
 		Name:        input.Name,
@@ -44,5 +50,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.GradeNotFoundError, nil)
 	}
 
-	return &GradeOutput{Data: toGradeData(*grade)}, nil
+	return &UpdateOutput{Data: toGradeData(*grade)}, nil
 }

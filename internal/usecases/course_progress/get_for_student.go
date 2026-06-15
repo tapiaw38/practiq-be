@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetForStudentUsecase interface {
-	Execute(ctx context.Context, studentID, courseID string) (*CourseProgressOutput, apperrors.ApplicationError)
+type (
+	GetForStudentUsecase interface {
+		Execute(ctx context.Context, studentID, courseID string) (*GetForStudentOutput, apperrors.ApplicationError)
+	}
+
+	getForStudentUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetForStudentOutput struct {
+		Data CourseProgressData `json:"data"`
+	}
+)
+
+func NewGetForStudentUsecase(contextFactory appcontext.Factory) GetForStudentUsecase {
+	return &getForStudentUsecase{contextFactory: contextFactory}
 }
 
-type getForStudentUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetForStudentUsecase(factory appcontext.Factory) GetForStudentUsecase {
-	return &getForStudentUsecase{factory: factory}
-}
-
-func (u *getForStudentUsecase) Execute(ctx context.Context, studentID, courseID string) (*CourseProgressOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getForStudentUsecase) Execute(ctx context.Context, studentID, courseID string) (*GetForStudentOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	progress, err := app.Repositories.CourseProgress.Get(ctx, studentID, courseID)
 	if err != nil {
@@ -31,5 +37,5 @@ func (u *getForStudentUsecase) Execute(ctx context.Context, studentID, courseID 
 		return nil, apperrors.NewNotFoundError("course progress not found")
 	}
 
-	return &CourseProgressOutput{Data: toProgressData(*progress)}, nil
+	return &GetForStudentOutput{Data: toProgressData(*progress)}, nil
 }

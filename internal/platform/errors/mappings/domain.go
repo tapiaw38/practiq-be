@@ -5,331 +5,331 @@ import "net/http"
 var (
 	// Course errors
 	CourseCreateError = ErrorDetails{
-		Code:       "course:create:error",
+		InternalCode: "course:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create course",
 	}
 	CourseGetError = ErrorDetails{
-		Code:       "course:get:error",
+		InternalCode: "course:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get course",
 	}
 	CourseNotFoundError = ErrorDetails{
-		Code:       "course:get:not-found",
+		InternalCode: "course:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "course not found",
 	}
 	CourseUpdateError = ErrorDetails{
-		Code:       "course:update:error",
+		InternalCode: "course:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update course",
 	}
 	CourseDeleteError = ErrorDetails{
-		Code:       "course:delete:error",
+		InternalCode: "course:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete course",
 	}
 	CourseListError = ErrorDetails{
-		Code:       "course:list:error",
+		InternalCode: "course:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list courses",
 	}
 
 	// Grade errors
 	GradeCreateError = ErrorDetails{
-		Code:       "grade:create:error",
+		InternalCode: "grade:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create grade",
 	}
 	GradeListError = ErrorDetails{
-		Code:       "grade:list:error",
+		InternalCode: "grade:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list grades",
 	}
 	GradeGetError = ErrorDetails{
-		Code:       "grade:get:error",
+		InternalCode: "grade:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get grade",
 	}
 	GradeNotFoundError = ErrorDetails{
-		Code:       "grade:get:not-found",
+		InternalCode: "grade:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "grade not found",
 	}
 	GradeUpdateError = ErrorDetails{
-		Code:       "grade:update:error",
+		InternalCode: "grade:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update grade",
 	}
 	GradeDeleteError = ErrorDetails{
-		Code:       "grade:delete:error",
+		InternalCode: "grade:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete grade",
 	}
 	GradeAssignMemberError = ErrorDetails{
-		Code:       "grade:assign-member:error",
+		InternalCode: "grade:assign-member:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to assign member to grade",
 	}
 	GradeListMembersError = ErrorDetails{
-		Code:       "grade:list-members:error",
+		InternalCode: "grade:list-members:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list grade members",
 	}
 
 	// Subject errors
 	SubjectCreateError = ErrorDetails{
-		Code:       "subject:create:error",
+		InternalCode: "subject:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create subject",
 	}
 	SubjectUpdateError = ErrorDetails{
-		Code:       "subject:update:error",
+		InternalCode: "subject:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update subject",
 	}
 	SubjectDeleteError = ErrorDetails{
-		Code:       "subject:delete:error",
+		InternalCode: "subject:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete subject",
 	}
 	SubjectListError = ErrorDetails{
-		Code:       "subject:list:error",
+		InternalCode: "subject:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list subjects",
 	}
 	SubjectGetError = ErrorDetails{
-		Code:       "subject:get:error",
+		InternalCode: "subject:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get subject",
 	}
 	SubjectNotFoundError = ErrorDetails{
-		Code:       "subject:get:not-found",
+		InternalCode: "subject:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "subject not found",
 	}
 
 	// Teacher/student assignment errors
 	AssignmentCreateError = ErrorDetails{
-		Code:       "assignment:create:error",
+		InternalCode: "assignment:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to assign student to teacher",
 	}
 	AssignmentDeleteError = ErrorDetails{
-		Code:       "assignment:delete:error",
+		InternalCode: "assignment:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to unassign student from teacher",
 	}
 	AssignmentListError = ErrorDetails{
-		Code:       "assignment:list:error",
+		InternalCode: "assignment:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list assignments",
 	}
 
 	// Topic errors
 	TopicCreateError = ErrorDetails{
-		Code:       "topic:create:error",
+		InternalCode: "topic:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create topic",
 	}
 	TopicListError = ErrorDetails{
-		Code:       "topic:list:error",
+		InternalCode: "topic:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list topics",
 	}
 	TopicGetError = ErrorDetails{
-		Code:       "topic:get:error",
+		InternalCode: "topic:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get topic",
 	}
 	TopicNotFoundError = ErrorDetails{
-		Code:       "topic:get:not-found",
+		InternalCode: "topic:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "topic not found",
 	}
 	TopicUpdateError = ErrorDetails{
-		Code:       "topic:update:error",
+		InternalCode: "topic:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update topic",
 	}
 	TopicDeleteError = ErrorDetails{
-		Code:       "topic:delete:error",
+		InternalCode: "topic:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete topic",
 	}
 
 	// Exercise errors
 	ExerciseCreateError = ErrorDetails{
-		Code:       "exercise:create:error",
+		InternalCode: "exercise:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create exercise",
 	}
 	ExerciseListError = ErrorDetails{
-		Code:       "exercise:list:error",
+		InternalCode: "exercise:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list exercises",
 	}
 	ExerciseUpdateError = ErrorDetails{
-		Code:       "exercise:update:error",
+		InternalCode: "exercise:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update exercise",
 	}
 	ExerciseDeleteError = ErrorDetails{
-		Code:       "exercise:delete:error",
+		InternalCode: "exercise:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete exercise",
 	}
 	ExerciseNotFoundError = ErrorDetails{
-		Code:       "exercise:get:not-found",
+		InternalCode: "exercise:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "exercise not found",
 	}
 
 	// Material errors
 	MaterialCreateError = ErrorDetails{
-		Code:       "material:create:error",
+		InternalCode: "material:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create material",
 	}
 	MaterialListError = ErrorDetails{
-		Code:       "material:list:error",
+		InternalCode: "material:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list materials",
 	}
 	MaterialGetError = ErrorDetails{
-		Code:       "material:get:error",
+		InternalCode: "material:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get material",
 	}
 	MaterialNotFoundError = ErrorDetails{
-		Code:       "material:get:not-found",
+		InternalCode: "material:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "material not found",
 	}
 	MaterialUpdateError = ErrorDetails{
-		Code:       "material:update:error",
+		InternalCode: "material:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update material",
 	}
 	MaterialDeleteError = ErrorDetails{
-		Code:       "material:delete:error",
+		InternalCode: "material:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete material",
 	}
 
 	// Practice sheet errors
 	PracticeSheetCreateError = ErrorDetails{
-		Code:       "practice-sheet:create:error",
+		InternalCode: "practice-sheet:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create practice sheet",
 	}
 	PracticeSheetListError = ErrorDetails{
-		Code:       "practice-sheet:list:error",
+		InternalCode: "practice-sheet:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list practice sheets",
 	}
 	PracticeSheetGetError = ErrorDetails{
-		Code:       "practice-sheet:get:error",
+		InternalCode: "practice-sheet:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get practice sheet",
 	}
 	PracticeSheetNotFoundError = ErrorDetails{
-		Code:       "practice-sheet:get:not-found",
+		InternalCode: "practice-sheet:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "practice sheet not found",
 	}
 	PracticeSheetUpdateError = ErrorDetails{
-		Code:       "practice-sheet:update:error",
+		InternalCode: "practice-sheet:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update practice sheet",
 	}
 	PracticeSheetDeleteError = ErrorDetails{
-		Code:       "practice-sheet:delete:error",
+		InternalCode: "practice-sheet:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete practice sheet",
 	}
 	PracticeSheetSubmitError = ErrorDetails{
-		Code:       "practice-sheet:submit:error",
+		InternalCode: "practice-sheet:submit:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to submit practice sheet",
 	}
 
 	// Enrollment errors
 	EnrollmentCreateError = ErrorDetails{
-		Code:       "enrollment:create:error",
+		InternalCode: "enrollment:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to enroll student",
 	}
 	EnrollmentListError = ErrorDetails{
-		Code:       "enrollment:list:error",
+		InternalCode: "enrollment:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list students",
 	}
 	EnrollmentAlreadyExistsError = ErrorDetails{
-		Code:       "enrollment:create:already-exists",
+		InternalCode: "enrollment:create:already-exists",
 		StatusCode: http.StatusConflict,
 		Message:    "student already enrolled in this course",
 	}
 
 	// Progress errors
 	ProgressGetError = ErrorDetails{
-		Code:       "progress:get:error",
+		InternalCode: "progress:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get progress",
 	}
 
 	// AI errors
 	AIConversationCreateError = ErrorDetails{
-		Code:       "ai:conversation:create:error",
+		InternalCode: "ai:conversation:create:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create conversation",
 	}
 	AIMessageListError = ErrorDetails{
-		Code:       "ai:messages:list:error",
+		InternalCode: "ai:messages:list:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to list messages",
 	}
 	AIHelpError = ErrorDetails{
-		Code:       "ai:help:error",
+		InternalCode: "ai:help:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get AI help",
 	}
 
 	// Profile errors
 	ProfileSyncError = ErrorDetails{
-		Code:       "profile:sync:error",
+		InternalCode: "profile:sync:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to sync profile",
 	}
 	ProfileGetError = ErrorDetails{
-		Code:       "profile:get:error",
+		InternalCode: "profile:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get profile",
 	}
 	ProfileUpdateError = ErrorDetails{
-		Code:       "profile:update:error",
+		InternalCode: "profile:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update profile",
 	}
 
 	// Notebook errors
 	NotebookUpdateError = ErrorDetails{
-		Code:       "notebook:update:error",
+		InternalCode: "notebook:update:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to update notebook",
 	}
 	NotebookDeleteError = ErrorDetails{
-		Code:       "notebook:delete:error",
+		InternalCode: "notebook:delete:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to delete notebook",
 	}
 	NotebookGetError = ErrorDetails{
-		Code:       "notebook:get:error",
+		InternalCode: "notebook:get:error",
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get notebook",
 	}
 	NotebookNotFoundError = ErrorDetails{
-		Code:       "notebook:get:not-found",
+		InternalCode: "notebook:get:not-found",
 		StatusCode: http.StatusNotFound,
 		Message:    "notebook not found",
 	}

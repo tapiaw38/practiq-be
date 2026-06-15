@@ -3,25 +3,31 @@ package userprofile
 import (
 	"context"
 
+	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
-	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 )
 
-type GetUsecase interface {
-	Execute(context.Context, string) (*ProfileOutput, apperrors.ApplicationError)
+type (
+	GetUsecase interface {
+		Execute(context.Context, string) (*GetOutput, apperrors.ApplicationError)
+	}
+
+	getUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetOutput struct {
+		Data ProfileData `json:"data"`
+	}
+)
+
+func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
+	return &getUsecase{contextFactory: contextFactory}
 }
 
-type getUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetUsecase(factory appcontext.Factory) GetUsecase {
-	return &getUsecase{factory: factory}
-}
-
-func (u *getUsecase) Execute(ctx context.Context, id string) (*ProfileOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	p, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
@@ -31,5 +37,5 @@ func (u *getUsecase) Execute(ctx context.Context, id string) (*ProfileOutput, ap
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	return &ProfileOutput{Data: toProfileData(*p)}, nil
+	return &GetOutput{Data: toProfileData(*p)}, nil
 }

@@ -2,21 +2,15 @@ package courseprogress
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
-type CourseProgressData struct {
-	ID           string `json:"id,omitempty"`
-	StudentID    string `json:"student_id"`
-	CourseID     string `json:"course_id"`
-	CurrentLevel int    `json:"current_level"`
-	UpdatedAt    string `json:"updated_at,omitempty"`
-}
-
-type CourseProgressOutput struct {
-	Data CourseProgressData `json:"data"`
-}
-
-type CourseProgressListOutput struct {
-	Data []CourseProgressData `json:"data"`
-}
+type (
+	CourseProgressData struct {
+		ID           string `json:"id,omitempty"`
+		StudentID    string `json:"student_id"`
+		CourseID     string `json:"course_id"`
+		CurrentLevel int    `json:"current_level"`
+		UpdatedAt    string `json:"updated_at,omitempty"`
+	}
+)
 
 func toProgressData(p domain.StudentCourseProgress) CourseProgressData {
 	updatedAt := ""

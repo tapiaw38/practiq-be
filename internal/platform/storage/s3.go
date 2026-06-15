@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +18,7 @@ import (
 	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
+	"github.com/tapiaw38/practiq-be/internal/platform/utils"
 )
 
 type ImageStorage interface {
@@ -61,7 +61,7 @@ func (s *S3ImageStorage) IsConfigured() bool {
 }
 
 func (s *S3ImageStorage) UploadDataURI(ctx context.Context, folder, userID, dataURI string) (string, error) {
-	body, contentType, err := decodeDataURI(dataURI)
+	body, contentType, err := utils.DecodeDataURI(dataURI)
 	if err != nil {
 		return strings.TrimSpace(dataURI), err
 	}
@@ -92,26 +92,6 @@ func (s *S3ImageStorage) ResolveDataURI(ctx context.Context, value string) (stri
 		contentType = http.DetectContentType(body)
 	}
 	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(body), nil
-}
-
-func decodeDataURI(dataURI string) ([]byte, string, error) {
-	dataURI = strings.TrimSpace(dataURI)
-	parts := strings.SplitN(dataURI, ",", 2)
-	if len(parts) != 2 || !strings.HasPrefix(parts[0], "data:image/") {
-		return nil, "", errors.New("invalid image data uri")
-	}
-
-	contentType := "image/png"
-	meta := strings.TrimPrefix(parts[0], "data:")
-	if semi := strings.Index(meta, ";"); semi > 0 {
-		contentType = meta[:semi]
-	}
-
-	body, err := base64.StdEncoding.DecodeString(parts[1])
-	if err != nil {
-		return nil, "", err
-	}
-	return body, contentType, nil
 }
 
 func buildImageKey(folder, userID, ext string) string {

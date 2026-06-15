@@ -8,22 +8,28 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetUsecase interface {
-	Execute(ctx context.Context, courseID, studentID string) (*CourseLevelsOutput, apperrors.ApplicationError)
+type (
+	GetUsecase interface {
+		Execute(ctx context.Context, courseID, studentID string) (*GetOutput, apperrors.ApplicationError)
+	}
+
+	getUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetOutput struct {
+		CurrentLevel int         `json:"current_level"`
+		Levels       []LevelData `json:"levels"`
+	}
+)
+
+func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
+	return &getUsecase{contextFactory: contextFactory}
 }
 
-type getUsecase struct {
-	factory appcontext.Factory
-}
+func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*GetOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewGetUsecase(factory appcontext.Factory) GetUsecase {
-	return &getUsecase{factory: factory}
-}
-
-func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*CourseLevelsOutput, apperrors.ApplicationError) {
-	app := u.factory()
-
-	// Student's current level for this course
 	currentLevel := 1
 	if studentID != "" {
 		cp, err := app.Repositories.CourseProgress.Get(ctx, studentID, courseID)
@@ -35,19 +41,16 @@ func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*
 		}
 	}
 
-	// All sheets for the course
 	sheets, err := app.Repositories.PracticeSheet.List(ctx, courseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
 
-	// All notebooks for the course
 	notebooks, err := app.Repositories.Notebook.List(ctx, courseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
 
-	// Determine max level across all content
 	maxLevel := currentLevel
 	for _, s := range sheets {
 		if s.Level > maxLevel {
@@ -59,12 +62,10 @@ func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*
 			maxLevel = nb.Level
 		}
 	}
-	// Always show at least one level ahead (locked preview)
 	if maxLevel <= currentLevel {
 		maxLevel = currentLevel + 1
 	}
 
-	// Build level map
 	type levelBucket struct {
 		practices []SheetData
 		levelTest *SheetData
@@ -111,7 +112,7 @@ func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*
 		})
 	}
 
-	return &CourseLevelsOutput{
+	return &GetOutput{
 		CurrentLevel: currentLevel,
 		Levels:       levels,
 	}, nil

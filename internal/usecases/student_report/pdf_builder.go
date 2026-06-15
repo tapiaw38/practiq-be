@@ -21,17 +21,17 @@ const (
 
 // Colors
 var (
-	colorPrimary    = [3]int{99, 102, 241}   // Indigo
-	colorSecondary  = [3]int{124, 58, 237}   // Violet
-	colorSuccess    = [3]int{16, 185, 129}   // Green
-	colorWarning    = [3]int{245, 158, 11}   // Amber
-	colorError      = [3]int{239, 68, 68}    // Red
-	colorDark       = [3]int{30, 41, 59}     // Slate 800
-	colorMuted      = [3]int{100, 116, 139}  // Slate 500
-	colorLight      = [3]int{241, 245, 249}  // Slate 100
-	colorWhite      = [3]int{255, 255, 255}
-	colorTableHead  = [3]int{51, 65, 85}     // Slate 700
-	colorTableAlt   = [3]int{248, 250, 252}  // Slate 50
+	colorPrimary   = [3]int{99, 102, 241}  // Indigo
+	colorSecondary = [3]int{124, 58, 237}  // Violet
+	colorSuccess   = [3]int{16, 185, 129}  // Green
+	colorWarning   = [3]int{245, 158, 11}  // Amber
+	colorError     = [3]int{239, 68, 68}   // Red
+	colorDark      = [3]int{30, 41, 59}    // Slate 800
+	colorMuted     = [3]int{100, 116, 139} // Slate 500
+	colorLight     = [3]int{241, 245, 249} // Slate 100
+	colorWhite     = [3]int{255, 255, 255}
+	colorTableHead = [3]int{51, 65, 85}    // Slate 700
+	colorTableAlt  = [3]int{248, 250, 252} // Slate 50
 )
 
 type PDFBuilder struct {

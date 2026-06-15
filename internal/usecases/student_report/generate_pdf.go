@@ -11,22 +11,23 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GeneratePDFUsecase interface {
-	Execute(ctx context.Context, teacherID string, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
-}
+type (
+	GeneratePDFUsecase interface {
+		Execute(ctx context.Context, teacherID string, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
+	}
 
-type generatePDFUsecase struct {
-	factory appcontext.Factory
-}
+	generatePDFUsecase struct {
+		contextFactory appcontext.Factory
+	}
+)
 
-func NewGeneratePDFUsecase(factory appcontext.Factory) GeneratePDFUsecase {
-	return &generatePDFUsecase{factory: factory}
+func NewGeneratePDFUsecase(contextFactory appcontext.Factory) GeneratePDFUsecase {
+	return &generatePDFUsecase{contextFactory: contextFactory}
 }
 
 func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
 
-	// Get student profile
 	student, err := app.Repositories.UserProfile.Get(ctx, filter.StudentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
@@ -35,7 +36,6 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filt
 		return nil, apperrors.NewNotFoundError("student not found")
 	}
 
-	// Get topic progress
 	var topicProgress []domain.StudentTopicProgress
 	if filter.CourseID != "" {
 		topicProgress, err = app.Repositories.StudentProgress.ListByStudentAndCourse(ctx, filter.StudentID, filter.CourseID)
@@ -46,21 +46,16 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filt
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
-	// Filter by date if provided
 	if filter.From != nil || filter.To != nil {
 		topicProgress = filterProgressByDate(topicProgress, filter.From, filter.To)
 	}
 
-	// Get course progress
 	courseProgressList, err := app.Repositories.CourseProgress.ListByStudent(ctx, filter.StudentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
-	// Build course progress items with additional data
 	courseItems := buildCourseProgressItems(ctx, app, courseProgressList, topicProgress)
-
-	// Filter course items if specific course requested
 	if filter.CourseID != "" {
 		filtered := make([]domain.CourseProgressItem, 0)
 		for _, c := range courseItems {
@@ -71,17 +66,11 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filt
 		courseItems = filtered
 	}
 
-	// Calculate summary
 	summary := calculateSummary(topicProgress)
 
-	// Get recent attempts (we'll need to aggregate from multiple sheets)
-	// For simplicity, get attempts from last 30 days
 	recentAttempts := []domain.StudentAttempt{}
-
-	// Calculate daily attempts from topic progress (approximation)
 	dailyAttempts := calculateDailyAttempts(topicProgress, filter.From, filter.To)
 
-	// Build report data
 	reportData := &domain.StudentReportData{
 		Student:     *student,
 		GeneratedAt: time.Now(),
@@ -96,7 +85,6 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filt
 		RecentAttempts: recentAttempts,
 	}
 
-	// Generate PDF
 	builder := NewPDFBuilder(reportData)
 	pdfBytes, err := builder.Build()
 	if err != nil {

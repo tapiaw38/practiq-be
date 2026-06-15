@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetUsecase interface {
-	Execute(context.Context, string) (*PracticeSheetOutput, apperrors.ApplicationError)
+type (
+	GetUsecase interface {
+		Execute(context.Context, string) (*GetOutput, apperrors.ApplicationError)
+	}
+
+	getUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetOutput struct {
+		Data PracticeSheetData `json:"data"`
+	}
+)
+
+func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
+	return &getUsecase{contextFactory: contextFactory}
 }
 
-type getUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetUsecase(factory appcontext.Factory) GetUsecase {
-	return &getUsecase{factory: factory}
-}
-
-func (u *getUsecase) Execute(ctx context.Context, id string) (*PracticeSheetOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
 	if err != nil {
@@ -31,5 +37,5 @@ func (u *getUsecase) Execute(ctx context.Context, id string) (*PracticeSheetOutp
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
 
-	return &PracticeSheetOutput{Data: toSheetData(*ps)}, nil
+	return &GetOutput{Data: toSheetData(*ps)}, nil
 }

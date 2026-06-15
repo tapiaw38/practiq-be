@@ -1,8 +1,7 @@
 package repositories
 
 import (
-	"database/sql"
-
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources"
 	aiconversation "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/ai_conversation"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	courseprogress "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course_progress"
@@ -42,24 +41,28 @@ type Repositories struct {
 	SubmitJob                submitjob.Repository
 }
 
-func NewRepositories(db *sql.DB) *Repositories {
-	return &Repositories{
-		UserProfile:              userprofile.NewRepository(db),
-		Grade:                    grade.NewRepository(db),
-		Subject:                  subject.NewRepository(db),
-		TeacherStudentAssignment: teacherstudentassignment.NewRepository(db),
-		Course:                   course.NewRepository(db),
-		Topic:                    topic.NewRepository(db),
-		Exercise:                 exercise.NewRepository(db),
-		Material:                 material.NewRepository(db),
-		PracticeSheet:            practicesheet.NewRepository(db),
-		Enrollment:               enrollment.NewRepository(db),
-		StudentAttempt:           studentattempt.NewRepository(db),
-		StudentProgress:          studentprogress.NewRepository(db),
-		AIConversation:           aiconversation.NewRepository(db),
-		LearningStrategy:         learningstrategy.NewRepository(db),
-		Notebook:                 notebook.NewRepository(db),
-		CourseProgress:           courseprogress.NewRepository(db),
-		SubmitJob:                submitjob.NewRepository(db),
+type Factory func() *Repositories
+
+func NewFactory(ds *datasources.Datasources) func() *Repositories {
+	return func() *Repositories {
+		return &Repositories{
+			UserProfile:              userprofile.NewRepository(ds.DB),
+			Grade:                    grade.NewRepository(ds.DB),
+			Subject:                  subject.NewRepository(ds.DB),
+			TeacherStudentAssignment: teacherstudentassignment.NewRepository(ds.DB),
+			Course:                   course.NewRepository(ds.DB),
+			Topic:                    topic.NewRepository(ds.DB),
+			Exercise:                 exercise.NewRepository(ds.DB),
+			Material:                 material.NewRepository(ds.DB),
+			PracticeSheet:            practicesheet.NewRepository(ds.DB),
+			Enrollment:               enrollment.NewRepository(ds.DB),
+			StudentAttempt:           studentattempt.NewRepository(ds.DB),
+			StudentProgress:          studentprogress.NewRepository(ds.DB),
+			AIConversation:           aiconversation.NewRepository(ds.DB),
+			LearningStrategy:         learningstrategy.NewRepository(ds.DB),
+			Notebook:                 notebook.NewRepository(ds.DB),
+			CourseProgress:           courseprogress.NewRepository(ds.DB),
+			SubmitJob:                submitjob.NewRepository(ds.DB),
+		}
 	}
 }

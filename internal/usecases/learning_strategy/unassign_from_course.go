@@ -8,20 +8,22 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UnassignFromCourseUsecase interface {
-	Execute(context.Context, string) apperrors.ApplicationError
-}
+type (
+	UnassignFromCourseUsecase interface {
+		Execute(context.Context, string) apperrors.ApplicationError
+	}
 
-type unassignFromCourseUsecase struct {
-	factory appcontext.Factory
-}
+	unassignFromCourseUsecase struct {
+		contextFactory appcontext.Factory
+	}
+)
 
-func NewUnassignFromCourseUsecase(factory appcontext.Factory) UnassignFromCourseUsecase {
-	return &unassignFromCourseUsecase{factory: factory}
+func NewUnassignFromCourseUsecase(contextFactory appcontext.Factory) UnassignFromCourseUsecase {
+	return &unassignFromCourseUsecase{contextFactory: contextFactory}
 }
 
 func (u *unassignFromCourseUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
-	app := u.factory()
+	app := u.contextFactory()
 
 	existing, err := app.Repositories.LearningStrategy.GetCourseStrategy(ctx, id)
 	if err != nil {

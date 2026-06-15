@@ -9,27 +9,33 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateUsecase interface {
-	Execute(context.Context, CreateInput) (*TopicOutput, apperrors.ApplicationError)
+type (
+	CreateUsecase interface {
+		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+	}
+
+	createUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateInput struct {
+		CourseID    string
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		OrderIndex  int    `json:"order_index"`
+	}
+
+	CreateOutput struct {
+		Data TopicData `json:"data"`
+	}
+)
+
+func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
+	return &createUsecase{contextFactory: contextFactory}
 }
 
-type createUsecase struct {
-	factory appcontext.Factory
-}
-
-type CreateInput struct {
-	CourseID    string
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	OrderIndex  int    `json:"order_index"`
-}
-
-func NewCreateUsecase(factory appcontext.Factory) CreateUsecase {
-	return &createUsecase{factory: factory}
-}
-
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*TopicOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	id, err := app.Repositories.Topic.Create(ctx, domain.Topic{
 		CourseID:    input.CourseID,
@@ -48,7 +54,7 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*TopicO
 
 	for _, t := range topics {
 		if t.ID == id {
-			return &TopicOutput{Data: toTopicData(t)}, nil
+			return &CreateOutput{Data: toTopicData(t)}, nil
 		}
 	}
 

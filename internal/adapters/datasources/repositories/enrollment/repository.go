@@ -12,51 +12,10 @@ type Repository interface {
 	ListStudents(context.Context, string) ([]domain.UserProfile, error)
 	Exists(context.Context, string, string) (bool, error)
 }
-
 type repository struct {
 	db *sql.DB
 }
 
 func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
-}
-
-func (r *repository) Create(ctx context.Context, e domain.Enrollment) error {
-	query := `INSERT INTO enrollments (course_id, student_id, status) VALUES ($1, $2, $3)`
-	_, err := r.db.ExecContext(ctx, query, e.CourseID, e.StudentID, e.Status)
-	return err
-}
-
-func (r *repository) ListStudents(ctx context.Context, courseID string) ([]domain.UserProfile, error) {
-	query := `
-		SELECT DISTINCT up.id, up.name, up.email, up.profile_type, up.created_at
-		FROM user_profiles up
-		JOIN courses c ON c.id = $1
-		LEFT JOIN enrollments e ON e.course_id = c.id AND e.student_id = up.id
-		LEFT JOIN grade_memberships gm ON gm.grade_id = c.grade_id AND gm.user_id = up.id
-		WHERE up.profile_type = 'student'
-		  AND (e.student_id IS NOT NULL OR gm.user_id IS NOT NULL)
-		ORDER BY up.name ASC
-	`
-	rows, err := r.db.QueryContext(ctx, query, courseID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var students []domain.UserProfile
-	for rows.Next() {
-		var s domain.UserProfile
-		if err := rows.Scan(&s.ID, &s.Name, &s.Email, &s.ProfileType, &s.CreatedAt); err != nil {
-			return nil, err
-		}
-		students = append(students, s)
-	}
-	return students, nil
-}
-
-func (r *repository) Exists(ctx context.Context, courseID, studentID string) (bool, error) {
-	var count int
-	err := r.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM enrollments WHERE course_id=$1 AND student_id=$2`, courseID, studentID).Scan(&count)
-	return count > 0, err
 }

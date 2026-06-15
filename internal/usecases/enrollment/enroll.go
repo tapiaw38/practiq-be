@@ -9,20 +9,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type EnrollUsecase interface {
-	Execute(context.Context, string, string) (*EnrollOutput, apperrors.ApplicationError)
-}
+type (
+	EnrollUsecase interface {
+		Execute(context.Context, string, string) (*EnrollOutput, apperrors.ApplicationError)
+	}
 
-type enrollUsecase struct {
-	factory appcontext.Factory
-}
+	enrollUsecase struct {
+		contextFactory appcontext.Factory
+	}
 
-func NewEnrollUsecase(factory appcontext.Factory) EnrollUsecase {
-	return &enrollUsecase{factory: factory}
+	EnrollOutput struct {
+		Data OperationResultData `json:"data"`
+	}
+)
+
+func NewEnrollUsecase(contextFactory appcontext.Factory) EnrollUsecase {
+	return &enrollUsecase{contextFactory: contextFactory}
 }
 
 func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string) (*EnrollOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
 
 	exists, err := app.Repositories.Enrollment.Exists(ctx, courseID, studentID)
 	if err != nil {
@@ -40,5 +46,5 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentCreateError, err)
 	}
 
-	return &EnrollOutput{Message: "enrolled successfully"}, nil
+	return &EnrollOutput{Data: toOperationResultData(domain.OperationResult{Message: "enrolled successfully"})}, nil
 }

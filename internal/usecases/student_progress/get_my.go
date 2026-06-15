@@ -8,20 +8,27 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetMyProgressUsecase interface {
-	Execute(context.Context, string) (*ProgressListOutput, apperrors.ApplicationError)
+type (
+	GetMyProgressUsecase interface {
+		Execute(context.Context, string) (*GetMyProgressOutput, apperrors.ApplicationError)
+	}
+
+	getMyProgressUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetMyProgressOutput struct {
+		Data                 []ProgressData `json:"data"`
+		LastPracticedSheetID string         `json:"last_practiced_sheet_id,omitempty"`
+	}
+)
+
+func NewGetMyProgressUsecase(contextFactory appcontext.Factory) GetMyProgressUsecase {
+	return &getMyProgressUsecase{contextFactory: contextFactory}
 }
 
-type getMyProgressUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetMyProgressUsecase(factory appcontext.Factory) GetMyProgressUsecase {
-	return &getMyProgressUsecase{factory: factory}
-}
-
-func (u *getMyProgressUsecase) Execute(ctx context.Context, studentID string) (*ProgressListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getMyProgressUsecase) Execute(ctx context.Context, studentID string) (*GetMyProgressOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	list, err := app.Repositories.StudentProgress.ListByStudent(ctx, studentID)
 	if err != nil {
@@ -39,7 +46,7 @@ func (u *getMyProgressUsecase) Execute(ctx context.Context, studentID string) (*
 	// Get last practiced sheet ID
 	lastSheetID, _ := app.Repositories.StudentAttempt.GetLastPracticedSheetID(ctx, studentID)
 
-	return &ProgressListOutput{
+	return &GetMyProgressOutput{
 		Data:                 data,
 		LastPracticedSheetID: lastSheetID,
 	}, nil

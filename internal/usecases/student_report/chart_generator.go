@@ -78,9 +78,9 @@ func GenerateMasteryBarChart(topics []domain.StudentTopicProgress, width, height
 		Canvas: chart.Style{
 			FillColor: chartColorBg,
 		},
-		Width:    width,
-		Height:   height,
-		BarWidth: 35,
+		Width:      width,
+		Height:     height,
+		BarWidth:   35,
 		BarSpacing: 8,
 		XAxis: chart.Style{
 			FontSize:  8,

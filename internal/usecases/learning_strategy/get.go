@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetUsecase interface {
-	Execute(context.Context, string) (*LearningStrategyOutput, apperrors.ApplicationError)
+type (
+	GetUsecase interface {
+		Execute(context.Context, string) (*GetOutput, apperrors.ApplicationError)
+	}
+
+	getUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetOutput struct {
+		Data LearningStrategyData `json:"data"`
+	}
+)
+
+func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
+	return &getUsecase{contextFactory: contextFactory}
 }
 
-type getUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetUsecase(factory appcontext.Factory) GetUsecase {
-	return &getUsecase{factory: factory}
-}
-
-func (u *getUsecase) Execute(ctx context.Context, id string) (*LearningStrategyOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	strategy, err := app.Repositories.LearningStrategy.Get(ctx, id)
 	if err != nil {
@@ -31,5 +37,5 @@ func (u *getUsecase) Execute(ctx context.Context, id string) (*LearningStrategyO
 		return nil, apperrors.NewNotFoundError("learning strategy not found")
 	}
 
-	return &LearningStrategyOutput{Data: toStrategyData(*strategy)}, nil
+	return &GetOutput{Data: toStrategyData(*strategy)}, nil
 }

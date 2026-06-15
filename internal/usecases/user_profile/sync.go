@@ -9,29 +9,35 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type SyncUsecase interface {
-	Execute(context.Context, SyncInput) (*ProfileOutput, apperrors.ApplicationError)
+type (
+	SyncUsecase interface {
+		Execute(context.Context, SyncInput) (*SyncOutput, apperrors.ApplicationError)
+	}
+
+	syncUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	SyncInput struct {
+		ID               string
+		Name             string
+		Email            string
+		ProfileType      string
+		AssistantBaseURL string
+		AssistantAPIKey  string
+	}
+
+	SyncOutput struct {
+		Data ProfileData `json:"data"`
+	}
+)
+
+func NewSyncUsecase(contextFactory appcontext.Factory) SyncUsecase {
+	return &syncUsecase{contextFactory: contextFactory}
 }
 
-type syncUsecase struct {
-	factory appcontext.Factory
-}
-
-type SyncInput struct {
-	ID               string
-	Name             string
-	Email            string
-	ProfileType      string
-	AssistantBaseURL string
-	AssistantAPIKey  string
-}
-
-func NewSyncUsecase(factory appcontext.Factory) SyncUsecase {
-	return &syncUsecase{factory: factory}
-}
-
-func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*ProfileOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	profileType := input.ProfileType
 	if profileType == "" {
@@ -59,5 +65,5 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*ProfileOut
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 
-	return &ProfileOutput{Data: toProfileData(*updated)}, nil
+	return &SyncOutput{Data: toProfileData(*updated)}, nil
 }

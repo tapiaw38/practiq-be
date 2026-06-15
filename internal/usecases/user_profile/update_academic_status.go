@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateAcademicStatusUsecase interface {
-	Execute(context.Context, string, string) (*ProfileOutput, apperrors.ApplicationError)
+type (
+	UpdateAcademicStatusUsecase interface {
+		Execute(context.Context, string, string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError)
+	}
+
+	updateAcademicStatusUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateAcademicStatusOutput struct {
+		Data ProfileData `json:"data"`
+	}
+)
+
+func NewUpdateAcademicStatusUsecase(contextFactory appcontext.Factory) UpdateAcademicStatusUsecase {
+	return &updateAcademicStatusUsecase{contextFactory: contextFactory}
 }
 
-type updateAcademicStatusUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewUpdateAcademicStatusUsecase(factory appcontext.Factory) UpdateAcademicStatusUsecase {
-	return &updateAcademicStatusUsecase{factory: factory}
-}
-
-func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status string) (*ProfileOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if status != "active" && status != "blocked" {
 		return nil, apperrors.NewBadRequestError("academic_status must be active or blocked")
@@ -39,5 +45,5 @@ func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status st
 		return nil, apperrors.NewApplicationError(mappings.NotFoundError, nil)
 	}
 
-	return &ProfileOutput{Data: toProfileData(*profile)}, nil
+	return &UpdateAcademicStatusOutput{Data: toProfileData(*profile)}, nil
 }

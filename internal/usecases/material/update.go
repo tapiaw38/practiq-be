@@ -9,25 +9,31 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*MaterialOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Title         string
+		ExtractedText string
+	}
+
+	UpdateOutput struct {
+		Data MaterialData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
-
-type UpdateInput struct {
-	Title         string
-	ExtractedText string
-}
-
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*MaterialOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if err := app.Repositories.Material.Update(ctx, id, domain.Material{
 		Title:         input.Title,
@@ -44,5 +50,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.MaterialNotFoundError, nil)
 	}
 
-	return &MaterialOutput{Data: toMaterialData(*m)}, nil
+	return &UpdateOutput{Data: toMaterialData(*m)}, nil
 }

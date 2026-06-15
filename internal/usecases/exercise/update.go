@@ -9,29 +9,35 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*ExerciseOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Type          string `json:"type"`
+		Question      string `json:"question"`
+		CorrectAnswer string `json:"correct_answer"`
+		Explanation   string `json:"explanation"`
+		Difficulty    int    `json:"difficulty"`
+		Metadata      string `json:"metadata"`
+	}
+
+	UpdateOutput struct {
+		Data ExerciseData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
-
-type UpdateInput struct {
-	Type          string `json:"type"`
-	Question      string `json:"question"`
-	CorrectAnswer string `json:"correct_answer"`
-	Explanation   string `json:"explanation"`
-	Difficulty    int    `json:"difficulty"`
-	Metadata      string `json:"metadata"`
-}
-
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*ExerciseOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if err := app.Repositories.Exercise.Update(ctx, id, domain.Exercise{
 		Type:          input.Type,
@@ -52,5 +58,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.ExerciseNotFoundError, nil)
 	}
 
-	return &ExerciseOutput{Data: toExerciseData(*e)}, nil
+	return &UpdateOutput{Data: toExerciseData(*e)}, nil
 }

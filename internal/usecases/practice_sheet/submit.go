@@ -3,43 +3,49 @@ package practicesheet
 import (
 	"context"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
-	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
 )
 
-type SubmitUsecase interface {
-	Execute(context.Context, string, string, SubmitInput) (*SubmitOutput, apperrors.ApplicationError)
-}
+type (
+	SubmitUsecase interface {
+		Execute(context.Context, string, string, SubmitInput) (*SubmitOutput, apperrors.ApplicationError)
+	}
 
-type submitUsecase struct {
-	factory appcontext.Factory
-}
+	submitUsecase struct {
+		contextFactory appcontext.Factory
+	}
 
-type AttemptInput struct {
-	ExerciseID       string `json:"exercise_id"`
-	AnswerText       string `json:"answer_text"`
-	CanvasData       string `json:"canvas_data"` // base64 PNG for canvas/handwritten exercises
-	TimeSpentSeconds int    `json:"time_spent_seconds"`
-	HintsUsed        int    `json:"hints_used"`
-}
+	AttemptInput struct {
+		ExerciseID       string `json:"exercise_id"`
+		AnswerText       string `json:"answer_text"`
+		CanvasData       string `json:"canvas_data"` // base64 PNG for canvas/handwritten exercises
+		TimeSpentSeconds int    `json:"time_spent_seconds"`
+		HintsUsed        int    `json:"hints_used"`
+	}
 
-type SubmitInput struct {
-	Attempts []AttemptInput `json:"attempts"`
-}
+	SubmitInput struct {
+		Attempts []AttemptInput `json:"attempts"`
+	}
 
-func NewSubmitUsecase(factory appcontext.Factory) SubmitUsecase {
-	return &submitUsecase{factory: factory}
+	SubmitOutput struct {
+		Data SubmitResult `json:"data"`
+	}
+)
+
+func NewSubmitUsecase(contextFactory appcontext.Factory) SubmitUsecase {
+	return &submitUsecase{contextFactory: contextFactory}
 }
 
 func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, input SubmitInput) (*SubmitOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
 
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, sheetID)
 	if err != nil {
@@ -49,12 +55,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
 
-	// Build exercise map for quick lookup and derive topic_id if needed
 	exerciseMap := map[string]domain.Exercise{}
 	derivedTopicID := ps.TopicID
 	for _, pse := range ps.Exercises {
 		exerciseMap[pse.Exercise.ID] = pse.Exercise
-		// Derive topic_id from exercise if practice sheet has no topic
 		if derivedTopicID == "" && pse.Exercise.TopicID != "" {
 			derivedTopicID = pse.Exercise.TopicID
 		}
@@ -82,8 +86,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		hasTextAnswer := strings.TrimSpace(answerText) != ""
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
 
-		if hasCanvasAnswer && app.AssistantService != nil && app.AssistantService.IsConfigured(assistantCfg) {
-			if recognizedText, recognizeErr := app.AssistantService.AnalyzeCanvas(ctx, assistantCfg, attempt.CanvasData, ex.CorrectAnswer); recognizeErr == nil {
+		if hasCanvasAnswer && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+			if recognizedText, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, attempt.CanvasData, ex.CorrectAnswer); recognizeErr == nil {
 				normalizedRecognized := normalizeCanvasAnswer(recognizedText)
 				if normalizedRecognized != "" && normalizedRecognized != "UNREADABLE" {
 					answerText = normalizedRecognized
@@ -99,9 +103,9 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				normalizedCorrect,
 			)
 
-			canEvaluateWithAI := app.AssistantService != nil && app.AssistantService.IsConfigured(assistantCfg) && hasTextAnswer && !isDataURIAnswer(answerText)
+			canEvaluateWithAI := app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) && hasTextAnswer && !isDataURIAnswer(answerText)
 			if canEvaluateWithAI {
-				if evaluation, aiErr := app.AssistantService.EvaluatePracticeAnswer(ctx, assistantCfg, ex.Question, ex.CorrectAnswer, answerText); aiErr == nil {
+				if evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, ex.Question, ex.CorrectAnswer, answerText); aiErr == nil {
 					isCorrect = evaluation.IsCorrect
 					aiFeedback = evaluation.Feedback
 					if resultAIFeedback == "" && aiFeedback != "" {
@@ -151,7 +155,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		sheetScore = float64(correct) / float64(total) * 100
 	}
 
-	kumon := app.KumonStrategy
+	kumon := domain.NewKumonStrategy()
 	currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
 	currentScore := 0.0
 	currentLevel := 1
@@ -173,20 +177,19 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	const levelTestPassThreshold = 75.0
 
 	if ps.SheetType == "level_test" {
-		// Level test: pass/fail by fixed threshold, force level up on pass
 		shouldLevelUp = sheetScore >= levelTestPassThreshold
 		shouldRepeat = !shouldLevelUp
 		if shouldLevelUp {
 			nextLevel = currentLevel + 1
 			newMastery = sheetScore
-			recommendation = "¡Aprobaste la prueba! Nivel " + itoa(nextLevel) + " desbloqueado."
+			recommendation = "¡Aprobaste la prueba! Nivel " + strconv.Itoa(nextLevel) + " desbloqueado."
 		} else {
 			nextLevel = currentLevel
 			newMastery = currentScore
 			recommendation = "Necesitás al menos 75% para pasar de nivel. ¡Seguí practicando!"
 		}
 	} else {
-		newMastery = kumon.CalculateMasteryScore(strategy.MasteryInput{
+		newMastery = kumon.CalculateMasteryScore(domain.MasteryInput{
 			TotalAttempts:    total,
 			CorrectAttempts:  correct,
 			HintsUsed:        totalHints,
@@ -206,7 +209,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	newStreak := calcStreak(currentProgress)
 	now := time.Now()
 
-	// Only update progress if we have a valid topic_id (skip silently otherwise)
 	if derivedTopicID != "" {
 		if err := app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
 			StudentID:       studentID,
@@ -224,44 +226,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 	}
 
-	// On level test pass, also advance the student's course-level progress
 	if ps.SheetType == "level_test" && shouldLevelUp {
 		app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel)
 	}
 
-	return &SubmitOutput{Data: SubmitResult{
-		Score:          sheetScore,
-		Correct:        correct,
-		Total:          total,
-		MasteryScore:   newMastery,
-		Recommendation: recommendation,
-		AIFeedback:     resultAIFeedback,
-		ShouldLevelUp:  shouldLevelUp,
-		ShouldRepeat:   shouldRepeat,
-		NextLevel:      nextLevel,
-	}}, nil
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	buf := [20]byte{}
-	pos := len(buf)
-	for n > 0 {
-		pos--
-		buf[pos] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		pos--
-		buf[pos] = '-'
-	}
-	return string(buf[pos:])
+	return &SubmitOutput{Data: toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel)}, nil
 }
 
 func normalizeCanvasAnswer(value string) string {

@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListByCourseUsecase interface {
-	Execute(context.Context, string) (*CourseLearningStrategyListOutput, apperrors.ApplicationError)
+type (
+	ListByCourseUsecase interface {
+		Execute(context.Context, string) (*ListByCourseOutput, apperrors.ApplicationError)
+	}
+
+	listByCourseUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListByCourseOutput struct {
+		Data []CourseLearningStrategyData `json:"data"`
+	}
+)
+
+func NewListByCourseUsecase(contextFactory appcontext.Factory) ListByCourseUsecase {
+	return &listByCourseUsecase{contextFactory: contextFactory}
 }
 
-type listByCourseUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewListByCourseUsecase(factory appcontext.Factory) ListByCourseUsecase {
-	return &listByCourseUsecase{factory: factory}
-}
-
-func (u *listByCourseUsecase) Execute(ctx context.Context, courseID string) (*CourseLearningStrategyListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *listByCourseUsecase) Execute(ctx context.Context, courseID string) (*ListByCourseOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	strategies, err := app.Repositories.LearningStrategy.ListByCourse(ctx, courseID)
 	if err != nil {
@@ -33,5 +39,5 @@ func (u *listByCourseUsecase) Execute(ctx context.Context, courseID string) (*Co
 		data = append(data, toCourseStrategyData(cls))
 	}
 
-	return &CourseLearningStrategyListOutput{Data: data}, nil
+	return &ListByCourseOutput{Data: data}, nil
 }

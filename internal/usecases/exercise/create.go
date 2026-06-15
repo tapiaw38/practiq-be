@@ -9,30 +9,36 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateUsecase interface {
-	Execute(context.Context, CreateInput) (*ExerciseOutput, apperrors.ApplicationError)
+type (
+	CreateUsecase interface {
+		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+	}
+
+	createUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateInput struct {
+		TopicID       string
+		Type          string `json:"type"`
+		Question      string `json:"question"`
+		CorrectAnswer string `json:"correct_answer"`
+		Explanation   string `json:"explanation"`
+		Difficulty    int    `json:"difficulty"`
+		Metadata      string `json:"metadata"`
+	}
+
+	CreateOutput struct {
+		Data ExerciseData `json:"data"`
+	}
+)
+
+func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
+	return &createUsecase{contextFactory: contextFactory}
 }
 
-type createUsecase struct {
-	factory appcontext.Factory
-}
-
-type CreateInput struct {
-	TopicID       string
-	Type          string `json:"type"`
-	Question      string `json:"question"`
-	CorrectAnswer string `json:"correct_answer"`
-	Explanation   string `json:"explanation"`
-	Difficulty    int    `json:"difficulty"`
-	Metadata      string `json:"metadata"`
-}
-
-func NewCreateUsecase(factory appcontext.Factory) CreateUsecase {
-	return &createUsecase{factory: factory}
-}
-
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*ExerciseOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	difficulty := input.Difficulty
 	if difficulty < 1 {
@@ -60,5 +66,5 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Exerci
 		return nil, apperrors.NewApplicationError(mappings.ExerciseListError, err)
 	}
 
-	return &ExerciseOutput{Data: toExerciseData(*e)}, nil
+	return &CreateOutput{Data: toExerciseData(*e)}, nil
 }
