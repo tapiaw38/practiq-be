@@ -7,9 +7,6 @@ import (
 	"time"
 )
 
-//go:generate echo $GOPACKAGE/$GOFILE
-//go:generate mockgen -source=./$GOFILE -destination=./mocks/$GOFILE -package mocks
-
 type Gateway interface {
 	IsConfigured(cfg Config) bool
 	AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, correctAnswer string) (string, error)
