@@ -10,7 +10,7 @@ import (
 
 type (
 	ListForStudentUsecase interface {
-		Execute(ctx context.Context, studentID string) (*ListForStudentOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID, studentID string, isAdmin bool) (*ListForStudentOutput, apperrors.ApplicationError)
 	}
 
 	listForStudentUsecase struct {
@@ -26,8 +26,18 @@ func NewListForStudentUsecase(contextFactory appcontext.Factory) ListForStudentU
 	return &listForStudentUsecase{contextFactory: contextFactory}
 }
 
-func (u *listForStudentUsecase) Execute(ctx context.Context, studentID string) (*ListForStudentOutput, apperrors.ApplicationError) {
+func (u *listForStudentUsecase) Execute(ctx context.Context, requesterID, studentID string, isAdmin bool) (*ListForStudentOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	if !isAdmin {
+		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
+		}
+		if !hasAccess {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	progressList, err := app.Repositories.CourseProgress.ListByStudent(ctx, studentID)
 	if err != nil {

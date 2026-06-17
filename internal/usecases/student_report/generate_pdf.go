@@ -13,7 +13,7 @@ import (
 
 type (
 	GeneratePDFUsecase interface {
-		Execute(ctx context.Context, teacherID string, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
+		Execute(ctx context.Context, teacherID string, isAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
 	}
 
 	generatePDFUsecase struct {
@@ -25,15 +25,17 @@ func NewGeneratePDFUsecase(contextFactory appcontext.Factory) GeneratePDFUsecase
 	return &generatePDFUsecase{contextFactory: contextFactory}
 }
 
-func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
+func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, teacherID, filter.StudentID)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
-	}
-	if !hasAccess {
-		return nil, apperrors.NewForbiddenError()
+	if !isAdmin {
+		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, teacherID, filter.StudentID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
+		}
+		if !hasAccess {
+			return nil, apperrors.NewForbiddenError()
+		}
 	}
 
 	student, err := app.Repositories.UserProfile.Get(ctx, filter.StudentID)
