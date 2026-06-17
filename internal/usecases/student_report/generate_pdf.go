@@ -2,7 +2,6 @@ package studentreport
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -79,7 +78,10 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	summary := calculateSummary(topicProgress)
 
 	recentAttempts := []domain.StudentAttempt{}
-	dailyAttempts := calculateDailyAttempts(topicProgress, filter.From, filter.To)
+	dailyAttempts, err := app.Repositories.StudentAttempt.GetDailyAttempts(ctx, filter.StudentID, filter.From, filter.To)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
+	}
 
 	reportData := &domain.StudentReportData{
 		Student:     *student,
@@ -199,38 +201,4 @@ func calculateSummary(progress []domain.StudentTopicProgress) domain.ReportSumma
 		AccuracyRate:    accuracyRate,
 		CurrentStreak:   maxStreak,
 	}
-}
-
-func calculateDailyAttempts(progress []domain.StudentTopicProgress, from, to *time.Time) []domain.DailyAttemptCount {
-	// This is an approximation since we don't have daily breakdown
-	// In a real implementation, we'd query student_attempts grouped by day
-	dailyMap := make(map[string]domain.DailyAttemptCount)
-
-	for _, p := range progress {
-		if p.LastPracticedAt == nil {
-			continue
-		}
-		dateKey := p.LastPracticedAt.Format("2006-01-02")
-		existing := dailyMap[dateKey]
-		existing.Date = time.Date(p.LastPracticedAt.Year(), p.LastPracticedAt.Month(), p.LastPracticedAt.Day(), 0, 0, 0, 0, p.LastPracticedAt.Location())
-		existing.Total += p.TotalAttempts
-		existing.Correct += p.CorrectAttempts
-		dailyMap[dateKey] = existing
-	}
-
-	result := make([]domain.DailyAttemptCount, 0, len(dailyMap))
-	for _, v := range dailyMap {
-		result = append(result, v)
-	}
-
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Date.Before(result[j].Date)
-	})
-
-	// Limit to last 30 days
-	if len(result) > 30 {
-		result = result[len(result)-30:]
-	}
-
-	return result
 }
