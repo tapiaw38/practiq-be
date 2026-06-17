@@ -82,6 +82,13 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 	}
 
 	if input.ConversationID != "" {
+		conversation, err := app.Repositories.AIConversation.Get(ctx, input.ConversationID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AIConversationGetError, err)
+		}
+		if conversation == nil || conversation.StudentID != input.StudentID {
+			return nil, apperrors.NewForbiddenError()
+		}
 		u.persistMessages(ctx, app, input.ConversationID, input.Question, helpType, response)
 	}
 

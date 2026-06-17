@@ -44,7 +44,6 @@ func (r *repository) GetDailyAttempts(ctx context.Context, studentID, courseID s
 	query += `
 		GROUP BY DATE(sa.created_at)
 		ORDER BY DATE(sa.created_at) DESC
-		LIMIT 30
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, args...)

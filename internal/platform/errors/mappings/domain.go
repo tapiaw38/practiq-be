@@ -284,6 +284,11 @@ var (
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to create conversation",
 	}
+	AIConversationGetError = ErrorDetails{
+		InternalCode: "ai:conversation:get:error",
+		StatusCode: http.StatusInternalServerError,
+		Message:    "failed to get conversation",
+	}
 	AIMessageListError = ErrorDetails{
 		InternalCode: "ai:messages:list:error",
 		StatusCode: http.StatusInternalServerError,

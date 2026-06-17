@@ -9,6 +9,7 @@ import (
 
 type Repository interface {
 	CreateConversation(context.Context, domain.AIConversation) (string, error)
+	Get(context.Context, string) (*domain.AIConversation, error)
 	ListMessages(context.Context, string) ([]domain.AIMessage, error)
 	AddMessage(context.Context, domain.AIMessage) (string, error)
 	CreateHelpRequest(context.Context, domain.AIHelpRequest) (string, error)
