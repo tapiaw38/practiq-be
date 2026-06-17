@@ -56,7 +56,11 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 		}
 
 		// Generate filename
-		filename := fmt.Sprintf("reporte_progreso_%s_%s.pdf", studentID[:8], time.Now().Format("20060102"))
+		studentPrefix := studentID
+		if len(studentID) > 8 {
+			studentPrefix = studentID[:8]
+		}
+		filename := fmt.Sprintf("reporte_progreso_%s_%s.pdf", studentPrefix, time.Now().Format("20060102"))
 
 		// Set headers for PDF download
 		c.Header("Content-Type", "application/pdf")

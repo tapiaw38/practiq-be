@@ -75,13 +75,13 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 		courseItems = filtered
 	}
 
-	summary := calculateSummary(topicProgress)
-
 	recentAttempts := []domain.StudentAttempt{}
 	dailyAttempts, err := app.Repositories.StudentAttempt.GetDailyAttempts(ctx, filter.StudentID, filter.CourseID, filter.From, filter.To)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
+
+	summary := calculateSummary(topicProgress, dailyAttempts)
 
 	reportData := &domain.StudentReportData{
 		Student:     *student,
@@ -171,21 +171,21 @@ func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, cour
 	return items
 }
 
-func calculateSummary(progress []domain.StudentTopicProgress) domain.ReportSummary {
-	if len(progress) == 0 {
-		return domain.ReportSummary{}
-	}
-
+func calculateSummary(progress []domain.StudentTopicProgress, dailyAttempts []domain.DailyAttemptCount) domain.ReportSummary {
 	var totalMastery float64
-	var totalAttempts, correctAttempts, maxStreak int
+	var maxStreak int
 
 	for _, p := range progress {
 		totalMastery += p.MasteryScore
-		totalAttempts += p.TotalAttempts
-		correctAttempts += p.CorrectAttempts
 		if p.StreakDays > maxStreak {
 			maxStreak = p.StreakDays
 		}
+	}
+
+	var totalAttempts, correctAttempts int
+	for _, da := range dailyAttempts {
+		totalAttempts += da.Total
+		correctAttempts += da.Correct
 	}
 
 	accuracyRate := 0.0
@@ -193,9 +193,14 @@ func calculateSummary(progress []domain.StudentTopicProgress) domain.ReportSumma
 		accuracyRate = float64(correctAttempts) / float64(totalAttempts) * 100
 	}
 
+	avgMastery := 0.0
+	if len(progress) > 0 {
+		avgMastery = totalMastery / float64(len(progress))
+	}
+
 	return domain.ReportSummary{
 		TopicsPracticed: len(progress),
-		AverageMastery:  totalMastery / float64(len(progress)),
+		AverageMastery:  avgMastery,
 		TotalAttempts:   totalAttempts,
 		CorrectAttempts: correctAttempts,
 		AccuracyRate:    accuracyRate,
