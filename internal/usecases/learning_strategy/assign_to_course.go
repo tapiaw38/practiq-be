@@ -12,7 +12,7 @@ import (
 
 type (
 	AssignToCourseUsecase interface {
-		Execute(context.Context, string, AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID, courseID string, isAdmin bool, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError)
 	}
 
 	assignToCourseUsecase struct {
@@ -34,7 +34,7 @@ func NewAssignToCourseUsecase(contextFactory appcontext.Factory) AssignToCourseU
 	return &assignToCourseUsecase{contextFactory: contextFactory}
 }
 
-func (u *assignToCourseUsecase) Execute(ctx context.Context, courseID string, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError) {
+func (u *assignToCourseUsecase) Execute(ctx context.Context, requesterID, courseID string, isAdmin bool, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if strings.TrimSpace(input.StrategyID) == "" {
@@ -50,13 +50,17 @@ func (u *assignToCourseUsecase) Execute(ctx context.Context, courseID string, in
 		return nil, apperrors.NewNotFoundError("learning strategy not found")
 	}
 
-	// Verify course exists
+	// Verify course exists and check ownership
 	course, err := app.Repositories.Course.Get(ctx, courseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
 	if course == nil {
 		return nil, apperrors.NewNotFoundError("course not found")
+	}
+
+	if !isAdmin && course.TeacherID != requesterID {
+		return nil, apperrors.NewForbiddenError()
 	}
 
 	config := input.Config

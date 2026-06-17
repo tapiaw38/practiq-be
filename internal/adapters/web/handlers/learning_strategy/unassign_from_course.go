@@ -3,15 +3,18 @@ package learningstrategy
 import (
 	"net/http"
 
-	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
-
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
+	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 )
 
 func NewUnassignFromCourseHandler(uc ucLS.UnassignFromCourseUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requesterID := middlewares.GetUserID(c)
 		id := c.Param("id")
-		if appErr := uc.Execute(c, id); appErr != nil {
+		isAdmin := middlewares.HasRole(c, "admin") || middlewares.HasRole(c, "superadmin")
+
+		if appErr := uc.Execute(c, requesterID, id, isAdmin); appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
 			return

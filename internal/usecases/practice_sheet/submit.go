@@ -115,8 +115,9 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
-		if hasCanvasAnswer && isDataURIAnswer(attempt.CanvasData) && app.ImageStorage != nil {
-			if uploaded, uploadErr := app.ImageStorage.UploadDataURI(ctx, "practice", studentID, attempt.CanvasData); uploadErr == nil {
+		if hasCanvasAnswer && app.ImageStorage != nil {
+			canvasData := normalizeCanvasDataURI(attempt.CanvasData)
+			if uploaded, uploadErr := app.ImageStorage.UploadDataURI(ctx, "practice", studentID, canvasData); uploadErr == nil {
 				imageURL = uploaded
 			} else {
 				log.Printf("[image_storage] practice attempt upload failed student_id=%s exercise_id=%s err=%v", studentID, attempt.ExerciseID, uploadErr)
@@ -244,6 +245,14 @@ func normalizeCanvasAnswer(value string) string {
 func isDataURIAnswer(value string) bool {
 	trimmed := strings.TrimSpace(strings.ToLower(value))
 	return strings.HasPrefix(trimmed, "data:image/")
+}
+
+func normalizeCanvasDataURI(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if strings.HasPrefix(strings.ToLower(trimmed), "data:image/") {
+		return trimmed
+	}
+	return "data:image/png;base64," + trimmed
 }
 
 func calcStreak(current *domain.StudentTopicProgress) int {

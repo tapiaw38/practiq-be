@@ -7,33 +7,43 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-func (r *repository) GetDailyAttempts(ctx context.Context, studentID string, from, to *time.Time) ([]domain.DailyAttemptCount, error) {
+func (r *repository) GetDailyAttempts(ctx context.Context, studentID, courseID string, from, to *time.Time) ([]domain.DailyAttemptCount, error) {
 	query := `
 		SELECT
-			DATE(created_at) as date,
+			DATE(sa.created_at) as date,
 			COUNT(*) as total,
-			SUM(CASE WHEN score >= 100 THEN 1 ELSE 0 END) as correct
-		FROM student_attempts
-		WHERE student_id = $1
+			SUM(CASE WHEN sa.score >= 100 THEN 1 ELSE 0 END) as correct
+		FROM student_attempts sa
 	`
 	args := []interface{}{studentID}
 	argIndex := 2
 
+	if courseID != "" {
+		query += `
+		JOIN exercises e ON e.id = sa.exercise_id
+		JOIN topics t ON t.id = e.topic_id
+		WHERE sa.student_id = $1 AND t.course_id = $` + itoa(argIndex)
+		args = append(args, courseID)
+		argIndex++
+	} else {
+		query += ` WHERE sa.student_id = $1`
+	}
+
 	if from != nil {
-		query += ` AND created_at >= $` + itoa(argIndex)
+		query += ` AND sa.created_at >= $` + itoa(argIndex)
 		args = append(args, *from)
 		argIndex++
 	}
 
 	if to != nil {
-		query += ` AND created_at <= $` + itoa(argIndex)
+		query += ` AND sa.created_at <= $` + itoa(argIndex)
 		args = append(args, *to)
 		argIndex++
 	}
 
 	query += `
-		GROUP BY DATE(created_at)
-		ORDER BY DATE(created_at) DESC
+		GROUP BY DATE(sa.created_at)
+		ORDER BY DATE(sa.created_at) DESC
 		LIMIT 30
 	`
 

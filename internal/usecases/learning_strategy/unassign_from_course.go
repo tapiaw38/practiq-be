@@ -10,7 +10,7 @@ import (
 
 type (
 	UnassignFromCourseUsecase interface {
-		Execute(context.Context, string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID, id string, isAdmin bool) apperrors.ApplicationError
 	}
 
 	unassignFromCourseUsecase struct {
@@ -22,7 +22,7 @@ func NewUnassignFromCourseUsecase(contextFactory appcontext.Factory) UnassignFro
 	return &unassignFromCourseUsecase{contextFactory: contextFactory}
 }
 
-func (u *unassignFromCourseUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
+func (u *unassignFromCourseUsecase) Execute(ctx context.Context, requesterID, id string, isAdmin bool) apperrors.ApplicationError {
 	app := u.contextFactory()
 
 	existing, err := app.Repositories.LearningStrategy.GetCourseStrategy(ctx, id)
@@ -31,6 +31,19 @@ func (u *unassignFromCourseUsecase) Execute(ctx context.Context, id string) appe
 	}
 	if existing == nil {
 		return apperrors.NewNotFoundError("course learning strategy assignment not found")
+	}
+
+	if !isAdmin {
+		course, err := app.Repositories.Course.Get(ctx, existing.CourseID)
+		if err != nil {
+			return apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil {
+			return apperrors.NewNotFoundError("course not found")
+		}
+		if course.TeacherID != requesterID {
+			return apperrors.NewForbiddenError()
+		}
 	}
 
 	if err := app.Repositories.LearningStrategy.UnassignFromCourse(ctx, id); err != nil {

@@ -3,9 +3,9 @@ package learningstrategy
 import (
 	"net/http"
 
-	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
-
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
+	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 )
 
 type assignToCourseInput struct {
@@ -16,14 +16,17 @@ type assignToCourseInput struct {
 
 func NewAssignToCourseHandler(uc ucLS.AssignToCourseUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requesterID := middlewares.GetUserID(c)
 		courseID := c.Param("id")
+		isAdmin := middlewares.HasRole(c, "admin") || middlewares.HasRole(c, "superadmin")
+
 		var input assignToCourseInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		output, appErr := uc.Execute(c, courseID, ucLS.AssignToCourseInput{
+		output, appErr := uc.Execute(c, requesterID, courseID, isAdmin, ucLS.AssignToCourseInput{
 			StrategyID: input.StrategyID,
 			IsDefault:  input.IsDefault,
 			Config:     input.Config,

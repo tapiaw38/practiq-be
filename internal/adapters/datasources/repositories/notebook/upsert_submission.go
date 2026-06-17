@@ -18,7 +18,7 @@ func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubm
 			ai_is_correct = EXCLUDED.ai_is_correct,
 			ai_feedback = EXCLUDED.ai_feedback,
 			ai_reviewed_at = EXCLUDED.ai_reviewed_at,
-			teacher_is_correct = FALSE,
+			teacher_is_correct = NULL,
 			teacher_feedback = '',
 			teacher_reviewed_at = NULL,
 			updated_at = NOW()

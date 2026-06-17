@@ -78,7 +78,7 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	summary := calculateSummary(topicProgress)
 
 	recentAttempts := []domain.StudentAttempt{}
-	dailyAttempts, err := app.Repositories.StudentAttempt.GetDailyAttempts(ctx, filter.StudentID, filter.From, filter.To)
+	dailyAttempts, err := app.Repositories.StudentAttempt.GetDailyAttempts(ctx, filter.StudentID, filter.CourseID, filter.From, filter.To)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
