@@ -9,7 +9,12 @@ import (
 func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubmission) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO notebook_submissions (page_id, student_id, canvas_data, answer_text, ai_recognized_text, ai_is_correct, ai_feedback, ai_reviewed_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		SELECT $1, $2, $3, $4, $5, $6, $7, $8
+		WHERE EXISTS (
+			SELECT 1 FROM notebook_pages np
+			JOIN notebooks n ON n.id = np.notebook_id
+			WHERE np.id = $1 AND n.deleted_at IS NULL
+		)
 		ON CONFLICT (page_id, student_id)
 		DO UPDATE SET
 			canvas_data = EXCLUDED.canvas_data,

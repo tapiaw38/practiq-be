@@ -8,7 +8,12 @@ import (
 )
 
 func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Topic, error) {
-	query := `SELECT id, course_id, title, description, order_index, created_at FROM topics WHERE course_id = $1 ORDER BY order_index ASC`
+	query := `
+		SELECT t.id, t.course_id, t.title, t.description, t.order_index, t.created_at
+		FROM topics t
+		JOIN courses c ON c.id = t.course_id
+		WHERE t.course_id = $1 AND c.deleted_at IS NULL
+		ORDER BY t.order_index ASC`
 
 	args := []interface{}{filter.CourseID}
 	argIndex := 2

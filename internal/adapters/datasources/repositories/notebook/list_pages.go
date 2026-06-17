@@ -8,8 +8,11 @@ import (
 
 func (r *repository) listPages(ctx context.Context, notebookID string) ([]domain.NotebookPage, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, notebook_id, page_number, title, content_type, content_data, instructions, created_at
-		FROM notebook_pages WHERE notebook_id = $1 ORDER BY page_number ASC
+		SELECT np.id, np.notebook_id, np.page_number, np.title, np.content_type, np.content_data, np.instructions, np.created_at
+		FROM notebook_pages np
+		JOIN notebooks n ON n.id = np.notebook_id
+		WHERE np.notebook_id = $1 AND n.deleted_at IS NULL
+		ORDER BY np.page_number ASC
 	`, notebookID)
 	if err != nil {
 		return nil, err

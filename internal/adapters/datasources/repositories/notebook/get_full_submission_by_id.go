@@ -20,7 +20,7 @@ func (r *repository) GetFullSubmissionByID(ctx context.Context, id string) (*dom
 		JOIN notebook_pages np ON np.id = ns.page_id
 		JOIN notebooks n ON n.id = np.notebook_id
 		LEFT JOIN user_profiles up ON up.id = ns.student_id
-		WHERE ns.id = $1
+		WHERE ns.id = $1 AND n.deleted_at IS NULL
 	`, id).Scan(
 		&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText,
 		&s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt,

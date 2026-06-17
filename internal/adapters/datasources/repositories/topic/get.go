@@ -9,8 +9,10 @@ import (
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.Topic, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, course_id, title, description, order_index, created_at
-		FROM topics WHERE id = $1
+		SELECT t.id, t.course_id, t.title, t.description, t.order_index, t.created_at
+		FROM topics t
+		JOIN courses c ON c.id = t.course_id
+		WHERE t.id = $1 AND c.deleted_at IS NULL
 	`, id)
 
 	var t domain.Topic

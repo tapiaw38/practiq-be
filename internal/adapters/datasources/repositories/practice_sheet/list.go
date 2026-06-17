@@ -10,10 +10,11 @@ import (
 
 func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.PracticeSheet, error) {
 	query := `
-		SELECT id, course_id, COALESCE(topic_id::text,''), COALESCE(strategy_id::text,''), title, level, sheet_type, test_style, created_by, created_at
-		FROM practice_sheets
-		WHERE course_id = $1
-		ORDER BY created_at DESC`
+		SELECT ps.id, ps.course_id, COALESCE(ps.topic_id::text,''), COALESCE(ps.strategy_id::text,''), ps.title, ps.level, ps.sheet_type, ps.test_style, ps.created_by, ps.created_at
+		FROM practice_sheets ps
+		JOIN courses c ON c.id = ps.course_id
+		WHERE ps.course_id = $1 AND c.deleted_at IS NULL
+		ORDER BY ps.created_at DESC`
 
 	args := []interface{}{filter.CourseID}
 	argIndex := 2

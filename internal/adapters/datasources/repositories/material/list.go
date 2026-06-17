@@ -8,7 +8,12 @@ import (
 )
 
 func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Material, error) {
-	query := `SELECT id, course_id, teacher_id, title, type, COALESCE(file_url,''), COALESCE(extracted_text,''), status, created_at FROM materials WHERE course_id = $1 ORDER BY created_at DESC`
+	query := `
+		SELECT m.id, m.course_id, m.teacher_id, m.title, m.type, COALESCE(m.file_url,''), COALESCE(m.extracted_text,''), m.status, m.created_at
+		FROM materials m
+		JOIN courses c ON c.id = m.course_id
+		WHERE m.course_id = $1 AND c.deleted_at IS NULL
+		ORDER BY m.created_at DESC`
 
 	args := []interface{}{filter.CourseID}
 	argIndex := 2

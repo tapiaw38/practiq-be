@@ -8,8 +8,11 @@ import (
 
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebook, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, course_id, teacher_id, title, description, level, created_at, updated_at
-		FROM notebooks WHERE course_id = $1 AND deleted_at IS NULL ORDER BY level ASC, created_at DESC
+		SELECT n.id, n.course_id, n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
+		FROM notebooks n
+		JOIN courses c ON c.id = n.course_id
+		WHERE n.course_id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
+		ORDER BY n.level ASC, n.created_at DESC
 	`, courseID)
 	if err != nil {
 		return nil, err
