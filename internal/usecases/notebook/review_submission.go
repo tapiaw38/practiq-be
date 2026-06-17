@@ -123,7 +123,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 }
 
 func resolveImageForOCR(ctx context.Context, app *appcontext.Context, value string) (string, error) {
-	if app.ImageStorage == nil || !app.ImageStorage.IsConfigured() {
+	if app.ImageStorage == nil {
 		return value, nil
 	}
 	return app.ImageStorage.ResolveDataURI(ctx, value)

@@ -90,7 +90,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		}
 	}
 
-	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil {
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
 			submission.CanvasData = uploaded
 		} else {

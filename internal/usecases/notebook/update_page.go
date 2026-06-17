@@ -31,7 +31,7 @@ func NewUpdatePageUsecase(contextFactory appcontext.Factory) UpdatePageUsecase {
 func (u *updatePageUsecase) Execute(ctx context.Context, input UpdatePageInput) error {
 	app := u.contextFactory()
 	contentData := input.ContentData
-	if isLikelyImageData(contentData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+	if isLikelyImageData(contentData) && app.ImageStorage != nil {
 		userID := "unknown"
 		page, err := app.Repositories.Notebook.GetPage(ctx, input.PageID)
 		if err != nil {

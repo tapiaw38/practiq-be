@@ -28,6 +28,14 @@ func NewGeneratePDFUsecase(contextFactory appcontext.Factory) GeneratePDFUsecase
 func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
+	hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, teacherID, filter.StudentID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
+	}
+	if !hasAccess {
+		return nil, apperrors.NewForbiddenError()
+	}
+
 	student, err := app.Repositories.UserProfile.Get(ctx, filter.StudentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
@@ -112,9 +120,15 @@ func filterProgressByDate(progress []domain.StudentTopicProgress, from, to *time
 }
 
 func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, courseProgress []domain.StudentCourseProgress, topicProgress []domain.StudentTopicProgress) []domain.CourseProgressItem {
-	// Group topic progress by course - we'll calculate from course progress data
 	courseTopics := make(map[string][]domain.StudentTopicProgress)
-	_ = courseTopics // Used below when we have topic-course mapping
+
+	for _, tp := range topicProgress {
+		topic, err := app.Repositories.Topic.Get(ctx, tp.TopicID)
+		if err != nil || topic == nil {
+			continue
+		}
+		courseTopics[topic.CourseID] = append(courseTopics[topic.CourseID], tp)
+	}
 
 	items := make([]domain.CourseProgressItem, 0, len(courseProgress))
 	for _, cp := range courseProgress {

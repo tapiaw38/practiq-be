@@ -115,7 +115,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
-		if hasCanvasAnswer && isDataURIAnswer(attempt.CanvasData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+		if hasCanvasAnswer && isDataURIAnswer(attempt.CanvasData) && app.ImageStorage != nil {
 			if uploaded, uploadErr := app.ImageStorage.UploadDataURI(ctx, "practice", studentID, attempt.CanvasData); uploadErr == nil {
 				imageURL = uploaded
 			} else {

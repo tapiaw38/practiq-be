@@ -36,7 +36,7 @@ func NewAddPageUsecase(contextFactory appcontext.Factory) AddPageUsecase {
 func (u *addPageUsecase) Execute(ctx context.Context, input AddPageInput) (*AddPageOutput, error) {
 	app := u.contextFactory()
 	contentData := input.ContentData
-	if isLikelyImageData(contentData) && app.ImageStorage != nil && app.ImageStorage.IsConfigured() {
+	if isLikelyImageData(contentData) && app.ImageStorage != nil {
 		notebook, err := app.Repositories.Notebook.Get(ctx, input.NotebookID)
 		if err != nil {
 			return nil, err
