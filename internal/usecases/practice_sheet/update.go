@@ -11,7 +11,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -36,8 +36,21 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Verify practice sheet exists and check ownership
+	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
+	}
+	if ps == nil {
+		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
+	}
+
+	if !isAdmin && ps.CreatedBy != requesterID {
+		return nil, apperrors.NewForbiddenError()
+	}
 
 	if err := app.Repositories.PracticeSheet.Update(ctx, id, domain.PracticeSheet{
 		Title:     input.Title,
@@ -53,7 +66,7 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
 	}
 
-	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
+	ps, err = app.Repositories.PracticeSheet.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
 	}

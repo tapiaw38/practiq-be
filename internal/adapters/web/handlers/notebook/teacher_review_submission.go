@@ -1,6 +1,7 @@
 package notebook
 
 import (
+	"log"
 	"net/http"
 
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
@@ -26,10 +27,11 @@ func NewTeacherReviewSubmissionHandler(uc ucNB.TeacherReviewSubmissionUsecase) g
 		})
 		if err != nil {
 			if err.Error() == "submission not found" {
-				c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submission-not-found", "message": err.Error()})
+				c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submission-not-found", "message": "submission not found"})
 				return
 			}
-			c.JSON(http.StatusInternalServerError, gin.H{"code": "notebook:teacher-review-error", "message": err.Error()})
+			log.Printf("[notebook handler] teacher review error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"code": "notebook:teacher-review-error", "message": "internal server error"})
 			return
 		}
 		c.JSON(http.StatusOK, output)

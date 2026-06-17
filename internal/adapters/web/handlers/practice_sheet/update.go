@@ -6,6 +6,7 @@ import (
 	ucPS "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
 type updateSheetInput struct {
@@ -20,6 +21,9 @@ type updateSheetInput struct {
 func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+
 		var input updateSheetInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
@@ -31,7 +35,7 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, id, ucPS.UpdateInput{
+		output, appErr := uc.Execute(c, requesterID, isAdmin, id, ucPS.UpdateInput{
 			Title:       input.Title,
 			TopicID:     input.TopicID,
 			Level:       input.Level,

@@ -3,6 +3,7 @@ package material
 import (
 	"context"
 
+	materialRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -50,7 +51,7 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Create
 		return nil, apperrors.NewApplicationError(mappings.MaterialCreateError, err)
 	}
 
-	materials, err := app.Repositories.Material.List(ctx, input.CourseID)
+	materials, err := app.Repositories.Material.List(ctx, materialRepo.ListFilter{CourseID: input.CourseID})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialListError, err)
 	}

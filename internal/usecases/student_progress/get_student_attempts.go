@@ -10,7 +10,7 @@ import (
 
 type (
 	GetStudentAttemptsUsecase interface {
-		Execute(ctx context.Context, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError)
 	}
 
 	getStudentAttemptsUsecase struct {
@@ -26,8 +26,19 @@ func NewGetStudentAttemptsUsecase(contextFactory appcontext.Factory) GetStudentA
 	return &getStudentAttemptsUsecase{contextFactory: contextFactory}
 }
 
-func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError) {
+func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Authorization check: only admins or teachers with access can view student attempts
+	if !isAdmin {
+		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
+		}
+		if !hasAccess {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	attempts, err := app.Repositories.StudentAttempt.ListBySheet(ctx, studentID, sheetID)
 	if err != nil {

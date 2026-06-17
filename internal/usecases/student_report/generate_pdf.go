@@ -124,20 +124,47 @@ func filterProgressByDate(progress []domain.StudentTopicProgress, from, to *time
 }
 
 func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, courseProgress []domain.StudentCourseProgress, topicProgress []domain.StudentTopicProgress) []domain.CourseProgressItem {
-	courseTopics := make(map[string][]domain.StudentTopicProgress)
-
+	// Batch load all topics
+	topicIDs := make([]string, 0, len(topicProgress))
 	for _, tp := range topicProgress {
-		topic, err := app.Repositories.Topic.Get(ctx, tp.TopicID)
-		if err != nil || topic == nil {
-			continue
-		}
-		courseTopics[topic.CourseID] = append(courseTopics[topic.CourseID], tp)
+		topicIDs = append(topicIDs, tp.TopicID)
 	}
 
+	topics, err := app.Repositories.Topic.GetByIDs(ctx, topicIDs)
+	topicMap := make(map[string]*domain.Topic)
+	if err == nil {
+		for i := range topics {
+			topicMap[topics[i].ID] = &topics[i]
+		}
+	}
+
+	// Build course -> topics mapping
+	courseTopics := make(map[string][]domain.StudentTopicProgress)
+	for _, tp := range topicProgress {
+		if topic, ok := topicMap[tp.TopicID]; ok {
+			courseTopics[topic.CourseID] = append(courseTopics[topic.CourseID], tp)
+		}
+	}
+
+	// Batch load all courses
+	courseIDs := make([]string, 0, len(courseProgress))
+	for _, cp := range courseProgress {
+		courseIDs = append(courseIDs, cp.CourseID)
+	}
+
+	courses, err := app.Repositories.Course.GetByIDs(ctx, courseIDs)
+	courseMap := make(map[string]*domain.Course)
+	if err == nil {
+		for i := range courses {
+			courseMap[courses[i].ID] = &courses[i]
+		}
+	}
+
+	// Build items
 	items := make([]domain.CourseProgressItem, 0, len(courseProgress))
 	for _, cp := range courseProgress {
-		course, err := app.Repositories.Course.Get(ctx, cp.CourseID)
-		if err != nil || course == nil {
+		course, ok := courseMap[cp.CourseID]
+		if !ok {
 			continue
 		}
 

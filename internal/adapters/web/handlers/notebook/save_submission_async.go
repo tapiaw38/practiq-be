@@ -33,6 +33,7 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 		if err := repo.Create(c.Request.Context(), domain.SubmitJob{
 			ID:        jobID,
 			Kind:      "notebook",
+			StudentID: studentID,
 			Status:    "processing",
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -44,14 +45,17 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 			CanvasData string `json:"canvas_data"`
 			AnswerText string `json:"answer_text"`
 		}) {
-			err := uc.Execute(context.Background(), ucNB.SaveSubmissionInput{
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			err := uc.Execute(ctx, ucNB.SaveSubmissionInput{
 				PageID:     pid,
 				StudentID:  sid,
 				CanvasData: payload.CanvasData,
 				AnswerText: payload.AnswerText,
 			})
 			if err != nil {
-				if updateErr := repo.Update(context.Background(), domain.SubmitJob{
+				if updateErr := repo.Update(ctx, domain.SubmitJob{
 					ID:        jid,
 					Status:    "failed",
 					ErrorCode: "notebook:submit-failed",
@@ -61,10 +65,10 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 				}
 				return
 			}
-			if updateErr := repo.Update(context.Background(), domain.SubmitJob{
+			if updateErr := repo.Update(ctx, domain.SubmitJob{
 				ID:     jid,
 				Status: "done",
-			}); updateErr != nil {
+			}); updateErr != nil{
 				log.Printf("failed to update submit job: %v", updateErr)
 			}
 		}(pageID, studentID, jobID, input)

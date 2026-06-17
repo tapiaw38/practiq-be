@@ -2,19 +2,34 @@ package practicesheet
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lib/pq"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-func (r *repository) List(ctx context.Context, courseID string) ([]domain.PracticeSheet, error) {
+func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.PracticeSheet, error) {
 	query := `
 		SELECT id, course_id, COALESCE(topic_id::text,''), COALESCE(strategy_id::text,''), title, level, sheet_type, test_style, created_by, created_at
 		FROM practice_sheets
 		WHERE course_id = $1
-		ORDER BY created_at DESC
-	`
-	rows, err := r.db.QueryContext(ctx, query, courseID)
+		ORDER BY created_at DESC`
+
+	args := []interface{}{filter.CourseID}
+	argIndex := 2
+
+	if filter.Limit > 0 {
+		query += fmt.Sprintf(` LIMIT $%d`, argIndex)
+		args = append(args, filter.Limit)
+		argIndex++
+	}
+
+	if filter.Offset > 0 {
+		query += fmt.Sprintf(` OFFSET $%d`, argIndex)
+		args = append(args, filter.Offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

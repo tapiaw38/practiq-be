@@ -3,6 +3,7 @@ package courselevel
 import (
 	"context"
 
+	practiceSheetRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/practice_sheet"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
@@ -41,7 +42,9 @@ func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*
 		}
 	}
 
-	sheets, err := app.Repositories.PracticeSheet.List(ctx, courseID)
+	sheets, err := app.Repositories.PracticeSheet.List(ctx, practiceSheetRepo.ListFilter{
+		CourseID: courseID,
+	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}

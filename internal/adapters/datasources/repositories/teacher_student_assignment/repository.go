@@ -10,9 +10,14 @@ import (
 type Repository interface {
 	Assign(context.Context, domain.TeacherStudentAssignment) error
 	Unassign(context.Context, string, string) error
-	ListTeachers(context.Context, string) ([]domain.UserProfile, error)
-	ListStudents(context.Context, string) ([]domain.UserProfile, error)
+	ListTeachers(context.Context, ListFilter) ([]domain.UserProfile, error)
+	ListStudents(context.Context, ListFilter) ([]domain.UserProfile, error)
 	HasAccess(context.Context, string, string) (bool, error)
+}
+type ListFilter struct {
+	UserID string
+	Limit  int
+	Offset int
 }
 type repository struct {
 	db *sql.DB

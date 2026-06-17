@@ -12,7 +12,12 @@ import (
 func NewListMyStudentsHandler(uc ucAssignment.ListStudentsUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		teacherID := middlewares.GetUserID(c)
-		output, appErr := uc.Execute(c, teacherID)
+
+		input := ucAssignment.ListStudentsInput{
+			TeacherID: teacherID,
+		}
+
+		output, appErr := uc.Execute(c, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

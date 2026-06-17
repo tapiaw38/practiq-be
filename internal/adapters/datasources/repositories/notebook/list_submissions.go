@@ -2,12 +2,13 @@ package notebook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
 func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilter) ([]domain.NotebookSubmissionFull, error) {
-	rows, err := r.db.QueryContext(ctx, `
+	query := `
 		SELECT ns.id, ns.page_id, ns.student_id, ns.canvas_data, ns.answer_text,
 		       COALESCE(ns.ai_recognized_text,''), ns.ai_is_correct, COALESCE(ns.ai_feedback,''), ns.ai_reviewed_at,
 		       ns.teacher_is_correct, COALESCE(ns.teacher_feedback,''), ns.teacher_reviewed_at,
@@ -23,8 +24,23 @@ func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilte
 		  AND ($3 = '' OR n.course_id::text = $3)
 		  AND ($4 = '' OR ($4 = 'reviewed' AND ns.ai_reviewed_at IS NOT NULL) OR ($4 = 'unreviewed' AND ns.ai_reviewed_at IS NULL))
 		  AND ($5 = '' OR n.teacher_id = $5)
-		ORDER BY ns.submitted_at DESC
-	`, filter.NotebookID, filter.StudentID, filter.CourseID, filter.Reviewed, filter.TeacherID)
+		ORDER BY ns.submitted_at DESC`
+
+	args := []interface{}{filter.NotebookID, filter.StudentID, filter.CourseID, filter.Reviewed, filter.TeacherID}
+	argIndex := 6
+
+	if filter.Limit > 0 {
+		query += fmt.Sprintf(` LIMIT $%d`, argIndex)
+		args = append(args, filter.Limit)
+		argIndex++
+	}
+
+	if filter.Offset > 0 {
+		query += fmt.Sprintf(` OFFSET $%d`, argIndex)
+		args = append(args, filter.Offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

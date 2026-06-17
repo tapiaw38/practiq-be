@@ -10,7 +10,7 @@ import (
 
 type (
 	DeleteUsecase interface {
-		Execute(context.Context, string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError
 	}
 
 	deleteUsecase struct {
@@ -22,8 +22,21 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-func (u *deleteUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
+
+	// Verify practice sheet exists and check ownership
+	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
+	}
+	if ps == nil {
+		return apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
+	}
+
+	if !isAdmin && ps.CreatedBy != requesterID {
+		return apperrors.NewForbiddenError()
+	}
 
 	if err := app.Repositories.PracticeSheet.Delete(ctx, id); err != nil {
 		return apperrors.NewApplicationError(mappings.PracticeSheetDeleteError, err)

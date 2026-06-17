@@ -9,7 +9,7 @@ import (
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebook, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, course_id, teacher_id, title, description, level, created_at, updated_at
-		FROM notebooks WHERE course_id = $1 ORDER BY level ASC, created_at DESC
+		FROM notebooks WHERE course_id = $1 AND deleted_at IS NULL ORDER BY level ASC, created_at DESC
 	`, courseID)
 	if err != nil {
 		return nil, err

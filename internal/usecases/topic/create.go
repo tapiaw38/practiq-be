@@ -3,6 +3,7 @@ package topic
 import (
 	"context"
 
+	topicRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/topic"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -47,7 +48,7 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Create
 		return nil, apperrors.NewApplicationError(mappings.TopicCreateError, err)
 	}
 
-	topics, err := app.Repositories.Topic.List(ctx, input.CourseID)
+	topics, err := app.Repositories.Topic.List(ctx, topicRepo.ListFilter{CourseID: input.CourseID})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.TopicListError, err)
 	}

@@ -3,6 +3,7 @@ package teacherstudentassignment
 import (
 	"context"
 
+	tsaRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/teacher_student_assignment"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
@@ -10,11 +11,17 @@ import (
 
 type (
 	ListTeachersUsecase interface {
-		Execute(context.Context, string) (*ListTeachersOutput, apperrors.ApplicationError)
+		Execute(context.Context, ListTeachersInput) (*ListTeachersOutput, apperrors.ApplicationError)
 	}
 
 	listTeachersUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	ListTeachersInput struct {
+		StudentID string
+		Limit     int
+		Offset    int
 	}
 
 	ListTeachersOutput struct {
@@ -26,9 +33,16 @@ func NewListTeachersUsecase(contextFactory appcontext.Factory) ListTeachersUseca
 	return &listTeachersUsecase{contextFactory: contextFactory}
 }
 
-func (u *listTeachersUsecase) Execute(ctx context.Context, studentID string) (*ListTeachersOutput, apperrors.ApplicationError) {
+func (u *listTeachersUsecase) Execute(ctx context.Context, input ListTeachersInput) (*ListTeachersOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
-	users, err := app.Repositories.TeacherStudentAssignment.ListTeachers(ctx, studentID)
+
+	filter := tsaRepo.ListFilter{
+		UserID: input.StudentID,
+		Limit:  input.Limit,
+		Offset: input.Offset,
+	}
+
+	users, err := app.Repositories.TeacherStudentAssignment.ListTeachers(ctx, filter)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
 	}

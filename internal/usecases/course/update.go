@@ -12,7 +12,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -37,7 +37,7 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if strings.TrimSpace(input.GradeID) == "" {
@@ -45,6 +45,19 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 	}
 	if strings.TrimSpace(input.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
+	}
+
+	// Verify course exists and check ownership
+	course, err := app.Repositories.Course.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if course == nil {
+		return nil, apperrors.NewNotFoundError("course not found")
+	}
+
+	if !isAdmin && course.TeacherID != requesterID {
+		return nil, apperrors.NewForbiddenError()
 	}
 
 	if err := app.Repositories.Course.Update(ctx, id, domain.Course{

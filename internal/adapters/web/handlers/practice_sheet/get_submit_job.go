@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	ucPS "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 
@@ -13,7 +14,10 @@ import (
 
 func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
 		jobID := c.Param("jobId")
+
 		job, err := repo.GetByID(c.Request.Context(), jobID)
 		if err != nil {
 			log.Printf("failed to get submit job: %v", err)
@@ -22,6 +26,12 @@ func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 		}
 		if job == nil {
 			c.JSON(http.StatusNotFound, gin.H{"code": "practice_sheet:submit-job-not-found", "message": "submit job not found"})
+			return
+		}
+
+		// Authorization check: only the job owner or admin can view results
+		if !isAdmin && job.StudentID != requesterID {
+			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user's submit job results"})
 			return
 		}
 		// Preserve original JSON response shape

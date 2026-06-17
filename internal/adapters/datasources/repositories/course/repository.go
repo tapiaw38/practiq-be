@@ -14,6 +14,7 @@ type ListFilterOptions struct {
 type Repository interface {
 	Create(context.Context, domain.Course) (string, error)
 	Get(context.Context, string) (*domain.Course, error)
+	GetByIDs(context.Context, []string) ([]domain.Course, error)
 	List(context.Context, ListFilterOptions) ([]domain.Course, error)
 	Update(context.Context, string, domain.Course) error
 	Delete(context.Context, string) error

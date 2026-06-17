@@ -31,6 +31,7 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 		if err := repo.Create(c.Request.Context(), domain.SubmitJob{
 			ID:        jobID,
 			Kind:      "practice_sheet",
+			StudentID: studentID,
 			Status:    "processing",
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -39,9 +40,12 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 		}
 
 		go func(sheetID, uid, jid string, payload submitInput) {
-			output, appErr := uc.Execute(context.Background(), sheetID, uid, ucPS.SubmitInput{Attempts: payload.Attempts})
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			output, appErr := uc.Execute(ctx, sheetID, uid, ucPS.SubmitInput{Attempts: payload.Attempts})
 			if appErr != nil {
-				if err := repo.Update(context.Background(), domain.SubmitJob{
+				if err := repo.Update(ctx, domain.SubmitJob{
 					ID:        jid,
 					Status:    "failed",
 					ErrorCode: "practice_sheet:submit-failed",
@@ -52,7 +56,7 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 				return
 			}
 			resultJSON, _ := json.Marshal(output)
-			if err := repo.Update(context.Background(), domain.SubmitJob{
+			if err := repo.Update(ctx, domain.SubmitJob{
 				ID:     jid,
 				Status: "done",
 				Result: resultJSON,

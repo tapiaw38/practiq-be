@@ -18,6 +18,8 @@ type (
 		CourseID   string
 		Reviewed   string
 		TeacherID  string
+		Limit      int
+		Offset     int
 	}
 
 	ListSubmissionsOutput struct {
@@ -39,6 +41,8 @@ func (u *listSubmissionsUsecase) Execute(ctx context.Context, input ListSubmissi
 		CourseID:   input.CourseID,
 		Reviewed:   input.Reviewed,
 		TeacherID:  input.TeacherID,
+		Limit:      input.Limit,
+		Offset:     input.Offset,
 	})
 	if err != nil {
 		return nil, err

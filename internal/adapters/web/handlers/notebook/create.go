@@ -1,6 +1,7 @@
 package notebook
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 			Level       int    `json:"level"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
 		out, err := uc.Execute(c, teacherID, ucNB.CreateInput{
@@ -28,7 +29,8 @@ func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 			Level:       input.Level,
 		})
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			log.Printf("[notebook handler] create error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			return
 		}
 		c.JSON(http.StatusCreated, out)

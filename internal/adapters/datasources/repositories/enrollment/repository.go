@@ -9,8 +9,14 @@ import (
 
 type Repository interface {
 	Create(context.Context, domain.Enrollment) error
-	ListStudents(context.Context, string) ([]domain.UserProfile, error)
+	ListStudents(context.Context, ListFilter) ([]domain.UserProfile, error)
 	Exists(context.Context, string, string) (bool, error)
+}
+
+type ListFilter struct {
+	CourseID string
+	Limit    int
+	Offset   int
 }
 type repository struct {
 	db *sql.DB

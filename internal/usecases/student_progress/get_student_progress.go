@@ -10,7 +10,7 @@ import (
 
 type (
 	GetStudentProgressUsecase interface {
-		Execute(ctx context.Context, studentID string) (*GetStudentProgressOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, studentID string) (*GetStudentProgressOutput, apperrors.ApplicationError)
 	}
 
 	getStudentProgressUsecase struct {
@@ -27,8 +27,19 @@ func NewGetStudentProgressUsecase(contextFactory appcontext.Factory) GetStudentP
 	return &getStudentProgressUsecase{contextFactory: contextFactory}
 }
 
-func (u *getStudentProgressUsecase) Execute(ctx context.Context, studentID string) (*GetStudentProgressOutput, apperrors.ApplicationError) {
+func (u *getStudentProgressUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, studentID string) (*GetStudentProgressOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Authorization check: only admins or teachers with access can view student progress
+	if !isAdmin {
+		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
+		}
+		if !hasAccess {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	list, err := app.Repositories.StudentProgress.ListByStudent(ctx, studentID)
 	if err != nil {

@@ -1,6 +1,7 @@
 package notebook
 
 import (
+	"log"
 	"net/http"
 
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
@@ -14,7 +15,8 @@ func NewGetHandler(uc ucNB.GetUsecase) gin.HandlerFunc {
 		studentID := c.Query("student_id")
 		out, err := uc.Execute(c, id, studentID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			log.Printf("[notebook handler] get error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			return
 		}
 		if out == nil {

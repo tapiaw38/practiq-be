@@ -3,6 +3,7 @@ package material
 import (
 	"context"
 
+	materialRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
@@ -10,11 +11,17 @@ import (
 
 type (
 	ListUsecase interface {
-		Execute(context.Context, string) (*ListOutput, apperrors.ApplicationError)
+		Execute(context.Context, ListInput) (*ListOutput, apperrors.ApplicationError)
 	}
 
 	listUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	ListInput struct {
+		CourseID string
+		Limit    int
+		Offset   int
 	}
 
 	ListOutput struct {
@@ -26,10 +33,16 @@ func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
 	return &listUsecase{contextFactory: contextFactory}
 }
 
-func (u *listUsecase) Execute(ctx context.Context, courseID string) (*ListOutput, apperrors.ApplicationError) {
+func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*ListOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	materials, err := app.Repositories.Material.List(ctx, courseID)
+	filter := materialRepo.ListFilter{
+		CourseID: input.CourseID,
+		Limit:    input.Limit,
+		Offset:   input.Offset,
+	}
+
+	materials, err := app.Repositories.Material.List(ctx, filter)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialListError, err)
 	}

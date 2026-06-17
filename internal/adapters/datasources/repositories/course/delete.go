@@ -1,8 +1,12 @@
 package course
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 func (r *repository) Delete(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, `DELETE FROM courses WHERE id=$1`, id)
+	query := `UPDATE courses SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, time.Now(), id)
 	return err
 }

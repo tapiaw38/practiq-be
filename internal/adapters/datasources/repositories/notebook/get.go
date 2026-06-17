@@ -11,7 +11,7 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.Notebook, erro
 	var nb domain.Notebook
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, course_id, teacher_id, title, description, level, created_at, updated_at
-		FROM notebooks WHERE id = $1
+		FROM notebooks WHERE id = $1 AND deleted_at IS NULL
 	`, id).Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil

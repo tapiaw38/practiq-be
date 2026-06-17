@@ -10,9 +10,14 @@ import (
 type Repository interface {
 	Create(context.Context, domain.Exercise) (string, error)
 	Get(context.Context, string) (*domain.Exercise, error)
-	List(context.Context, string) ([]domain.Exercise, error)
+	List(context.Context, ListFilter) ([]domain.Exercise, error)
 	Update(context.Context, string, domain.Exercise) error
 	Delete(context.Context, string) error
+}
+type ListFilter struct {
+	TopicID string
+	Limit   int
+	Offset  int
 }
 type repository struct {
 	db *sql.DB

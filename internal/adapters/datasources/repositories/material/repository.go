@@ -9,10 +9,16 @@ import (
 
 type Repository interface {
 	Create(context.Context, domain.Material) (string, error)
-	List(context.Context, string) ([]domain.Material, error)
+	List(context.Context, ListFilter) ([]domain.Material, error)
 	Get(context.Context, string) (*domain.Material, error)
 	Update(context.Context, string, domain.Material) error
 	Delete(context.Context, string) error
+}
+
+type ListFilter struct {
+	CourseID string
+	Limit    int
+	Offset   int
 }
 type repository struct {
 	db *sql.DB

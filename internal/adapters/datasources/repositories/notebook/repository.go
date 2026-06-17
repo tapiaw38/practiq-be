@@ -33,6 +33,8 @@ type SubmissionFilter struct {
 	CourseID   string
 	Reviewed   string
 	TeacherID  string
+	Limit      int
+	Offset     int
 }
 type repository struct {
 	db *sql.DB

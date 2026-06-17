@@ -13,7 +13,7 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.Course, error)
 		FROM courses c
 		LEFT JOIN grades g ON g.id = c.grade_id
 		LEFT JOIN subjects s ON s.id = c.subject_id
-		WHERE c.id = $1
+		WHERE c.id = $1 AND c.deleted_at IS NULL
 	`
 	row := r.db.QueryRowContext(ctx, query, id)
 	var c domain.Course

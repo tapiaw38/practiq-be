@@ -1,6 +1,7 @@
 package notebook
 
 import (
+	"log"
 	"net/http"
 
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
@@ -18,7 +19,7 @@ func NewUpdatePageHandler(uc ucNB.UpdatePageUsecase) gin.HandlerFunc {
 			Instructions string `json:"instructions"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
 		if err := uc.Execute(c, ucNB.UpdatePageInput{
@@ -28,7 +29,8 @@ func NewUpdatePageHandler(uc ucNB.UpdatePageUsecase) gin.HandlerFunc {
 			ContentData:  input.ContentData,
 			Instructions: input.Instructions,
 		}); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		log.Printf("[notebook handler] update page error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			return
 		}
 		c.JSON(http.StatusNoContent, nil)

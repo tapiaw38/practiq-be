@@ -2,6 +2,8 @@ package exercise
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
@@ -11,6 +13,9 @@ func (r *repository) Update(ctx context.Context, id string, e domain.Exercise) e
 	metadata := e.Metadata
 	if metadata == "" {
 		metadata = "{}"
+	}
+	if !json.Valid([]byte(metadata)) {
+		return errors.New("invalid metadata JSON")
 	}
 	_, err := r.db.ExecContext(ctx, query, e.Type, e.Question, e.CorrectAnswer, e.Explanation, e.Difficulty, metadata, id)
 	return err

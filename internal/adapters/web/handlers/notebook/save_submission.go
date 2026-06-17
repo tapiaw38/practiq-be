@@ -1,6 +1,7 @@
 package notebook
 
 import (
+	"log"
 	"net/http"
 
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
@@ -18,7 +19,7 @@ func NewSaveSubmissionHandler(uc ucNB.SaveSubmissionUsecase) gin.HandlerFunc {
 			AnswerText string `json:"answer_text"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
 		if err := uc.Execute(c, ucNB.SaveSubmissionInput{
@@ -27,7 +28,8 @@ func NewSaveSubmissionHandler(uc ucNB.SaveSubmissionUsecase) gin.HandlerFunc {
 			CanvasData: input.CanvasData,
 			AnswerText: input.AnswerText,
 		}); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		log.Printf("[notebook handler] save submission error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			return
 		}
 		c.JSON(http.StatusNoContent, nil)

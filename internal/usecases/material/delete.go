@@ -10,7 +10,7 @@ import (
 
 type (
 	DeleteUsecase interface {
-		Execute(context.Context, string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError
 	}
 
 	deleteUsecase struct {
@@ -22,8 +22,21 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-func (u *deleteUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
+
+	// Verify material exists and check ownership
+	material, err := app.Repositories.Material.Get(ctx, id)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.MaterialGetError, err)
+	}
+	if material == nil {
+		return apperrors.NewNotFoundError("material not found")
+	}
+
+	if !isAdmin && material.TeacherID != requesterID {
+		return apperrors.NewForbiddenError()
+	}
 
 	if err := app.Repositories.Material.Delete(ctx, id); err != nil {
 		return apperrors.NewApplicationError(mappings.MaterialDeleteError, err)

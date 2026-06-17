@@ -9,13 +9,13 @@ import (
 
 func (r *repository) GetByID(ctx context.Context, id string) (*domain.SubmitJob, error) {
 	query := `
-		SELECT id, kind, status, COALESCE(error_code,''), COALESCE(message,''), result, created_at, updated_at
+		SELECT id, kind, COALESCE(student_id,''), status, COALESCE(error_code,''), COALESCE(message,''), result, created_at, updated_at
 		FROM submit_jobs
 		WHERE id = $1
 	`
 	row := r.db.QueryRowContext(ctx, query, id)
 	var job domain.SubmitJob
-	err := row.Scan(&job.ID, &job.Kind, &job.Status, &job.ErrorCode, &job.Message, &job.Result, &job.CreatedAt, &job.UpdatedAt)
+	err := row.Scan(&job.ID, &job.Kind, &job.StudentID, &job.Status, &job.ErrorCode, &job.Message, &job.Result, &job.CreatedAt, &job.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
