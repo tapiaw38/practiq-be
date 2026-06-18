@@ -10,7 +10,7 @@ func (r *repository) HasAccess(ctx context.Context, teacherID, studentID string)
 			UNION
 			SELECT 1 FROM enrollments e
 			JOIN courses c ON c.id = e.course_id
-			WHERE c.teacher_id = $1 AND e.student_id = $2
+			WHERE c.teacher_id = $1 AND e.student_id = $2 AND c.deleted_at IS NULL
 		)
 	`
 	var exists bool

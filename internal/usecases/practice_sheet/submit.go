@@ -87,7 +87,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
 
 		if hasCanvasAnswer && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
-			if recognizedText, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, attempt.CanvasData, ex.CorrectAnswer); recognizeErr == nil {
+			normalizedCanvas := normalizeCanvasDataURI(attempt.CanvasData)
+			if recognizedText, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, normalizedCanvas, ex.CorrectAnswer); recognizeErr == nil {
 				normalizedRecognized := normalizeCanvasAnswer(recognizedText)
 				if normalizedRecognized != "" && normalizedRecognized != "UNREADABLE" {
 					answerText = normalizedRecognized
