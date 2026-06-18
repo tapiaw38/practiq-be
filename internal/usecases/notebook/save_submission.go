@@ -80,6 +80,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 				} else {
 					log.Printf("[image_storage] notebook submission resolve failed page_id=%s err=%v", input.PageID, err)
 				}
+				canvasForOCR = normalizeCanvasDataURI(canvasForOCR)
 				if recognizedRaw, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, canvasForOCR, expectedAnswer); recognizeErr == nil {
 					recognizedText := strings.TrimSpace(recognizedRaw)
 					submission.AIRecognizedText = recognizedText
@@ -169,4 +170,12 @@ func isBase64Like(value string) bool {
 
 func ptrTime(t time.Time) *time.Time {
 	return &t
+}
+
+func normalizeCanvasDataURI(value string) string {
+	trimmed := strings.TrimSpace(value)
+	if strings.HasPrefix(strings.ToLower(trimmed), "data:image/") {
+		return trimmed
+	}
+	return "data:image/png;base64," + trimmed
 }

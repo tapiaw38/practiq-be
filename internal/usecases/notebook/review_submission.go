@@ -75,6 +75,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 			log.Printf("[image_storage] notebook review resolve failed submission_id=%s err=%v", submissionID, resolveErr)
 			canvasData = submission.CanvasData
 		}
+		canvasData = normalizeCanvasDataURI(canvasData)
 		recognized, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, canvasData, expectedAnswer)
 		if recognizeErr != nil {
 			feedback = "Gillie: no se pudo analizar la imagen del cuaderno"
