@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/urlvalidator"
@@ -15,10 +16,9 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 	apiKey := strings.TrimSpace(cfg.APIKey)
 
-	// Validate URL to prevent SSRF attacks
 	fullURL := baseURL + path
 	if err := urlvalidator.ValidateURLWithOptions(fullURL, urlvalidator.Options{
-		AllowedPrivateHostnames: []string{"host.docker.internal"},
+		AllowedPrivateHostnames: allowedPrivateHostnames(),
 	}); err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
@@ -53,4 +53,21 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 		ContentType: resp.Header.Get("Content-Type"),
 		Body:        responseBody,
 	}, nil
+}
+
+func allowedPrivateHostnames() []string {
+	raw := strings.TrimSpace(os.Getenv("ASSISTANT_PROXY_ALLOWED_PRIVATE_HOSTNAMES"))
+	if raw == "" {
+		return nil
+	}
+
+	parts := strings.Split(raw, ",")
+	hostnames := make([]string, 0, len(parts))
+	for _, part := range parts {
+		hostname := strings.TrimSpace(part)
+		if hostname != "" {
+			hostnames = append(hostnames, hostname)
+		}
+	}
+	return hostnames
 }
