@@ -34,8 +34,15 @@ func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
 
-	if !isAdmin && ps.CreatedBy != requesterID {
-		return apperrors.NewForbiddenError()
+	// Check course ownership for authorization
+	if !isAdmin {
+		course, err := app.Repositories.Course.Get(ctx, ps.CourseID)
+		if err != nil || course == nil {
+			return apperrors.NewForbiddenError()
+		}
+		if course.TeacherID != requesterID {
+			return apperrors.NewForbiddenError()
+		}
 	}
 
 	if err := app.Repositories.PracticeSheet.Delete(ctx, id); err != nil {

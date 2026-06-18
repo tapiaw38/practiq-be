@@ -15,6 +15,7 @@ func (r *repository) ListStudents(ctx context.Context, filter ListFilter) ([]dom
 		LEFT JOIN enrollments e ON e.course_id = c.id AND e.student_id = up.id
 		LEFT JOIN grade_memberships gm ON gm.grade_id = c.grade_id AND gm.user_id = up.id
 		WHERE up.profile_type = 'student'
+		  AND c.deleted_at IS NULL
 		  AND (e.student_id IS NOT NULL OR gm.user_id IS NOT NULL)
 		ORDER BY up.name ASC`
 

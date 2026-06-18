@@ -56,12 +56,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	exerciseMap := map[string]domain.Exercise{}
-	derivedTopicID := ps.TopicID
 	for _, pse := range ps.Exercises {
 		exerciseMap[pse.Exercise.ID] = pse.Exercise
-		if derivedTopicID == "" && pse.Exercise.TopicID != "" {
-			derivedTopicID = pse.Exercise.TopicID
-		}
 	}
 
 	profile, _ := app.Repositories.UserProfile.Get(ctx, studentID)
@@ -76,6 +72,9 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	totalHints := 0
 	totalTime := 0
 	resultAIFeedback := ""
+
+	// Track progress per topic
+	topicStats := make(map[string]struct{ correct, total int })
 
 	for _, attempt := range input.Attempts {
 		ex, ok := exerciseMap[attempt.ExerciseID]
@@ -131,6 +130,16 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			score = 100.0
 		}
 
+		// Track per-topic stats
+		if ok && ex.TopicID != "" {
+			stats := topicStats[ex.TopicID]
+			stats.total++
+			if isCorrect {
+				stats.correct++
+			}
+			topicStats[ex.TopicID] = stats
+		}
+
 		totalHints += attempt.HintsUsed
 		totalTime += attempt.TimeSpentSeconds
 
@@ -158,16 +167,21 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	kumon := domain.NewKumonStrategy()
+
+	// For level tests or single-topic sheets, use overall score for level progression
+	derivedTopicID := ps.TopicID
+	if derivedTopicID == "" && len(topicStats) == 1 {
+		for topicID := range topicStats {
+			derivedTopicID = topicID
+		}
+	}
+
 	currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
 	currentScore := 0.0
 	currentLevel := 1
-	prevTotal := 0
-	prevCorrect := 0
 	if currentProgress != nil {
 		currentScore = currentProgress.MasteryScore
 		currentLevel = currentProgress.CurrentLevel
-		prevTotal = currentProgress.TotalAttempts
-		prevCorrect = currentProgress.CorrectAttempts
 	}
 
 	var newMastery float64
@@ -208,22 +222,42 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 	}
 
-	newStreak := calcStreak(currentProgress)
 	now := time.Now()
 
-	if derivedTopicID != "" {
+	// Write progress for each topic
+	for topicID, stats := range topicStats {
+		topicProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, topicID)
+		topicCurrentScore := 0.0
+		topicPrevTotal := 0
+		topicPrevCorrect := 0
+		if topicProgress != nil {
+			topicCurrentScore = topicProgress.MasteryScore
+			topicPrevTotal = topicProgress.TotalAttempts
+			topicPrevCorrect = topicProgress.CorrectAttempts
+		}
+
+		topicMastery := kumon.CalculateMasteryScore(domain.MasteryInput{
+			TotalAttempts:    stats.total,
+			CorrectAttempts:  stats.correct,
+			HintsUsed:        0,
+			TimeSpentSeconds: 0,
+			CurrentScore:     topicCurrentScore,
+		})
+
+		topicStreak := calcStreak(topicProgress)
+
 		if err := app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
 			StudentID:       studentID,
-			TopicID:         derivedTopicID,
+			TopicID:         topicID,
 			StrategyID:      ps.StrategyID,
-			MasteryScore:    newMastery,
-			CurrentLevel:    nextLevel,
-			TotalAttempts:   prevTotal + total,
-			CorrectAttempts: prevCorrect + correct,
-			StreakDays:      newStreak,
+			MasteryScore:    topicMastery,
+			CurrentLevel:    currentLevel,
+			TotalAttempts:   topicPrevTotal + stats.total,
+			CorrectAttempts: topicPrevCorrect + stats.correct,
+			StreakDays:      topicStreak,
 			LastPracticedAt: &now,
 		}); err != nil {
-			// Log error but don't fail the submit - progress update failure should not break submit
+			// Log error but don't fail the submit
 			_ = err
 		}
 	}
