@@ -2,12 +2,13 @@ package notebook
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
 func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubmission) error {
-	_, err := r.db.ExecContext(ctx, `
+	result, err := r.db.ExecContext(ctx, `
 		INSERT INTO notebook_submissions (page_id, student_id, canvas_data, answer_text, ai_recognized_text, ai_is_correct, ai_feedback, ai_reviewed_at)
 		SELECT $1, $2, $3, $4, $5, $6, $7, $8
 		WHERE EXISTS (
@@ -28,5 +29,18 @@ func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubm
 			teacher_reviewed_at = NULL,
 			updated_at = NOW()
 	`, s.PageID, s.StudentID, s.CanvasData, s.AnswerText, s.AIRecognizedText, s.AIIsCorrect, s.AIFeedback, s.AIReviewedAt)
-	return err
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("notebook page not found or notebook has been deleted")
+	}
+
+	return nil
 }
