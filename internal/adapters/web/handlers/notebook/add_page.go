@@ -1,17 +1,19 @@
 package notebook
 
 import (
-	"log"
 	"net/http"
 
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
 func NewAddPageHandler(uc ucNB.AddPageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		notebookID := c.Param("id")
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
 		var input struct {
 			PageNumber   int    `json:"page_number"`
 			Title        string `json:"title"`
@@ -23,7 +25,7 @@ func NewAddPageHandler(uc ucNB.AddPageUsecase) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
-		out, err := uc.Execute(c, ucNB.AddPageInput{
+		out, appErr := uc.Execute(c, requesterID, isAdmin, ucNB.AddPageInput{
 			NotebookID:   notebookID,
 			PageNumber:   input.PageNumber,
 			Title:        input.Title,
@@ -31,9 +33,9 @@ func NewAddPageHandler(uc ucNB.AddPageUsecase) gin.HandlerFunc {
 			ContentData:  input.ContentData,
 			Instructions: input.Instructions,
 		})
-		if err != nil {
-		log.Printf("[notebook handler] add page error: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
 			return
 		}
 		c.JSON(http.StatusCreated, out)

@@ -11,7 +11,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -36,8 +36,38 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Verify exercise exists and check ownership
+	exercise, err := app.Repositories.Exercise.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ExerciseListError, err)
+	}
+	if exercise == nil {
+		return nil, apperrors.NewNotFoundError("exercise not found")
+	}
+
+	if !isAdmin {
+		topic, err := app.Repositories.Topic.Get(ctx, exercise.TopicID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.TopicGetError, err)
+		}
+		if topic == nil {
+			return nil, apperrors.NewNotFoundError("topic not found")
+		}
+
+		course, err := app.Repositories.Course.Get(ctx, topic.CourseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil {
+			return nil, apperrors.NewNotFoundError("course not found")
+		}
+		if course.TeacherID != requesterID {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	if err := app.Repositories.Exercise.Update(ctx, id, domain.Exercise{
 		Type:          input.Type,

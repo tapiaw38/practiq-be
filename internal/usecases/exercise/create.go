@@ -11,7 +11,7 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -37,8 +37,12 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isAdmin, input.TopicID); appErr != nil {
+		return nil, appErr
+	}
 
 	difficulty := input.Difficulty
 	if difficulty < 1 {

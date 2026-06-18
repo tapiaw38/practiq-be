@@ -35,13 +35,17 @@ func parseCIDR(cidr string) *net.IPNet {
 	return network
 }
 
+type Options struct {
+	AllowedDomains          []string
+	AllowedPrivateHostnames []string
+}
+
 // ValidateURL validates a URL to prevent SSRF attacks.
-// It checks:
-// - URL is well-formed
-// - Scheme is http or https
-// - Hostname is not in allowlist (if provided)
-// - Resolved IP is not in blocked private/internal ranges
 func ValidateURL(rawURL string, allowedDomains []string) error {
+	return ValidateURLWithOptions(rawURL, Options{AllowedDomains: allowedDomains})
+}
+
+func ValidateURLWithOptions(rawURL string, opts Options) error {
 	if rawURL == "" {
 		return fmt.Errorf("URL cannot be empty")
 	}
@@ -51,7 +55,6 @@ func ValidateURL(rawURL string, allowedDomains []string) error {
 		return fmt.Errorf("invalid URL: %w", err)
 	}
 
-	// Only allow http and https schemes
 	scheme := strings.ToLower(parsedURL.Scheme)
 	if scheme != "http" && scheme != "https" {
 		return fmt.Errorf("unsupported URL scheme: %s (only http and https are allowed)", parsedURL.Scheme)
@@ -62,10 +65,9 @@ func ValidateURL(rawURL string, allowedDomains []string) error {
 		return fmt.Errorf("URL must have a hostname")
 	}
 
-	// If allowlist is provided, enforce it
-	if len(allowedDomains) > 0 {
+	if len(opts.AllowedDomains) > 0 {
 		allowed := false
-		for _, domain := range allowedDomains {
+		for _, domain := range opts.AllowedDomains {
 			if matchesDomain(hostname, domain) {
 				allowed = true
 				break
@@ -76,7 +78,6 @@ func ValidateURL(rawURL string, allowedDomains []string) error {
 		}
 	}
 
-	// Resolve hostname to IP addresses
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
 		return fmt.Errorf("failed to resolve hostname %s: %w", hostname, err)
@@ -86,9 +87,9 @@ func ValidateURL(rawURL string, allowedDomains []string) error {
 		return fmt.Errorf("hostname %s did not resolve to any IP addresses", hostname)
 	}
 
-	// Check all resolved IPs against blocked networks
+	allowPrivate := matchesAnyDomain(hostname, opts.AllowedPrivateHostnames)
 	for _, ip := range ips {
-		if err := validateIP(ip); err != nil {
+		if err := validateIP(ip, allowPrivate); err != nil {
 			return fmt.Errorf("resolved IP %s for hostname %s: %w", ip.String(), hostname, err)
 		}
 	}
@@ -96,8 +97,10 @@ func ValidateURL(rawURL string, allowedDomains []string) error {
 	return nil
 }
 
-func validateIP(ip net.IP) error {
-	// Check if IP is in any blocked network
+func validateIP(ip net.IP, allowPrivate bool) error {
+	if allowPrivate {
+		return nil
+	}
 	for _, network := range blockedNetworks {
 		if network.Contains(ip) {
 			return fmt.Errorf("IP address is in blocked range %s (private/internal network)", network.String())
@@ -106,25 +109,27 @@ func validateIP(ip net.IP) error {
 	return nil
 }
 
-// matchesDomain checks if hostname matches the allowed domain.
-// Supports exact match and wildcard subdomain match (e.g., "*.example.com")
+func matchesAnyDomain(hostname string, allowedDomains []string) bool {
+	for _, domain := range allowedDomains {
+		if matchesDomain(hostname, domain) {
+			return true
+		}
+	}
+	return false
+}
+
 func matchesDomain(hostname, allowedDomain string) bool {
 	hostname = strings.ToLower(hostname)
 	allowedDomain = strings.ToLower(allowedDomain)
-
-	// Exact match
 	if hostname == allowedDomain {
 		return true
 	}
 
-	// Wildcard subdomain match (e.g., "*.example.com")
 	if strings.HasPrefix(allowedDomain, "*.") {
 		baseDomain := allowedDomain[2:] // Remove "*."
-		// Check if hostname ends with .baseDomain
 		if strings.HasSuffix(hostname, "."+baseDomain) {
 			return true
 		}
-		// Also allow exact match with base domain
 		if hostname == baseDomain {
 			return true
 		}

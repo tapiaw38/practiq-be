@@ -3,6 +3,7 @@ package notebook
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 
@@ -28,7 +29,15 @@ func NewSaveSubmissionHandler(uc ucNB.SaveSubmissionUsecase) gin.HandlerFunc {
 			CanvasData: input.CanvasData,
 			AnswerText: input.AnswerText,
 		}); err != nil {
-		log.Printf("[notebook handler] save submission error: %v", err)
+			if strings.Contains(err.Error(), "forbidden") {
+				c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "forbidden"})
+				return
+			}
+			if strings.Contains(err.Error(), "not found") {
+				c.JSON(http.StatusNotFound, gin.H{"code": "notebook:not-found", "message": err.Error()})
+				return
+			}
+			log.Printf("[notebook handler] save submission error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
 			return
 		}

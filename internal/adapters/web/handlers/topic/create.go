@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
 )
 
@@ -22,7 +23,9 @@ func NewCreateHandler(uc ucTopic.CreateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, ucTopic.CreateInput{
+		userID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		output, appErr := uc.Execute(c, userID, isAdmin, ucTopic.CreateInput{
 			CourseID:    courseID,
 			Title:       input.Title,
 			Description: input.Description,

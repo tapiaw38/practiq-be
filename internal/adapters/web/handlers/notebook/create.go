@@ -1,7 +1,6 @@
 package notebook
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +11,8 @@ import (
 func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		courseID := c.Param("id")
-		teacherID := middlewares.GetUserID(c)
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
 		var input struct {
 			Title       string `json:"title" binding:"required"`
 			Description string `json:"description"`
@@ -22,15 +22,15 @@ func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
-		out, err := uc.Execute(c, teacherID, ucNB.CreateInput{
+		out, appErr := uc.Execute(c, requesterID, isAdmin, ucNB.CreateInput{
 			CourseID:    courseID,
 			Title:       input.Title,
 			Description: input.Description,
 			Level:       input.Level,
 		})
-		if err != nil {
-			log.Printf("[notebook handler] create error: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"message": "internal server error"})
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
 			return
 		}
 		c.JSON(http.StatusCreated, out)

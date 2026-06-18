@@ -10,7 +10,7 @@ import (
 
 type (
 	GetUsecase interface {
-		Execute(context.Context, string) (*GetOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	getUsecase struct {
@@ -26,7 +26,7 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	c, err := app.Repositories.Course.Get(ctx, id)
@@ -35,6 +35,9 @@ func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperr
 	}
 	if c == nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseNotFoundError, nil)
+	}
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, id); appErr != nil {
+		return nil, appErr
 	}
 
 	return &GetOutput{Data: toCourseData(*c)}, nil

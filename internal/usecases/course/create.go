@@ -12,7 +12,7 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(context.Context, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -38,9 +38,12 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
+	if !canCreate {
+		return nil, apperrors.NewForbiddenError()
+	}
 	if strings.TrimSpace(input.GradeID) == "" {
 		return nil, apperrors.NewBadRequestError("grade_id is required")
 	}

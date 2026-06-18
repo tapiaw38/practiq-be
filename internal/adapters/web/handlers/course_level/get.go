@@ -11,9 +11,10 @@ import (
 func NewGetHandler(uc ucLevel.GetUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		courseID := c.Param("id")
-		studentID := middlewares.GetUserID(c)
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
 
-		output, appErr := uc.Execute(c, courseID, studentID)
+		output, appErr := uc.Execute(c, requesterID, isAdmin, courseID)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

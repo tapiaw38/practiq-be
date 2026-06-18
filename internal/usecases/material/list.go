@@ -11,7 +11,7 @@ import (
 
 type (
 	ListUsecase interface {
-		Execute(context.Context, ListInput) (*ListOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, ListInput) (*ListOutput, apperrors.ApplicationError)
 	}
 
 	listUsecase struct {
@@ -33,8 +33,12 @@ func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
 	return &listUsecase{contextFactory: contextFactory}
 }
 
-func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*ListOutput, apperrors.ApplicationError) {
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input ListInput) (*ListOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, input.CourseID); appErr != nil {
+		return nil, appErr
+	}
 
 	filter := materialRepo.ListFilter{
 		CourseID: input.CourseID,

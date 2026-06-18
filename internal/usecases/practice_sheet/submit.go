@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -53,6 +54,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 	if ps == nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
+	}
+
+	hasAccess, err := studentHasCourseAccess(ctx, app, studentID, ps.CourseID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
+	}
+	if !hasAccess {
+		return nil, apperrors.NewForbiddenError()
 	}
 
 	exerciseMap := map[string]domain.Exercise{}
@@ -267,6 +276,19 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	return &SubmitOutput{Data: toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel)}, nil
+}
+
+func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {
+	courses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{StudentID: studentID})
+	if err != nil {
+		return false, err
+	}
+	for _, course := range courses {
+		if course.ID == courseID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func normalizeCanvasAnswer(value string) string {

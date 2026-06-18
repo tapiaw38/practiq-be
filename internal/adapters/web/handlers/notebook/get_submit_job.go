@@ -7,10 +7,13 @@ import (
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
 func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
 		jobID := c.Param("jobId")
 		job, err := repo.GetByID(c.Request.Context(), jobID)
 		if err != nil {
@@ -20,6 +23,10 @@ func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 		}
 		if job == nil {
 			c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submit-job-not-found", "message": "submit job not found"})
+			return
+		}
+		if !isAdmin && job.StudentID != requesterID {
+			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user's submit job results"})
 			return
 		}
 		// Preserve original JSON response shape

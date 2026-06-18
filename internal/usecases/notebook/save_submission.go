@@ -33,6 +33,28 @@ func NewSaveSubmissionUsecase(contextFactory appcontext.Factory) SaveSubmissionU
 
 func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissionInput) error {
 	app := u.contextFactory()
+	page, err := app.Repositories.Notebook.GetPage(ctx, input.PageID)
+	if err != nil {
+		return err
+	}
+	if page == nil {
+		return fmt.Errorf("page not found")
+	}
+	notebook, err := app.Repositories.Notebook.Get(ctx, page.NotebookID)
+	if err != nil {
+		return err
+	}
+	if notebook == nil {
+		return fmt.Errorf("notebook not found")
+	}
+	hasAccess, err := studentHasNotebookCourseAccess(ctx, app, input.StudentID, notebook.CourseID)
+	if err != nil {
+		return err
+	}
+	if !hasAccess {
+		return fmt.Errorf("forbidden")
+	}
+
 	canvasForOCR := input.CanvasData
 	submission := domain.NotebookSubmission{
 		PageID:     input.PageID,
@@ -48,7 +70,6 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		assistantCfg.APIKey = profile.AssistantAPIKey
 	}
 
-	page, _ := app.Repositories.Notebook.GetPage(ctx, input.PageID)
 	if page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 		if expectedAnswer != "" {

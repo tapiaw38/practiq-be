@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +30,9 @@ func NewListHandler(uc ucTopic.ListUsecase) gin.HandlerFunc {
 			}
 		}
 
-		output, appErr := uc.Execute(c, input)
+		userID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		output, appErr := uc.Execute(c, userID, isAdmin, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

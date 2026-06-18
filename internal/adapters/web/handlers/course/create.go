@@ -26,7 +26,7 @@ func NewCreateHandler(uc ucCourse.CreateUsecase) gin.HandlerFunc {
 		}
 
 		userID := middlewares.GetUserID(c)
-		output, appErr := uc.Execute(c, ucCourse.CreateInput{
+		output, appErr := uc.Execute(c, middlewares.HasRole(c, "teacher", "admin", "superadmin"), ucCourse.CreateInput{
 			TeacherID:   userID,
 			GradeID:     input.GradeID,
 			SubjectID:   input.SubjectID,

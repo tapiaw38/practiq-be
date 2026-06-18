@@ -11,7 +11,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -33,8 +33,30 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Verify topic exists and check ownership
+	topic, err := app.Repositories.Topic.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.TopicGetError, err)
+	}
+	if topic == nil {
+		return nil, apperrors.NewNotFoundError("topic not found")
+	}
+
+	if !isAdmin {
+		course, err := app.Repositories.Course.Get(ctx, topic.CourseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil {
+			return nil, apperrors.NewNotFoundError("course not found")
+		}
+		if course.TeacherID != requesterID {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	if err := app.Repositories.Topic.Update(ctx, id, domain.Topic{
 		Title:       input.Title,

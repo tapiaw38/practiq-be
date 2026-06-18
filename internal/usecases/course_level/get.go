@@ -3,6 +3,7 @@ package courselevel
 import (
 	"context"
 
+	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	practiceSheetRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/practice_sheet"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -11,7 +12,7 @@ import (
 
 type (
 	GetUsecase interface {
-		Execute(ctx context.Context, courseID, studentID string) (*GetOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, courseID string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	getUsecase struct {
@@ -28,12 +29,15 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, courseID string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, courseID); appErr != nil {
+		return nil, appErr
+	}
 
 	currentLevel := 1
-	if studentID != "" {
-		cp, err := app.Repositories.CourseProgress.Get(ctx, studentID, courseID)
+	if requesterID != "" {
+		cp, err := app.Repositories.CourseProgress.Get(ctx, requesterID, courseID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 		}
@@ -119,4 +123,30 @@ func (u *getUsecase) Execute(ctx context.Context, courseID, studentID string) (*
 		CurrentLevel: currentLevel,
 		Levels:       levels,
 	}, nil
+}
+
+func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) apperrors.ApplicationError {
+	if isAdmin {
+		return nil
+	}
+	course, err := app.Repositories.Course.Get(ctx, courseID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.InternalServerError, err)
+	}
+	if course == nil {
+		return apperrors.NewNotFoundError("course not found")
+	}
+	if course.TeacherID == requesterID {
+		return nil
+	}
+	courses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{StudentID: requesterID})
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.InternalServerError, err)
+	}
+	for _, course := range courses {
+		if course.ID == courseID {
+			return nil
+		}
+	}
+	return apperrors.NewForbiddenError()
 }

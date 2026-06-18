@@ -6,6 +6,7 @@ import (
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
 type updateTopicInput struct {
@@ -17,13 +18,16 @@ type updateTopicInput struct {
 func NewUpdateHandler(uc ucTopic.UpdateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
+		requesterID := middlewares.GetUserID(c)
+		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+
 		var input updateTopicInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		output, appErr := uc.Execute(c, id, ucTopic.UpdateInput{
+		output, appErr := uc.Execute(c, requesterID, isAdmin, id, ucTopic.UpdateInput{
 			Title:       input.Title,
 			Description: input.Description,
 			OrderIndex:  input.OrderIndex,

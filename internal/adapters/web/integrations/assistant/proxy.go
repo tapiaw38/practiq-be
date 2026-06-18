@@ -17,7 +17,9 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 
 	// Validate URL to prevent SSRF attacks
 	fullURL := baseURL + path
-	if err := urlvalidator.ValidateURL(fullURL, nil); err != nil {
+	if err := urlvalidator.ValidateURLWithOptions(fullURL, urlvalidator.Options{
+		AllowedPrivateHostnames: []string{"host.docker.internal"},
+	}); err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 

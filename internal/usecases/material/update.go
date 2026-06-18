@@ -11,7 +11,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -32,8 +32,21 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Verify material exists and check ownership
+	material, err := app.Repositories.Material.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.MaterialGetError, err)
+	}
+	if material == nil {
+		return nil, apperrors.NewNotFoundError("material not found")
+	}
+
+	if !isAdmin && material.TeacherID != requesterID {
+		return nil, apperrors.NewForbiddenError()
+	}
 
 	if err := app.Repositories.Material.Update(ctx, id, domain.Material{
 		Title:         input.Title,
