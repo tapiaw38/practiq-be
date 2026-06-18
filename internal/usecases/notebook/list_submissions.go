@@ -16,6 +16,8 @@ type (
 		NotebookID string
 		StudentID  string
 		CourseID   string
+		GradeID    string
+		SubjectID  string
 		Reviewed   string
 		TeacherID  string
 		Limit      int
@@ -39,6 +41,8 @@ func (u *listSubmissionsUsecase) Execute(ctx context.Context, input ListSubmissi
 		NotebookID: input.NotebookID,
 		StudentID:  input.StudentID,
 		CourseID:   input.CourseID,
+		GradeID:    input.GradeID,
+		SubjectID:  input.SubjectID,
 		Reviewed:   input.Reviewed,
 		TeacherID:  input.TeacherID,
 		Limit:      input.Limit,

@@ -31,6 +31,8 @@ type SubmissionFilter struct {
 	NotebookID string
 	StudentID  string
 	CourseID   string
+	GradeID    string
+	SubjectID  string
 	Reviewed   string
 	TeacherID  string
 	Limit      int

@@ -31,6 +31,8 @@ func NewListSubmissionsHandler(uc ucNB.ListSubmissionsUsecase) gin.HandlerFunc {
 			NotebookID: strings.TrimSpace(c.Query("notebook_id")),
 			StudentID:  strings.TrimSpace(c.Query("student_id")),
 			CourseID:   strings.TrimSpace(c.Query("course_id")),
+			GradeID:    strings.TrimSpace(c.Query("grade_id")),
+			SubjectID:  strings.TrimSpace(c.Query("subject_id")),
 			Reviewed:   reviewed,
 			TeacherID:  teacherID,
 		}

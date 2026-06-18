@@ -86,13 +86,13 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					submission.AIRecognizedText = recognizedText
 					studentAnswer = recognizedText
 				} else {
-					submission.AIFeedback = "Gillie: no se pudo analizar la imagen del cuaderno"
+					submission.AIFeedback = "no se pudo analizar la imagen del cuaderno"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
 			}
 
 			if strings.EqualFold(studentAnswer, "UNREADABLE") {
-				submission.AIFeedback = "Gillie: respuesta no legible (UNREADABLE)"
+				submission.AIFeedback = "respuesta no legible (UNREADABLE)"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			}
 
@@ -103,11 +103,14 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					if strings.TrimSpace(evaluation.Feedback) != "" {
 						submission.AIFeedback = evaluation.Feedback
 					} else if evaluation.IsCorrect {
-						submission.AIFeedback = "Gillie: respuesta evaluada como correcta"
+						submission.AIFeedback = "respuesta evaluada como correcta"
 					} else {
-						submission.AIFeedback = "Gillie: respuesta evaluada como incorrecta"
+						submission.AIFeedback = "respuesta evaluada como incorrecta"
 					}
 				}
+			} else {
+				submission.AIFeedback = "no se pudo evaluar la respuesta"
+				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			}
 		}
 	}

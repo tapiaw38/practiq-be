@@ -78,7 +78,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		canvasData = normalizeCanvasDataURI(canvasData)
 		recognized, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, canvasData, expectedAnswer)
 		if recognizeErr != nil {
-			feedback = "Gillie: no se pudo analizar la imagen del cuaderno"
+			feedback = "no se pudo analizar la imagen del cuaderno"
 		} else {
 			recognizedText = strings.TrimSpace(recognized)
 			studentAnswer = recognizedText
@@ -87,26 +87,26 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 
 	// If the recognized answer is unreadable, report that
 	if strings.EqualFold(studentAnswer, "UNREADABLE") {
-		feedback = "Gillie: respuesta no legible (UNREADABLE)"
+		feedback = "respuesta no legible (UNREADABLE)"
 		isCorrect = nil
 	} else if studentAnswer != "" {
 		// Evaluate the answer with AI
 		promptContext := buildNotebookPromptContext(page)
 		evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, promptContext, expectedAnswer, studentAnswer)
 		if aiErr != nil {
-			feedback = "Gillie: no se pudo evaluar la respuesta"
+			feedback = "no se pudo evaluar la respuesta"
 		} else {
 			isCorrect = &evaluation.IsCorrect
 			if strings.TrimSpace(evaluation.Feedback) != "" {
 				feedback = evaluation.Feedback
 			} else if evaluation.IsCorrect {
-				feedback = "Gillie: respuesta evaluada como correcta"
+				feedback = "respuesta evaluada como correcta"
 			} else {
-				feedback = "Gillie: respuesta evaluada como incorrecta"
+				feedback = "respuesta evaluada como incorrecta"
 			}
 		}
 	} else {
-		feedback = "Gillie: no se encontro respuesta para evaluar"
+		feedback = "no se encontro respuesta para evaluar"
 	}
 
 	// Update the submission with the AI review results
