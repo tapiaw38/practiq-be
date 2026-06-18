@@ -37,6 +37,7 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin b
 	data := make([]NotebookData, 0, len(notebooks))
 	for _, nb := range notebooks {
 		nb := nb
+		resolveNotebookImages(ctx, app, &nb)
 		data = append(data, toNotebookData(&nb))
 	}
 	return &ListOutput{Data: data}, nil

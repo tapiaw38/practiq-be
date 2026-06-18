@@ -66,6 +66,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 			nb.Pages[i].Submission = sub
 		}
 	}
+	resolveNotebookImages(ctx, app, nb)
 
 	return &GetOutput{Data: toNotebookData(nb)}, nil
 }

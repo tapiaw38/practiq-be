@@ -47,6 +47,7 @@ func (u *listSubmissionsUsecase) Execute(ctx context.Context, input ListSubmissi
 	if err != nil {
 		return nil, err
 	}
+	resolveNotebookFullSubmissionImages(ctx, app, items)
 	data := make([]NotebookSubmissionFullData, 0, len(items))
 	for _, item := range items {
 		data = append(data, toFullSubmissionData(item))

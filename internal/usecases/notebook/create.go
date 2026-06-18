@@ -59,5 +59,6 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookGetError, err)
 	}
+	resolveNotebookImages(ctx, app, nb)
 	return &CreateOutput{Data: toNotebookData(nb)}, nil
 }

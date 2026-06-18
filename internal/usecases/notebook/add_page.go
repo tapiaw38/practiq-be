@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/datauri"
 )
 
 type (
@@ -67,5 +68,7 @@ func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isAdmi
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookUpdateError, err)
 	}
-	return &AddPageOutput{Data: toPageData(id, input, contentData)}, nil
+	page := toPageData(id, input, contentData)
+	page.ContentData = datauri.Resolve(ctx, app, page.ContentData)
+	return &AddPageOutput{Data: page}, nil
 }

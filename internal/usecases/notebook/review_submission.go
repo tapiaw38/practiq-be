@@ -8,6 +8,7 @@ import (
 
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/usecases/datauri"
 )
 
 type (
@@ -119,6 +120,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	if updated == nil {
 		return nil, fmt.Errorf("submission not found")
 	}
+	updated.CanvasData = datauri.Resolve(ctx, app, updated.CanvasData)
 	return &ReviewSubmissionOutput{Data: toFullSubmissionData(*updated)}, nil
 }
 
