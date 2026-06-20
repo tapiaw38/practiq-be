@@ -25,7 +25,6 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
-	// Verify course exists and check ownership
 	course, err := app.Repositories.Course.Get(ctx, id)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.CourseGetError, err)

@@ -29,7 +29,6 @@ func NewGetStudentAttemptsUsecase(contextFactory appcontext.Factory) GetStudentA
 func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Authorization check: only admins or teachers with access can view student attempts
 	if !isAdmin {
 		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
 		if err != nil {

@@ -35,8 +35,6 @@ type (
 	}
 )
 
-// effectiveStreak returns 0 when the streak is broken: the stored value is
-// only valid if the student practiced today or yesterday.
 func effectiveStreak(p domain.StudentTopicProgress) int {
 	if p.LastPracticedAt == nil {
 		return 0

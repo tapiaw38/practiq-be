@@ -29,16 +29,16 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	c, err := app.Repositories.Course.Get(ctx, id)
+	course, err := app.Repositories.Course.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
-	if c == nil {
+	if course == nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseNotFoundError, nil)
 	}
 	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, id); appErr != nil {
 		return nil, appErr
 	}
 
-	return &GetOutput{Data: toCourseData(*c)}, nil
+	return &GetOutput{Data: toCourseData(*course)}, nil
 }

@@ -47,7 +47,6 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewBadRequestError("subject_id is required")
 	}
 
-	// Verify course exists and check ownership
 	course, err := app.Repositories.Course.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)

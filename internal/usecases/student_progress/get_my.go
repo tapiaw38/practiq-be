@@ -43,8 +43,10 @@ func (u *getMyProgressUsecase) Execute(ctx context.Context, studentID string) (*
 		data = []ProgressData{}
 	}
 
-	// Get last practiced sheet ID
-	lastSheetID, _ := app.Repositories.StudentAttempt.GetLastPracticedSheetID(ctx, studentID)
+	lastSheetID, err := app.Repositories.StudentAttempt.GetLastPracticedSheetID(ctx, studentID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.AttemptGetError, err)
+	}
 
 	return &GetMyProgressOutput{
 		Data:                 data,

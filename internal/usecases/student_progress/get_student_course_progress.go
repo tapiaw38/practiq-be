@@ -30,7 +30,6 @@ func NewGetStudentCourseProgressUsecase(contextFactory appcontext.Factory) GetSt
 func (u *getStudentCourseProgressUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, studentID, courseID string) (*GetStudentCourseProgressOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Authorization check: only admins or teachers with access can view student progress
 	if !isAdmin {
 		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
 		if err != nil {

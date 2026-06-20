@@ -277,6 +277,11 @@ var (
 		StatusCode: http.StatusInternalServerError,
 		Message:    "failed to get progress",
 	}
+	AttemptGetError = ErrorDetails{
+		InternalCode: "attempt:get:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to get attempt",
+	}
 
 	// AI errors
 	AIConversationCreateError = ErrorDetails{
