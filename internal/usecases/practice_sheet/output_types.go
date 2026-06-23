@@ -34,16 +34,25 @@ type (
 		Exercises  []SheetExerciseData `json:"exercises"`
 	}
 
+	ExerciseResultData struct {
+		ExerciseID    string `json:"exercise_id"`
+		IsCorrect     bool   `json:"is_correct"`
+		StudentAnswer string `json:"student_answer"`
+		CorrectAnswer string `json:"correct_answer"`
+		AIFeedback    string `json:"ai_feedback,omitempty"`
+	}
+
 	SubmitResult struct {
-		Score          float64 `json:"score"`
-		Correct        int     `json:"correct"`
-		Total          int     `json:"total"`
-		MasteryScore   float64 `json:"mastery_score"`
-		Recommendation string  `json:"recommendation"`
-		AIFeedback     string  `json:"ai_feedback,omitempty"`
-		ShouldLevelUp  bool    `json:"should_level_up"`
-		ShouldRepeat   bool    `json:"should_repeat"`
-		NextLevel      int     `json:"next_level"`
+		Score           float64              `json:"score"`
+		Correct         int                  `json:"correct"`
+		Total           int                  `json:"total"`
+		MasteryScore    float64              `json:"mastery_score"`
+		Recommendation  string               `json:"recommendation"`
+		AIFeedback      string               `json:"ai_feedback,omitempty"`
+		ShouldLevelUp   bool                 `json:"should_level_up"`
+		ShouldRepeat    bool                 `json:"should_repeat"`
+		NextLevel       int                  `json:"next_level"`
+		ExerciseResults []ExerciseResultData `json:"exercise_results"`
 	}
 )
 
@@ -88,16 +97,17 @@ func toSheetData(ps domain.PracticeSheet) PracticeSheetData {
 	}
 }
 
-func toSubmitOutputData(score float64, correct, total int, masteryScore float64, recommendation, aiFeedback string, shouldLevelUp, shouldRepeat bool, nextLevel int) SubmitResult {
+func toSubmitOutputData(score float64, correct, total int, masteryScore float64, recommendation, aiFeedback string, shouldLevelUp, shouldRepeat bool, nextLevel int, exerciseResults []ExerciseResultData) SubmitResult {
 	return SubmitResult{
-		Score:          score,
-		Correct:        correct,
-		Total:          total,
-		MasteryScore:   masteryScore,
-		Recommendation: recommendation,
-		AIFeedback:     aiFeedback,
-		ShouldLevelUp:  shouldLevelUp,
-		ShouldRepeat:   shouldRepeat,
-		NextLevel:      nextLevel,
+		Score:           score,
+		Correct:         correct,
+		Total:           total,
+		MasteryScore:    masteryScore,
+		Recommendation:  recommendation,
+		AIFeedback:      aiFeedback,
+		ShouldLevelUp:   shouldLevelUp,
+		ShouldRepeat:    shouldRepeat,
+		NextLevel:       nextLevel,
+		ExerciseResults: exerciseResults,
 	}
 }

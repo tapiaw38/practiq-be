@@ -15,3 +15,8 @@ type Course struct {
 	Subject     string
 	CreatedAt   time.Time
 }
+
+type CourseCuriosities struct {
+	CourseID    string
+	Curiosities []string
+}

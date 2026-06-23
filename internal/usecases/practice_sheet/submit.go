@@ -81,6 +81,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	totalHints := 0
 	totalTime := 0
 	resultAIFeedback := ""
+	exerciseResults := make([]ExerciseResultData, 0, total)
 
 	// Track progress per topic
 	topicStats := make(map[string]struct{ correct, total int })
@@ -168,6 +169,19 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		if attempt.CanvasData != "" && attemptID != "" {
 			app.Repositories.StudentAttempt.SaveCanvasWork(ctx, attemptID, attempt.CanvasData)
 		}
+
+		// Collect per-exercise result
+		correctAnswer := ""
+		if ok {
+			correctAnswer = ex.CorrectAnswer
+		}
+		exerciseResults = append(exerciseResults, ExerciseResultData{
+			ExerciseID:    attempt.ExerciseID,
+			IsCorrect:     isCorrect,
+			StudentAnswer: answerText,
+			CorrectAnswer: correctAnswer,
+			AIFeedback:    aiFeedback,
+		})
 	}
 
 	sheetScore := 0.0
@@ -275,7 +289,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel)
 	}
 
-	return &SubmitOutput{Data: toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel)}, nil
+	return &SubmitOutput{Data: toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)}, nil
 }
 
 func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {

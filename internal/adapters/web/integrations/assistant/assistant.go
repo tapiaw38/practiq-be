@@ -12,6 +12,7 @@ type Gateway interface {
 	AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, correctAnswer string) (string, error)
 	EvaluatePracticeAnswer(ctx context.Context, cfg Config, question, correctAnswer, studentAnswer string) (EvaluationResult, error)
 	AskHelp(ctx context.Context, cfg Config, prompt string) (string, error)
+	GenerateCourseCuriosities(ctx context.Context, cfg Config, subject, topic string, count int) ([]string, error)
 	Proxy(ctx context.Context, cfg Config, method, path, contentType string, body []byte) (*ProxyResponse, error)
 }
 

@@ -301,8 +301,13 @@ var (
 	}
 	AIHelpError = ErrorDetails{
 		InternalCode: "ai:help:error",
-		StatusCode: http.StatusInternalServerError,
-		Message:    "failed to get AI help",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to get AI help",
+	}
+	AICuriositiesError = ErrorDetails{
+		InternalCode: "ai:curiosities:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to generate curiosities",
 	}
 
 	// Profile errors

@@ -98,10 +98,11 @@ type ProgressUsecases struct {
 }
 
 type AIUsecases struct {
-	CreateConversation ucAI.CreateConversationUsecase
-	GetMessages        ucAI.GetMessagesUsecase
-	Help               ucAI.HelpUsecase
-	Proxy              ucAI.ProxyUsecase
+	CreateConversation    ucAI.CreateConversationUsecase
+	GetMessages           ucAI.GetMessagesUsecase
+	Help                  ucAI.HelpUsecase
+	Proxy                 ucAI.ProxyUsecase
+	GenerateCuriosities   ucAI.GenerateCuriositiesUsecase
 }
 
 type ProfileUsecases struct {
@@ -238,10 +239,11 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			GetStudentAttempts:       ucProgress.NewGetStudentAttemptsUsecase(contextFactory),
 		},
 		AI: AIUsecases{
-			CreateConversation: ucAI.NewCreateConversationUsecase(contextFactory),
-			GetMessages:        ucAI.NewGetMessagesUsecase(contextFactory),
-			Help:               ucAI.NewHelpUsecase(contextFactory),
-			Proxy:              ucAI.NewProxyUsecase(contextFactory),
+			CreateConversation:  ucAI.NewCreateConversationUsecase(contextFactory),
+			GetMessages:         ucAI.NewGetMessagesUsecase(contextFactory),
+			Help:                ucAI.NewHelpUsecase(contextFactory),
+			Proxy:               ucAI.NewProxyUsecase(contextFactory),
+			GenerateCuriosities: ucAI.NewGenerateCuriositiesUsecase(contextFactory),
 		},
 		Profile: ProfileUsecases{
 			Sync:                  ucProfile.NewSyncUsecase(contextFactory),

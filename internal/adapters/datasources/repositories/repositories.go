@@ -4,6 +4,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources"
 	aiconversation "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/ai_conversation"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
+	coursecuriosities "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course_curiosities"
 	courseprogress "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/exercise"
@@ -27,6 +28,7 @@ type Repositories struct {
 	Subject                  subject.Repository
 	TeacherStudentAssignment teacherstudentassignment.Repository
 	Course                   course.Repository
+	CourseCuriosities        coursecuriosities.Repository
 	Topic                    topic.Repository
 	Exercise                 exercise.Repository
 	Material                 material.Repository
@@ -51,6 +53,7 @@ func NewFactory(ds *datasources.Datasources) func() *Repositories {
 			Subject:                  subject.NewRepository(ds.DB),
 			TeacherStudentAssignment: teacherstudentassignment.NewRepository(ds.DB),
 			Course:                   course.NewRepository(ds.DB),
+			CourseCuriosities:        coursecuriosities.NewRepository(ds.DB),
 			Topic:                    topic.NewRepository(ds.DB),
 			Exercise:                 exercise.NewRepository(ds.DB),
 			Material:                 material.NewRepository(ds.DB),
