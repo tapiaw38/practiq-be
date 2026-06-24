@@ -23,7 +23,7 @@ type gateway struct {
 func NewGateway() Gateway {
 	return &gateway{
 		client: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 120 * time.Second,
 		},
 	}
 }
