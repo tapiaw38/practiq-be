@@ -58,7 +58,7 @@ func buildEvaluationPrompt(question, correctAnswer, studentAnswer, gradeName str
 
 	gradeContext := ""
 	if gn != "" {
-		gradeContext = "Considera los contenidos curriculares y documentos de " + gn + " para evaluar. "
+		gradeContext = "Considera los contenidos de los documentos de " + gn + " para evaluar. "
 	}
 
 	return "Evalua si la respuesta del estudiante es correcta para el ejercicio. " +

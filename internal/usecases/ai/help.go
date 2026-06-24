@@ -146,7 +146,7 @@ func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise
 		sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de ")
 		sb.WriteString(gradeName)
 		sb.WriteString(". ")
-		sb.WriteString("Considera los contenidos curriculares y documentos de ")
+		sb.WriteString("Considera los contenidos de los documentos de ")
 		sb.WriteString(gradeName)
 		sb.WriteString(" para responder. ")
 	} else {
