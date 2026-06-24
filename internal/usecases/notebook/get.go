@@ -37,7 +37,6 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 
 	if studentID == "" {
 		if !isAdmin && nb.TeacherID != requesterID {
-			// Check if requester is an enrolled student
 			hasAccess, _ := studentHasNotebookCourseAccess(ctx, app, requesterID, nb.CourseID)
 			if hasAccess {
 				studentID = requesterID

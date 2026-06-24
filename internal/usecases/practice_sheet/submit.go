@@ -276,7 +276,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 		topicStreak := calcStreak(topicProgress)
 
-		// Use nextLevel for the derived topic, currentLevel for others
 		levelToSave := currentLevel
 		if topicID == derivedTopicID && shouldLevelUp {
 			levelToSave = nextLevel
