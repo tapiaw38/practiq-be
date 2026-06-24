@@ -57,6 +57,13 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		return nil, fmt.Errorf("assistant service not configured")
 	}
 
+	// Get course for grade context
+	course, _ := app.Repositories.Course.Get(ctx, submission.CourseID)
+	gradeName := ""
+	if course != nil {
+		gradeName = course.GradeName
+	}
+
 	expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 	if expectedAnswer == "" {
 		expectedAnswer = "[sin respuesta esperada]"
@@ -92,7 +99,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	} else if studentAnswer != "" {
 		// Evaluate the answer with AI
 		promptContext := buildNotebookPromptContext(page)
-		evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, promptContext, expectedAnswer, studentAnswer)
+		evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, promptContext, expectedAnswer, studentAnswer, gradeName)
 		if aiErr != nil {
 			feedback = "no se pudo evaluar la respuesta"
 		} else {

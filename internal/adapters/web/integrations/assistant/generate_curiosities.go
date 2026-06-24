@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (g *gateway) GenerateCourseCuriosities(ctx context.Context, cfg Config, subject, topic string, count int) ([]string, error) {
+func (g *gateway) GenerateCourseCuriosities(ctx context.Context, cfg Config, subject, topic, gradeName string, count int) ([]string, error) {
 	if !g.IsConfigured(cfg) {
 		return nil, errors.New("assistant service not configured")
 	}
@@ -31,7 +31,7 @@ func (g *gateway) GenerateCourseCuriosities(ctx context.Context, cfg Config, sub
 	}
 	log.Printf("[assistant] generate_curiosities conversation_created host=%s conversation_id=%s", baseURL, conversationID)
 
-	prompt := buildCuriositiesPrompt(subject, topic, count)
+	prompt := buildCuriositiesPrompt(subject, topic, gradeName, count)
 	log.Printf("[assistant] generate_curiosities prompt=%q", truncateForLog(prompt, 500))
 
 	response, err := g.sendTextMessage(ctx, baseURL, apiKey, conversationID, prompt)
@@ -50,17 +50,21 @@ func (g *gateway) GenerateCourseCuriosities(ctx context.Context, cfg Config, sub
 	return curiosities, nil
 }
 
-func buildCuriositiesPrompt(subject, topic string, count int) string {
-	return fmt.Sprintf(`Genera exactamente %d datos curiosos cortos y divertidos para niños sobre "%s" en la materia "%s".
+func buildCuriositiesPrompt(subject, topic, gradeName string, count int) string {
+	gradeContext := "niños de primaria"
+	if gradeName != "" {
+		gradeContext = "estudiantes de " + gradeName
+	}
+	return fmt.Sprintf(`Genera exactamente %d datos curiosos cortos y divertidos para %s sobre "%s" en la materia "%s".
 
 Requisitos:
 - Cada dato debe tener máximo 100 caracteres
-- Usa lenguaje simple y amigable para niños de primaria
+- Usa lenguaje simple y apropiado para %s
 - Que sean sorprendentes o interesantes
 - Evita datos muy obvios o aburridos
 
 Responde SOLO con un array JSON de strings, sin explicación adicional.
-Ejemplo de formato: ["Dato curioso 1", "Dato curioso 2"]`, count, topic, subject)
+Ejemplo de formato: ["Dato curioso 1", "Dato curioso 2"]`, count, gradeContext, topic, subject, gradeContext)
 }
 
 func parseCuriositiesResponse(response string) ([]string, error) {

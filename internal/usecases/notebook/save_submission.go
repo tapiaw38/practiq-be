@@ -55,6 +55,13 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		return fmt.Errorf("forbidden")
 	}
 
+	// Get course for grade context
+	course, _ := app.Repositories.Course.Get(ctx, notebook.CourseID)
+	gradeName := ""
+	if course != nil {
+		gradeName = course.GradeName
+	}
+
 	canvasForOCR := input.CanvasData
 	submission := domain.NotebookSubmission{
 		PageID:     input.PageID,
@@ -97,7 +104,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 			}
 
 			if studentAnswer != "" && studentAnswer != "UNREADABLE" {
-				if evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, buildNotebookPromptContext(page), expectedAnswer, studentAnswer); aiErr == nil {
+				if evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, buildNotebookPromptContext(page), expectedAnswer, studentAnswer, gradeName); aiErr == nil {
 					submission.AIIsCorrect = &evaluation.IsCorrect
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 					if strings.TrimSpace(evaluation.Feedback) != "" {

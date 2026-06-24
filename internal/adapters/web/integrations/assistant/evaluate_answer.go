@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (g *gateway) EvaluatePracticeAnswer(ctx context.Context, cfg Config, question, correctAnswer, studentAnswer string) (EvaluationResult, error) {
+func (g *gateway) EvaluatePracticeAnswer(ctx context.Context, cfg Config, question, correctAnswer, studentAnswer, gradeName string) (EvaluationResult, error) {
 	if !g.IsConfigured(cfg) {
 		return EvaluationResult{}, errors.New("assistant service not configured")
 	}
@@ -23,7 +23,7 @@ func (g *gateway) EvaluatePracticeAnswer(ctx context.Context, cfg Config, questi
 	}
 	log.Printf("[assistant] evaluate_answer conversation_created host=%s conversation_id=%s", baseURL, conversationID)
 
-	prompt := buildEvaluationPrompt(question, correctAnswer, studentAnswer)
+	prompt := buildEvaluationPrompt(question, correctAnswer, studentAnswer, gradeName)
 	log.Printf("[assistant] evaluate_answer prompt=%q", truncateForLog(prompt, 700))
 	response, err := g.sendTextMessage(ctx, baseURL, apiKey, conversationID, prompt)
 	if err != nil {
@@ -41,7 +41,7 @@ func (g *gateway) EvaluatePracticeAnswer(ctx context.Context, cfg Config, questi
 	return evaluation, nil
 }
 
-func buildEvaluationPrompt(question, correctAnswer, studentAnswer string) string {
+func buildEvaluationPrompt(question, correctAnswer, studentAnswer, gradeName string) string {
 	q := strings.TrimSpace(question)
 	if q == "" {
 		q = "(sin enunciado provisto)"
@@ -54,8 +54,15 @@ func buildEvaluationPrompt(question, correctAnswer, studentAnswer string) string
 	if sa == "" {
 		sa = "(sin respuesta del estudiante)"
 	}
+	gn := strings.TrimSpace(gradeName)
+
+	gradeContext := ""
+	if gn != "" {
+		gradeContext = "Considera los contenidos curriculares y documentos de " + gn + " para evaluar. "
+	}
 
 	return "Evalua si la respuesta del estudiante es correcta para el ejercicio. " +
+		gradeContext +
 		"Responde SOLO con JSON valido en una sola linea con este formato exacto: " +
 		`{"is_correct":true,"feedback":"comentario breve"}` + ". " +
 		"No incluyas texto adicional. " +

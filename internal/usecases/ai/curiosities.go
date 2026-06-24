@@ -100,7 +100,7 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 	}
 
 	// Generate curiosities via AI
-	curiosities, err := app.Integrations.AssistantGateway.GenerateCourseCuriosities(ctx, cfg, subject, topic, 8)
+	curiosities, err := app.Integrations.AssistantGateway.GenerateCourseCuriosities(ctx, cfg, subject, topic, course.GradeName, 8)
 	if err != nil {
 		log.Printf("[ai_curiosities] warning: AI generation failed course_id=%s err=%v, falling back to defaults", input.CourseID, err)
 		return u.fallbackResponse(input.CourseID), nil

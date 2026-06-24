@@ -107,14 +107,23 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 	}
 
 	var exercise *domain.Exercise
+	gradeName := ""
 	if input.ExerciseID != "" {
 		exercise, err = app.Repositories.Exercise.Get(ctx, input.ExerciseID)
 		if err != nil {
 			log.Printf("[ai_help] warning: failed to get exercise exercise_id=%s err=%v", input.ExerciseID, err)
 		}
+		// Get grade from exercise → topic → course
+		if exercise != nil && exercise.TopicID != "" {
+			if topic, _ := app.Repositories.Topic.Get(ctx, exercise.TopicID); topic != nil {
+				if course, _ := app.Repositories.Course.Get(ctx, topic.CourseID); course != nil {
+					gradeName = course.GradeName
+				}
+			}
+		}
 	}
 
-	prompt := buildHelpPrompt(helpType, input.Question, exercise)
+	prompt := buildHelpPrompt(helpType, input.Question, exercise, gradeName)
 
 	cfg := assistant.Config{
 		BaseURL: profile.AssistantBaseURL,
@@ -130,10 +139,19 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 	return strings.TrimSpace(aiResponse)
 }
 
-func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise) string {
+func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise, gradeName string) string {
 	var sb strings.Builder
 
-	sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de primaria y secundaria. ")
+	if gradeName != "" {
+		sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de ")
+		sb.WriteString(gradeName)
+		sb.WriteString(". ")
+		sb.WriteString("Considera los contenidos curriculares y documentos de ")
+		sb.WriteString(gradeName)
+		sb.WriteString(" para responder. ")
+	} else {
+		sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de primaria y secundaria. ")
+	}
 	sb.WriteString("Responde siempre en español, de forma clara y pedagógica.\n\n")
 
 	if exercise != nil {

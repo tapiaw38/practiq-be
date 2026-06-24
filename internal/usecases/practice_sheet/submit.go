@@ -64,6 +64,13 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		return nil, apperrors.NewForbiddenError()
 	}
 
+	// Get course for grade context
+	course, _ := app.Repositories.Course.Get(ctx, ps.CourseID)
+	gradeName := ""
+	if course != nil {
+		gradeName = course.GradeName
+	}
+
 	exerciseMap := map[string]domain.Exercise{}
 	for _, pse := range ps.Exercises {
 		exerciseMap[pse.Exercise.ID] = pse.Exercise
@@ -115,7 +122,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 			canEvaluateWithAI := app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) && hasTextAnswer && !isDataURIAnswer(answerText)
 			if canEvaluateWithAI {
-				if evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, ex.Question, ex.CorrectAnswer, answerText); aiErr == nil {
+				if evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, ex.Question, ex.CorrectAnswer, answerText, gradeName); aiErr == nil {
 					isCorrect = evaluation.IsCorrect
 					aiFeedback = evaluation.Feedback
 					if resultAIFeedback == "" && aiFeedback != "" {
