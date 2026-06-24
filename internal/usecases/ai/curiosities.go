@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -50,13 +51,22 @@ func NewGenerateCuriositiesUsecase(contextFactory appcontext.Factory) GenerateCu
 func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input GenerateCuriositiesInput) (*GenerateCuriositiesOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Get course info
 	course, err := app.Repositories.Course.Get(ctx, input.CourseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
 	if course == nil {
 		return nil, apperrors.NewNotFoundError("course not found")
+	}
+
+	if course.TeacherID != input.UserID {
+		hasAccess, err := userHasCourseAccess(ctx, app, input.UserID, input.CourseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if !hasAccess {
+			return nil, apperrors.NewForbiddenError()
+		}
 	}
 
 	// Check if course already has cached curiosities
@@ -133,4 +143,17 @@ func (u *generateCuriositiesUsecase) fallbackResponse(courseID string) *Generate
 			Curiosities: defaultCuriosities,
 		},
 	}
+}
+
+func userHasCourseAccess(ctx context.Context, app *appcontext.Context, userID, courseID string) (bool, error) {
+	courses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{StudentID: userID})
+	if err != nil {
+		return false, err
+	}
+	for _, course := range courses {
+		if course.ID == courseID {
+			return true, nil
+		}
+	}
+	return false, nil
 }

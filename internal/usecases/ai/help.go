@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strings"
 
+	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -62,6 +63,25 @@ func NewHelpUsecase(contextFactory appcontext.Factory) HelpUsecase {
 
 func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	if input.ExerciseID != "" {
+		exercise, err := app.Repositories.Exercise.Get(ctx, input.ExerciseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
+		}
+		if exercise != nil && exercise.TopicID != "" {
+			topic, _ := app.Repositories.Topic.Get(ctx, exercise.TopicID)
+			if topic != nil {
+				hasAccess, err := studentHasCourseAccess(ctx, app, input.StudentID, topic.CourseID)
+				if err != nil {
+					return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
+				}
+				if !hasAccess {
+					return nil, apperrors.NewForbiddenError()
+				}
+			}
+		}
+	}
 
 	helpType := input.HelpType
 	if helpType == "" {
@@ -258,4 +278,17 @@ func (u *helpUsecase) persistMessages(ctx context.Context, app *appcontext.Conte
 	if err != nil {
 		log.Printf("[ai_help] warning: failed to persist ai message conversation_id=%s err=%v", conversationID, err)
 	}
+}
+
+func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {
+	courses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{StudentID: studentID})
+	if err != nil {
+		return false, err
+	}
+	for _, course := range courses {
+		if course.ID == courseID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
