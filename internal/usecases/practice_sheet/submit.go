@@ -276,12 +276,18 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 		topicStreak := calcStreak(topicProgress)
 
+		// Use nextLevel for the derived topic, currentLevel for others
+		levelToSave := currentLevel
+		if topicID == derivedTopicID && shouldLevelUp {
+			levelToSave = nextLevel
+		}
+
 		if err := app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
 			StudentID:       studentID,
 			TopicID:         topicID,
 			StrategyID:      ps.StrategyID,
 			MasteryScore:    topicMastery,
-			CurrentLevel:    currentLevel,
+			CurrentLevel:    levelToSave,
 			TotalAttempts:   topicPrevTotal + stats.total,
 			CorrectAttempts: topicPrevCorrect + stats.correct,
 			StreakDays:      topicStreak,

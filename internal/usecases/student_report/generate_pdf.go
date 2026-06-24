@@ -35,6 +35,16 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 		if !hasAccess {
 			return nil, apperrors.NewForbiddenError()
 		}
+		// If course_id provided, verify teacher owns that course
+		if filter.CourseID != "" {
+			course, err := app.Repositories.Course.Get(ctx, filter.CourseID)
+			if err != nil {
+				return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+			}
+			if course == nil || course.TeacherID != teacherID {
+				return nil, apperrors.NewForbiddenError()
+			}
+		}
 	}
 
 	student, err := app.Repositories.UserProfile.Get(ctx, filter.StudentID)
