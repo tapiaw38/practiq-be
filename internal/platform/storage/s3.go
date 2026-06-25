@@ -61,6 +61,7 @@ func (s *S3ImageStorage) IsConfigured() bool {
 }
 
 func (s *S3ImageStorage) UploadDataURI(ctx context.Context, folder, userID, dataURI string) (string, error) {
+	dataURI = normalizeToDataURI(dataURI)
 	body, contentType, err := utils.DecodeDataURI(dataURI)
 	if err != nil {
 		return strings.TrimSpace(dataURI), err
@@ -92,6 +93,24 @@ func (s *S3ImageStorage) ResolveDataURI(ctx context.Context, value string) (stri
 		contentType = http.DetectContentType(body)
 	}
 	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(body), nil
+}
+
+func normalizeToDataURI(value string) string {
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, "data:") {
+		return value
+	}
+	compact := strings.ReplaceAll(strings.ReplaceAll(value, "\n", ""), "\r", "")
+	if len(compact) < 128 {
+		return value
+	}
+	contentType := "image/png"
+	if strings.HasPrefix(compact, "/9j/") {
+		contentType = "image/jpeg"
+	} else if strings.HasPrefix(compact, "R0lGOD") {
+		contentType = "image/gif"
+	}
+	return "data:" + contentType + ";base64," + compact
 }
 
 func buildImageKey(folder, userID, ext string) string {

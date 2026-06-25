@@ -21,6 +21,7 @@ func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilte
 		JOIN courses c ON c.id = n.course_id
 		LEFT JOIN user_profiles up ON up.id = ns.student_id
 		WHERE n.deleted_at IS NULL
+		  AND c.deleted_at IS NULL
 		  AND ($1 = '' OR n.id::text = $1)
 		  AND ($2 = '' OR ns.student_id = $2)
 		  AND ($3 = '' OR n.course_id::text = $3)

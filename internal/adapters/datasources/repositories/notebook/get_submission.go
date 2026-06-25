@@ -15,7 +15,8 @@ func (r *repository) GetSubmission(ctx context.Context, pageID, studentID string
 		FROM notebook_submissions ns
 		JOIN notebook_pages np ON np.id = ns.page_id
 		JOIN notebooks n ON n.id = np.notebook_id
-		WHERE ns.page_id = $1 AND ns.student_id = $2 AND n.deleted_at IS NULL
+		JOIN courses c ON c.id = n.course_id
+		WHERE ns.page_id = $1 AND ns.student_id = $2 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
 	`, pageID, studentID).Scan(&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText, &s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt, &s.TeacherIsCorrect, &s.TeacherFeedback, &s.TeacherReviewedAt, &s.SubmittedAt, &s.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
