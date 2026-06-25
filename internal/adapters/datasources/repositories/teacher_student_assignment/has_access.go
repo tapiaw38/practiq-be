@@ -6,7 +6,7 @@ func (r *repository) HasAccess(ctx context.Context, teacherID, studentID string)
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM teacher_student_assignments
-			WHERE teacher_id = $1 AND student_id = $2
+			WHERE teacher_id = $1 AND student_id = $2 AND status = 'active'
 			UNION
 			SELECT 1 FROM enrollments e
 			JOIN courses c ON c.id = e.course_id

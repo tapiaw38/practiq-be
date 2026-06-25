@@ -71,14 +71,15 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 		}
 		if exercise != nil && exercise.TopicID != "" {
 			topic, _ := app.Repositories.Topic.Get(ctx, exercise.TopicID)
-			if topic != nil {
-				hasAccess, err := studentHasCourseAccess(ctx, app, input.StudentID, topic.CourseID)
-				if err != nil {
-					return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
-				}
-				if !hasAccess {
-					return nil, apperrors.NewForbiddenError()
-				}
+			if topic == nil {
+				return nil, apperrors.NewForbiddenError()
+			}
+			hasAccess, err := studentHasCourseAccess(ctx, app, input.StudentID, topic.CourseID)
+			if err != nil {
+				return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
+			}
+			if !hasAccess {
+				return nil, apperrors.NewForbiddenError()
 			}
 		}
 	}

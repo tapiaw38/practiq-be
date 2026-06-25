@@ -13,7 +13,8 @@ func (r *repository) listByFilter(ctx context.Context, studentID, courseID strin
 		       stp.streak_days, stp.last_practiced_at, stp.updated_at, COALESCE(t.title,'')
 		FROM student_topic_progress stp
 		LEFT JOIN topics t ON t.id = stp.topic_id
-		WHERE stp.student_id = $1
+		LEFT JOIN courses c ON c.id = t.course_id
+		WHERE stp.student_id = $1 AND (c.id IS NULL OR c.deleted_at IS NULL)
 	`
 	args := []interface{}{studentID}
 	if courseID != "" {
