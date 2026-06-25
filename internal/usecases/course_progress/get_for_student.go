@@ -37,6 +37,14 @@ func (u *getForStudentUsecase) Execute(ctx context.Context, requesterID, student
 		if !hasAccess {
 			return nil, apperrors.NewForbiddenError()
 		}
+
+		course, err := app.Repositories.Course.Get(ctx, courseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil || course.TeacherID != requesterID {
+			return nil, apperrors.NewForbiddenError()
+		}
 	}
 
 	progress, err := app.Repositories.CourseProgress.Get(ctx, studentID, courseID)

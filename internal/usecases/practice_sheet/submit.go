@@ -276,9 +276,16 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 		topicStreak := calcStreak(topicProgress)
 
-		levelToSave := currentLevel
-		if topicID == derivedTopicID && shouldLevelUp {
-			levelToSave = nextLevel
+		levelToSave := 1
+		if topicProgress != nil {
+			levelToSave = topicProgress.CurrentLevel
+		}
+		if topicID == derivedTopicID {
+			if shouldLevelUp {
+				levelToSave = nextLevel
+			} else {
+				levelToSave = currentLevel
+			}
 		}
 
 		if err := app.Repositories.StudentProgress.Upsert(ctx, domain.StudentTopicProgress{
