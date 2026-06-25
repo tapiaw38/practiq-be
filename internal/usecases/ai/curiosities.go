@@ -120,7 +120,6 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		return u.fallbackResponse(input.CourseID), nil
 	}
 
-	// ponytail: only teacher caches, student assistant could poison
 	if course.TeacherID == input.UserID {
 		if err := app.Repositories.CourseCuriosities.Upsert(ctx, domain.CourseCuriosities{
 			CourseID:    input.CourseID,

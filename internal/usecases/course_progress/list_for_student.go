@@ -45,7 +45,6 @@ func (u *listForStudentUsecase) Execute(ctx context.Context, requesterID, studen
 		return nil, apperrors.NewApplicationError(mappings.CourseProgressListError, err)
 	}
 
-	// ponytail: filter to teacher's courses, prevent cross-course visibility
 	if !isAdmin {
 		teacherCourses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{TeacherID: requesterID})
 		if err != nil {
