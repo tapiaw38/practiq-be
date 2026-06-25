@@ -120,12 +120,14 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		return u.fallbackResponse(input.CourseID), nil
 	}
 
-	// Cache curiosities for future requests
-	if err := app.Repositories.CourseCuriosities.Upsert(ctx, domain.CourseCuriosities{
-		CourseID:    input.CourseID,
-		Curiosities: curiosities,
-	}); err != nil {
-		log.Printf("[ai_curiosities] warning: failed to cache curiosities course_id=%s err=%v", input.CourseID, err)
+	// ponytail: only teacher caches, student assistant could poison
+	if course.TeacherID == input.UserID {
+		if err := app.Repositories.CourseCuriosities.Upsert(ctx, domain.CourseCuriosities{
+			CourseID:    input.CourseID,
+			Curiosities: curiosities,
+		}); err != nil {
+			log.Printf("[ai_curiosities] warning: failed to cache curiosities course_id=%s err=%v", input.CourseID, err)
+		}
 	}
 
 	return &GenerateCuriositiesOutput{
