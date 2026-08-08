@@ -248,6 +248,11 @@ var (
 		StatusCode:   http.StatusForbidden,
 		Message:      "this level test is not available yet",
 	}
+	PracticeSheetExpiredError = ErrorDetails{
+		InternalCode: "practice-sheet:expired",
+		StatusCode:   http.StatusForbidden,
+		Message:      "this level test has expired and must be reactivated by a teacher",
+	}
 	AttemptReviewListError = ErrorDetails{
 		InternalCode: "attempt-review:list:error",
 		StatusCode:   http.StatusInternalServerError,

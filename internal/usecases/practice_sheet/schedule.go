@@ -28,16 +28,19 @@ func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID s
 	return course.TeacherID == requesterID
 }
 
-// ensureSheetIsOpen blocks students from starting a sheet before its scheduled
-// date. Enforced server-side: hiding the button in the UI is not enough.
+// ensureSheetIsOpen blocks students before and after a scheduled level test.
+// Teachers and admins bypass the schedule so they can review or reprogram it.
 func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.PracticeSheet, requesterID string, isAdmin bool) apperrors.ApplicationError {
-	if ps.ScheduledAt == nil || !time.Now().Before(*ps.ScheduledAt) {
-		return nil
-	}
 	if isCourseTeacher(ctx, app, requesterID, isAdmin, ps.CourseID) {
 		return nil
 	}
-	return apperrors.NewApplicationError(mappings.PracticeSheetNotYetAvailableError, nil)
+	if ps.ScheduledAt == nil {
+		return nil
+	}
+	if time.Now().Before(*ps.ScheduledAt) {
+		return apperrors.NewApplicationError(mappings.PracticeSheetNotYetAvailableError, nil)
+	}
+	return apperrors.NewApplicationError(mappings.PracticeSheetExpiredError, nil)
 }
 
 // notifyScheduledLevelTest tells every enrolled student when a level test gets a
