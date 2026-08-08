@@ -15,6 +15,9 @@ type Repository interface {
 	CountUnread(context.Context, string) (int, error)
 	MarkRead(ctx context.Context, id, userID string) (bool, error)
 	MarkAllRead(context.Context, string) error
+	// Delete removes a notification the user dismissed. Scoped by user so one
+	// user cannot delete another's.
+	Delete(ctx context.Context, id, userID string) (bool, error)
 	DeleteByResource(ctx context.Context, notificationType, resourceID string) error
 }
 

@@ -17,11 +17,19 @@ type (
 		Execute(ctx context.Context, userID string) (*MarkReadOutput, apperrors.ApplicationError)
 	}
 
+	DeleteUsecase interface {
+		Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError)
+	}
+
 	markReadUsecase struct {
 		contextFactory appcontext.Factory
 	}
 
 	markAllReadUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	deleteUsecase struct {
 		contextFactory appcontext.Factory
 	}
 
@@ -36,6 +44,21 @@ func NewMarkReadUsecase(contextFactory appcontext.Factory) MarkReadUsecase {
 
 func NewMarkAllReadUsecase(contextFactory appcontext.Factory) MarkAllReadUsecase {
 	return &markAllReadUsecase{contextFactory: contextFactory}
+}
+
+func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
+	return &deleteUsecase{contextFactory: contextFactory}
+}
+
+// Execute removes a notification the user dismissed. Deleting one that is
+// already gone is not an error: the client may retry or double-click.
+func (u *deleteUsecase) Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
+
+	if _, err := app.Repositories.Notification.Delete(ctx, id, userID); err != nil {
+		return nil, apperrors.NewApplicationError(mappings.NotificationUpdateError, err)
+	}
+	return &MarkReadOutput{Data: OperationResultData{Message: "notification deleted"}}, nil
 }
 
 // Execute marks one notification as read. Scoped by user, so a notification

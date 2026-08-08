@@ -33,3 +33,16 @@ func NewMarkAllReadHandler(uc ucNotification.MarkAllReadUsecase) gin.HandlerFunc
 		c.JSON(http.StatusOK, output)
 	}
 }
+
+func NewDeleteHandler(uc ucNotification.DeleteUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		output, appErr := uc.Execute(c, c.Param("id"), middlewares.GetUserID(c))
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, output)
+	}
+}

@@ -154,6 +154,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/notifications", handlerNotification.NewListHandler(uc.Notification.List))
 	api.POST("/notifications/:id/read", handlerNotification.NewMarkReadHandler(uc.Notification.MarkRead))
 	api.POST("/notifications/read-all", handlerNotification.NewMarkAllReadHandler(uc.Notification.MarkAllRead))
+	api.DELETE("/notifications/:id", handlerNotification.NewDeleteHandler(uc.Notification.Delete))
 
 	// Learning Strategies
 	api.GET("/learning-strategies", handlerLS.NewListHandler(uc.LearningStrategy.List))

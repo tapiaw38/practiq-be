@@ -43,6 +43,17 @@ func (r *repository) MarkAllRead(ctx context.Context, userID string) error {
 	return err
 }
 
+func (r *repository) Delete(ctx context.Context, id, userID string) (bool, error) {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM notifications WHERE id = $1 AND user_id = $2
+	`, id, userID)
+	if err != nil {
+		return false, err
+	}
+	affected, err := result.RowsAffected()
+	return affected > 0, err
+}
+
 // DeleteByResource drops notifications whose event no longer exists or was
 // unscheduled.
 func (r *repository) DeleteByResource(ctx context.Context, notificationType, resourceID string) error {

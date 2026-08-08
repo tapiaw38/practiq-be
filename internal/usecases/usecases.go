@@ -162,6 +162,7 @@ type NotificationUsecases struct {
 	List        ucNotification.ListUsecase
 	MarkRead    ucNotification.MarkReadUsecase
 	MarkAllRead ucNotification.MarkAllReadUsecase
+	Delete      ucNotification.DeleteUsecase
 }
 
 type ReportUsecases struct {
@@ -211,6 +212,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			List:        ucNotification.NewListUsecase(contextFactory),
 			MarkRead:    ucNotification.NewMarkReadUsecase(contextFactory),
 			MarkAllRead: ucNotification.NewMarkAllReadUsecase(contextFactory),
+			Delete:      ucNotification.NewDeleteUsecase(contextFactory),
 		},
 		Grade: GradeUsecases{
 			Create:         ucGrade.NewCreateUsecase(contextFactory),
