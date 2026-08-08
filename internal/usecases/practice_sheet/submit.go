@@ -242,12 +242,21 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 	}
 
-	currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
 	currentScore := 0.0
 	currentLevel := 1
-	if currentProgress != nil {
-		currentScore = currentProgress.MasteryScore
-		currentLevel = currentProgress.CurrentLevel
+	if ps.SheetType == "level_test" {
+		// Level tests advance the course, not the topic. Topic progress can be
+		// ahead because of regular practice and must not cause level skipping.
+		courseProgress, _ := app.Repositories.CourseProgress.Get(ctx, studentID, ps.CourseID)
+		if courseProgress != nil {
+			currentLevel = courseProgress.CurrentLevel
+		}
+	} else {
+		currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
+		if currentProgress != nil {
+			currentScore = currentProgress.MasteryScore
+			currentLevel = currentProgress.CurrentLevel
+		}
 	}
 
 	var newMastery float64
