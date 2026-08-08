@@ -2,6 +2,7 @@ package practicesheet
 
 import (
 	"context"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -24,6 +25,7 @@ type (
 		Level       int
 		SheetType   string
 		TestStyle   string
+		ScheduledAt *time.Time
 		ExerciseIDs []string
 	}
 
@@ -59,12 +61,19 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		}
 	}
 
+	// Switching a level test back to practice drops its schedule.
+	scheduledAt := input.ScheduledAt
+	if input.SheetType != sheetTypeLevelTest {
+		scheduledAt = nil
+	}
+
 	if err := app.Repositories.PracticeSheet.Update(ctx, id, domain.PracticeSheet{
-		Title:     input.Title,
-		TopicID:   input.TopicID,
-		Level:     input.Level,
-		SheetType: input.SheetType,
-		TestStyle: input.TestStyle,
+		Title:       input.Title,
+		TopicID:     input.TopicID,
+		Level:       input.Level,
+		SheetType:   input.SheetType,
+		TestStyle:   input.TestStyle,
+		ScheduledAt: scheduledAt,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
 	}
@@ -80,6 +89,8 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	if ps == nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
+
+	notifyScheduledLevelTest(ctx, app, *ps)
 
 	return &UpdateOutput{Data: toSheetData(*ps)}, nil
 }

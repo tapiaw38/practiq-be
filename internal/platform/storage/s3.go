@@ -25,6 +25,10 @@ type ImageStorage interface {
 	IsConfigured() bool
 	UploadDataURI(ctx context.Context, folder, userID, dataURI string) (string, error)
 	ResolveDataURI(ctx context.Context, value string) (string, error)
+	// UploadFile stores audio, PDFs and documents alongside images.
+	UploadFile(ctx context.Context, folder, userID, filename, contentType string, body []byte) (string, error)
+	// FetchFile reads a stored object back, for forwarding to the assistant.
+	FetchFile(ctx context.Context, url string) ([]byte, string, error)
 }
 
 type NoopImageStorage struct{}

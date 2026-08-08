@@ -9,7 +9,10 @@ type (
 		Level     int    `json:"level"`
 		SheetType string `json:"sheet_type"`
 		TestStyle string `json:"test_style"`
-		Exercises int    `json:"exercises"`
+		// ScheduledAt is UTC and empty when the sheet has no date. The client
+		// uses it to show the date and disable the sheet until then.
+		ScheduledAt string `json:"scheduled_at,omitempty"`
+		Exercises   int    `json:"exercises"`
 	}
 
 	NotebookData struct {
@@ -30,7 +33,7 @@ type (
 )
 
 func toSheetData(s domain.PracticeSheet) SheetData {
-	return SheetData{
+	data := SheetData{
 		ID:        s.ID,
 		Title:     s.Title,
 		Level:     s.Level,
@@ -38,6 +41,10 @@ func toSheetData(s domain.PracticeSheet) SheetData {
 		TestStyle: s.TestStyle,
 		Exercises: len(s.Exercises),
 	}
+	if s.ScheduledAt != nil {
+		data.ScheduledAt = s.ScheduledAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	return data
 }
 
 func toNotebookData(nb domain.Notebook) NotebookData {

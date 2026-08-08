@@ -10,7 +10,7 @@ import (
 
 func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.PracticeSheet, error) {
 	query := `
-		SELECT ps.id, ps.course_id, COALESCE(ps.topic_id::text,''), COALESCE(ps.strategy_id::text,''), ps.title, ps.level, ps.sheet_type, ps.test_style, ps.created_by, ps.created_at
+		SELECT ps.id, ps.course_id, COALESCE(ps.topic_id::text,''), COALESCE(ps.strategy_id::text,''), ps.title, ps.level, ps.sheet_type, ps.test_style, ps.scheduled_at, ps.created_by, ps.created_at
 		FROM practice_sheets ps
 		JOIN courses c ON c.id = ps.course_id
 		WHERE ps.course_id = $1 AND c.deleted_at IS NULL
@@ -39,7 +39,7 @@ func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Prac
 	var sheets []domain.PracticeSheet
 	for rows.Next() {
 		var ps domain.PracticeSheet
-		if err := rows.Scan(&ps.ID, &ps.CourseID, &ps.TopicID, &ps.StrategyID, &ps.Title, &ps.Level, &ps.SheetType, &ps.TestStyle, &ps.CreatedBy, &ps.CreatedAt); err != nil {
+		if err := rows.Scan(&ps.ID, &ps.CourseID, &ps.TopicID, &ps.StrategyID, &ps.Title, &ps.Level, &ps.SheetType, &ps.TestStyle, &ps.ScheduledAt, &ps.CreatedBy, &ps.CreatedAt); err != nil {
 			return nil, err
 		}
 		sheets = append(sheets, ps)

@@ -3,6 +3,7 @@ package usecases
 import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
+	ucAttemptReview "github.com/tapiaw38/practiq-be/internal/usecases/attempt_review"
 	ucCourse "github.com/tapiaw38/practiq-be/internal/usecases/course"
 	ucLevel "github.com/tapiaw38/practiq-be/internal/usecases/course_level"
 	ucCourseProgress "github.com/tapiaw38/practiq-be/internal/usecases/course_progress"
@@ -12,12 +13,14 @@ import (
 	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
+	ucNotification "github.com/tapiaw38/practiq-be/internal/usecases/notification"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
 	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
 	ucSubject "github.com/tapiaw38/practiq-be/internal/usecases/subject"
 	ucAssignment "github.com/tapiaw38/practiq-be/internal/usecases/teacher_student_assignment"
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
+	ucUpload "github.com/tapiaw38/practiq-be/internal/usecases/upload"
 	ucProfile "github.com/tapiaw38/practiq-be/internal/usecases/user_profile"
 )
 
@@ -98,11 +101,11 @@ type ProgressUsecases struct {
 }
 
 type AIUsecases struct {
-	CreateConversation    ucAI.CreateConversationUsecase
-	GetMessages           ucAI.GetMessagesUsecase
-	Help                  ucAI.HelpUsecase
-	Proxy                 ucAI.ProxyUsecase
-	GenerateCuriosities   ucAI.GenerateCuriositiesUsecase
+	CreateConversation  ucAI.CreateConversationUsecase
+	GetMessages         ucAI.GetMessagesUsecase
+	Help                ucAI.HelpUsecase
+	Proxy               ucAI.ProxyUsecase
+	GenerateCuriosities ucAI.GenerateCuriositiesUsecase
 }
 
 type ProfileUsecases struct {
@@ -146,6 +149,21 @@ type CourseProgressUsecases struct {
 	ListForStudent ucCourseProgress.ListForStudentUsecase
 }
 
+type AttemptReviewUsecases struct {
+	List   ucAttemptReview.ListUsecase
+	Review ucAttemptReview.ReviewUsecase
+}
+
+type UploadUsecases struct {
+	Upload ucUpload.Usecase
+}
+
+type NotificationUsecases struct {
+	List        ucNotification.ListUsecase
+	MarkRead    ucNotification.MarkReadUsecase
+	MarkAllRead ucNotification.MarkAllReadUsecase
+}
+
 type ReportUsecases struct {
 	GeneratePDF ucReport.GeneratePDFUsecase
 }
@@ -168,6 +186,9 @@ type Usecases struct {
 	LearningStrategy LearningStrategyUsecases
 	CourseProgress   CourseProgressUsecases
 	Report           ReportUsecases
+	Notification     NotificationUsecases
+	Upload           UploadUsecases
+	AttemptReview    AttemptReviewUsecases
 }
 
 func NewUsecases(contextFactory appcontext.Factory) *Usecases {
@@ -178,6 +199,18 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Get:    ucCourse.NewGetUsecase(contextFactory),
 			Update: ucCourse.NewUpdateUsecase(contextFactory),
 			Delete: ucCourse.NewDeleteUsecase(contextFactory),
+		},
+		AttemptReview: AttemptReviewUsecases{
+			List:   ucAttemptReview.NewListUsecase(contextFactory),
+			Review: ucAttemptReview.NewReviewUsecase(contextFactory),
+		},
+		Upload: UploadUsecases{
+			Upload: ucUpload.NewUsecase(contextFactory),
+		},
+		Notification: NotificationUsecases{
+			List:        ucNotification.NewListUsecase(contextFactory),
+			MarkRead:    ucNotification.NewMarkReadUsecase(contextFactory),
+			MarkAllRead: ucNotification.NewMarkAllReadUsecase(contextFactory),
 		},
 		Grade: GradeUsecases{
 			Create:         ucGrade.NewCreateUsecase(contextFactory),

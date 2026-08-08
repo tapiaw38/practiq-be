@@ -39,6 +39,9 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, ps.CourseID); appErr != nil {
 		return nil, appErr
 	}
+	if appErr := ensureSheetIsOpen(ctx, app, ps, requesterID, isAdmin); appErr != nil {
+		return nil, appErr
+	}
 
 	return &GetOutput{Data: toSheetData(*ps)}, nil
 }

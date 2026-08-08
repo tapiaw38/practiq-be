@@ -21,8 +21,8 @@ func (r *repository) Update(ctx context.Context, id string, ps domain.PracticeSh
 	}
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE practice_sheets
-		SET title = $1, topic_id = NULLIF($2,'')::uuid, level = $3, sheet_type = $4, test_style = $5
-		WHERE id = $6
-	`, ps.Title, ps.TopicID, level, sheetType, testStyle, id)
+		SET title = $1, topic_id = NULLIF($2,'')::uuid, level = $3, sheet_type = $4, test_style = $5, scheduled_at = $6
+		WHERE id = $7
+	`, ps.Title, ps.TopicID, level, sheetType, testStyle, ps.ScheduledAt, id)
 	return err
 }

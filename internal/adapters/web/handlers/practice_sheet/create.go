@@ -16,6 +16,8 @@ type createInput struct {
 	SheetType   string   `json:"sheet_type"`
 	TestStyle   string   `json:"test_style"`
 	ExerciseIDs []string `json:"exercise_ids"`
+	// ScheduledAt is RFC 3339; empty clears the schedule.
+	ScheduledAt string `json:"scheduled_at"`
 }
 
 func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
@@ -34,6 +36,12 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 			return
 		}
 
+		scheduledAt, err := parseScheduledAt(input.ScheduledAt)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+
 		output, appErr := uc.Execute(c, requesterID, isAdmin, ucPS.CreateInput{
 			CourseID:    courseID,
 			SheetType:   input.SheetType,
@@ -43,6 +51,7 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 			Title:       input.Title,
 			Level:       input.Level,
 			ExerciseIDs: input.ExerciseIDs,
+			ScheduledAt: scheduledAt,
 		})
 		if appErr != nil {
 			appErr.Log(c)
