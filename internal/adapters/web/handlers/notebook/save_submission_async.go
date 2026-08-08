@@ -68,7 +68,7 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 			if updateErr := repo.Update(ctx, domain.SubmitJob{
 				ID:     jid,
 				Status: "done",
-			}); updateErr != nil{
+			}); updateErr != nil {
 				log.Printf("failed to update submit job: %v", updateErr)
 			}
 		}(pageID, studentID, jobID, input)
