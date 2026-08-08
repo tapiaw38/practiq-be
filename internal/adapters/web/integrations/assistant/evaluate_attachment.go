@@ -12,9 +12,7 @@ import (
 )
 
 // EvaluateAttachment grades a file the student uploaded as their answer. Audio
-// goes through the assistant's voice channel and images through its vision
-// channel; anything else has no channel and is rejected so the caller can fall
-// back to a human review.
+// and images use media channels; PDF/DOCX use Gillie's document channel.
 func (g *gateway) EvaluateAttachment(ctx context.Context, cfg Config, input AttachmentEvaluationInput) (EvaluationResult, error) {
 	if !g.IsConfigured(cfg) {
 		return EvaluationResult{}, errors.New("assistant service not configured")
@@ -55,6 +53,8 @@ func attachmentFieldFor(kind string) (string, error) {
 		return "voice_content", nil
 	case AttachmentKindImage:
 		return "image_content", nil
+	case AttachmentKindPDF, AttachmentKindDocument:
+		return "document_content", nil
 	default:
 		return "", fmt.Errorf("%w: %s", ErrAttachmentNotEvaluable, kind)
 	}
@@ -65,8 +65,11 @@ func buildAttachmentEvaluationPrompt(input AttachmentEvaluationInput) string {
 
 	if input.Kind == AttachmentKindAudio {
 		sb.WriteString("El alumno respondió con un audio adjunto. Escuchá el audio y evaluá la respuesta.\n")
-	} else {
+	} else if input.Kind == AttachmentKindImage {
 		sb.WriteString("El alumno respondió con una imagen adjunta. Analizá la imagen y evaluá la respuesta.\n")
+	} else {
+		sb.WriteString("El alumno respondió con un documento adjunto. Usá las herramientas documentales disponibles para leerlo y evaluá la respuesta.\n")
+		fmt.Fprintf(&sb, "Nombre del documento: %s\n", input.Filename)
 	}
 	fmt.Fprintf(&sb, "Consigna: %s\n", input.Question)
 	if input.CorrectAnswer != "" {

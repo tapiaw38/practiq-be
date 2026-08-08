@@ -23,7 +23,7 @@ type attachmentOutcome struct {
 	NeedsReview bool
 }
 
-// evaluateAttachment tries the assistant for audio and images, and defers to a
+// evaluateAttachment uses Gillie's media/document channels and defers to a
 // teacher for everything it cannot read. It never marks an answer wrong just
 // because grading was impossible.
 func evaluateAttachment(
@@ -40,8 +40,8 @@ func evaluateAttachment(
 	if err != nil {
 		return pending
 	}
-	if kind != storage.FileKindAudio && kind != storage.FileKindImage {
-		// PDFs and documents have no channel to the assistant.
+	if kind != storage.FileKindAudio && kind != storage.FileKindImage &&
+		kind != storage.FileKindPDF && kind != storage.FileKindDocument {
 		return pending
 	}
 	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(cfg) {

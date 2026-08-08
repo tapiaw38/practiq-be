@@ -12,11 +12,12 @@ type EvaluationResult struct {
 	Feedback  string
 }
 
-// Attachment kinds the assistant has a channel for. Documents and PDFs are
-// deliberately absent: there is no way to send them, so they go to a teacher.
+// Attachment kinds supported by Gillie's conversation multipart channels.
 const (
-	AttachmentKindAudio = "audio"
-	AttachmentKindImage = "image"
+	AttachmentKindAudio    = "audio"
+	AttachmentKindImage    = "image"
+	AttachmentKindPDF      = "pdf"
+	AttachmentKindDocument = "doc"
 )
 
 // ErrAttachmentNotEvaluable means the assistant cannot grade this kind of file
