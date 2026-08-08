@@ -43,7 +43,7 @@ func main() {
 	app := gin.Default()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.ServerConfig.FrontendURL, "http://localhost:5174", "http://localhost:5173"},
+		AllowOrigins:     []string{cfg.ServerConfig.FrontendURL, "https://practiq.com.ar", "https://www.practiq.com.ar", "http://localhost:5174", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
