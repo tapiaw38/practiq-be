@@ -33,6 +33,9 @@ var mockResponses = map[string][]string{
 		"Piensa en esto: si 2 × 3 = 6, entonces 2 × 30 = 60. ¿Ves el patrón?",
 		"Como ejemplo: para resolver 15 ÷ 3, puedes pensar: ¿cuántas veces cabe el 3 en el 15? La respuesta es 5.",
 	},
+	"review_answer": {
+		"Revisa la respuesta comparándola con el ejercicio. Indica primero si está correcta y menciona un único paso para comprobarla.",
+	},
 }
 
 type (
@@ -48,6 +51,7 @@ type (
 		StudentID      string
 		ExerciseID     string `json:"exercise_id"`
 		Question       string `json:"question"`
+		StudentAnswer  string `json:"student_answer"`
 		HelpType       string `json:"help_type"`
 		ConversationID string `json:"conversation_id"`
 	}
@@ -148,7 +152,7 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 	if historyErr != nil {
 		log.Printf("[ai_help] warning: failed to load exercise memory student_id=%s exercise_id=%s err=%v", input.StudentID, input.ExerciseID, historyErr)
 	}
-	prompt := buildHelpPrompt(helpType, input.Question, exercise, gradeName, history)
+	prompt := buildHelpPrompt(helpType, input.Question, input.StudentAnswer, exercise, gradeName, history)
 
 	cfg := assistant.Config{
 		BaseURL: profile.AssistantBaseURL,
@@ -164,7 +168,7 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 	return strings.TrimSpace(aiResponse)
 }
 
-func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise, gradeName string, history []domain.AIHelpRequest) string {
+func buildHelpPrompt(helpType, studentQuestion, studentAnswer string, exercise *domain.Exercise, gradeName string, history []domain.AIHelpRequest) string {
 	var sb strings.Builder
 
 	if gradeName != "" {
@@ -177,7 +181,8 @@ func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise
 	} else {
 		sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de primaria y secundaria. ")
 	}
-	sb.WriteString("Responde siempre en español, de forma clara y pedagógica.\n\n")
+	sb.WriteString("Responde en español rioplatense. Sin saludo, ánimo, relleno, repetir enunciado ni pregunta final.\n")
+	sb.WriteString("Cumple el límite indicado. Si faltan datos, dilo en una sola frase.\n\n")
 
 	if exercise != nil {
 		sb.WriteString("Contexto del ejercicio:\n")
@@ -202,11 +207,9 @@ func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise
 
 	switch helpType {
 	case "hint":
-		sb.WriteString("\nEl estudiante pide una PISTA. ")
-		sb.WriteString("Dale una pista útil que lo guíe hacia la solución SIN revelar la respuesta directamente. ")
-		sb.WriteString("Ayúdalo a pensar en el proceso.\n")
+		sb.WriteString("\nModo PISTA: da solo siguiente operación o idea. Máximo 20 palabras. No reveles resultado final.\n")
 	case "explanation":
-		sb.WriteString("\nEl estudiante pide una EXPLICACIÓN detallada. ")
+		sb.WriteString("\nModo EXPLICACIÓN: máximo 3 pasos numerados y resultado final. Sin preguntas al alumno.\n")
 		if exercise != nil && exercise.Explanation != "" {
 			sb.WriteString("Referencia para tu explicación: ")
 			sb.WriteString(exercise.Explanation)
@@ -217,17 +220,23 @@ func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise
 			sb.WriteString(exercise.CorrectAnswer)
 			sb.WriteString("\n")
 		}
-		sb.WriteString("Explica paso a paso cómo resolver este tipo de problema.\n")
 	case "similar_example":
-		sb.WriteString("\nEl estudiante pide un EJEMPLO SIMILAR. ")
+		sb.WriteString("\nModo EJEMPLO: crea un ejercicio con números diferentes; máximo 3 líneas incluyendo resolución.\n")
 		if exercise != nil && exercise.CorrectAnswer != "" {
 			sb.WriteString("Basándote en el ejercicio original (respuesta: ")
 			sb.WriteString(exercise.CorrectAnswer)
 			sb.WriteString("), ")
 		}
-		sb.WriteString("crea un ejemplo similar pero con números diferentes y resuélvelo paso a paso.\n")
+		sb.WriteString("usa números diferentes.\n")
+	case "review_answer":
+		sb.WriteString("\nModo REVISIÓN: comienza exactamente con `Correcta.` o `Incorrecta.`. Luego una comprobación concreta, máximo 2 líneas. No hagas preguntas.\n")
+		if studentAnswer != "" {
+			sb.WriteString("Respuesta declarada por estudiante: ")
+			sb.WriteString(studentAnswer)
+			sb.WriteString("\n")
+		}
 	default:
-		sb.WriteString("\nAyuda al estudiante con su consulta de forma pedagógica.\n")
+		sb.WriteString("\nResponde directamente, máximo 2 líneas.\n")
 	}
 
 	if studentQuestion != "" {
@@ -237,20 +246,21 @@ func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise
 	}
 
 	if len(history) > 0 {
-		sb.WriteString("\nMemoria reciente de este ejercicio (no repitas ayuda ya dada):\n")
-		for i := len(history) - 1; i >= 0; i-- {
-			item := history[i]
-			sb.WriteString("- Estudiante: ")
-			sb.WriteString(item.Question)
-			sb.WriteString("\n- Tutor: ")
-			sb.WriteString(item.AIResponse)
-			sb.WriteString("\n")
-		}
+		last := history[0]
+		sb.WriteString("\nAyuda anterior: ")
+		sb.WriteString(truncatePromptText(last.AIResponse, 180))
+		sb.WriteString("\nNo la repitas.\n")
 	}
 
-	sb.WriteString("\nResponde de forma concisa (máximo 3-4 oraciones para pistas, un poco más para explicaciones).")
-
 	return sb.String()
+}
+
+func truncatePromptText(value string, max int) string {
+	value = strings.TrimSpace(value)
+	if len(value) <= max {
+		return value
+	}
+	return value[:max] + "…"
 }
 
 func getMockResponse(helpType string) string {
@@ -271,6 +281,8 @@ func (u *helpUsecase) persistMessages(ctx context.Context, app *appcontext.Conte
 			studentContent = "Explícame cómo resolver esto"
 		case "similar_example":
 			studentContent = "Muéstrame un ejemplo similar"
+		case "review_answer":
+			studentContent = "Revisa mi respuesta"
 		default:
 			studentContent = "Necesito ayuda"
 		}

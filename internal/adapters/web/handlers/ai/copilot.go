@@ -11,10 +11,11 @@ import (
 
 // Copilot response stays owned by Practiq. Gillie remains a text/audio engine.
 type copilotInput struct {
-	ExerciseID string `json:"exercise_id"`
-	ContextID  string `json:"context_id"`
-	Question   string `json:"question" binding:"required"`
-	Intent     string `json:"intent"`
+	ExerciseID    string `json:"exercise_id"`
+	ContextID     string `json:"context_id"`
+	Question      string `json:"question" binding:"required"`
+	StudentAnswer string `json:"student_answer"`
+	Intent        string `json:"intent"`
 }
 
 func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
@@ -25,10 +26,10 @@ func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 			return
 		}
 		intent := strings.ToLower(strings.TrimSpace(input.Intent))
-		if intent != "hint" && intent != "explanation" && intent != "similar_example" {
+		if intent != "hint" && intent != "explanation" && intent != "similar_example" && intent != "review_answer" {
 			intent = "hint"
 		}
-		output, appErr := help.Execute(c, ucAI.HelpInput{StudentID: middlewares.GetUserID(c), ExerciseID: input.ExerciseID, Question: input.Question, HelpType: intent})
+		output, appErr := help.Execute(c, ucAI.HelpInput{StudentID: middlewares.GetUserID(c), ExerciseID: input.ExerciseID, Question: input.Question, StudentAnswer: input.StudentAnswer, HelpType: intent})
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
@@ -43,6 +44,7 @@ func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 				{"id": "hint", "type": "prompt", "label": "Otra pista", "prompt": "Dame otra pista sin revelar la respuesta."},
 				{"id": "explanation", "type": "prompt", "label": "Explicame", "prompt": "Explicame paso a paso usando el ejercicio actual."},
 				{"id": "similar_example", "type": "prompt", "label": "Ejemplo", "prompt": "Dame un ejemplo similar con números diferentes."},
+				{"id": "review_answer", "type": "prompt", "label": "Revisá", "prompt": "Revisá mi respuesta actual."},
 			},
 		}})
 	}
@@ -58,7 +60,7 @@ func NewCopilotStreamHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 			return
 		}
 		intent := strings.ToLower(strings.TrimSpace(input.Intent))
-		if intent != "hint" && intent != "explanation" && intent != "similar_example" {
+		if intent != "hint" && intent != "explanation" && intent != "similar_example" && intent != "review_answer" {
 			intent = "hint"
 		}
 
@@ -68,7 +70,7 @@ func NewCopilotStreamHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 		c.SSEvent("status", gin.H{"message": "Ana está preparando ayuda para este ejercicio…"})
 		c.Writer.Flush()
 
-		output, appErr := help.Execute(c, ucAI.HelpInput{StudentID: middlewares.GetUserID(c), ExerciseID: input.ExerciseID, Question: input.Question, HelpType: intent})
+		output, appErr := help.Execute(c, ucAI.HelpInput{StudentID: middlewares.GetUserID(c), ExerciseID: input.ExerciseID, Question: input.Question, StudentAnswer: input.StudentAnswer, HelpType: intent})
 		if appErr != nil {
 			appErr.Log(c)
 			c.SSEvent("error", gin.H{"message": "No se pudo obtener ayuda ahora."})
@@ -82,6 +84,7 @@ func NewCopilotStreamHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 				{"id": "hint", "type": "prompt", "label": "Otra pista", "prompt": "Dame otra pista sin revelar la respuesta."},
 				{"id": "explanation", "type": "prompt", "label": "Explicame", "prompt": "Explicame paso a paso usando el ejercicio actual."},
 				{"id": "similar_example", "type": "prompt", "label": "Ejemplo", "prompt": "Dame un ejemplo similar con números diferentes."},
+				{"id": "review_answer", "type": "prompt", "label": "Revisá", "prompt": "Revisá mi respuesta actual."},
 			},
 		}})
 		c.Writer.Flush()
