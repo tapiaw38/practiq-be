@@ -1,0 +1,43 @@
+package ai
+
+import (
+	"net/http"
+	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
+	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
+)
+
+// Copilot response stays owned by Practiq. Gillie remains a text/audio engine.
+type copilotInput struct {
+	ExerciseID string `json:"exercise_id"`
+	ContextID  string `json:"context_id"`
+	Question   string `json:"question" binding:"required"`
+	Intent     string `json:"intent"`
+}
+
+func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var input copilotInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+		intent := strings.ToLower(strings.TrimSpace(input.Intent))
+		if intent != "hint" && intent != "explanation" && intent != "similar_example" {
+			intent = "hint"
+		}
+		output, appErr := help.Execute(c, ucAI.HelpInput{StudentID: middlewares.GetUserID(c), ExerciseID: input.ExerciseID, Question: input.Question, HelpType: intent})
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": gin.H{
+			"context_id":        input.ContextID,
+			"blocks":            []gin.H{{"type": intent, "content": output.Data.Response}},
+			"suggested_actions": []string{"hint", "explanation", "similar_example"},
+		}})
+	}
+}
