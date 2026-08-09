@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
+	handlerReview "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/attempt_review"
 	handlerCourse "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course"
 	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
 	handlerCP "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_progress"
@@ -13,12 +14,14 @@ import (
 	handlerLS "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
+	handlerNotification "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
 	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
 	handlerSubject "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subject"
 	handlerAssignment "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/teacher_student_assignment"
 	handlerTopic "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/topic"
+	handlerUpload "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/upload"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
@@ -139,6 +142,19 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.GET("/notebook-submissions", handlerNB.NewListSubmissionsHandler(uc.Notebook.ListSubmissions))
 	teacherOnly.POST("/notebook-submissions/:id/review", handlerNB.NewReviewSubmissionHandler(uc.Notebook.ReviewSubmission))
 	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
+
+	// Attachment answers the assistant could not grade
+	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
+	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))
+
+	// File uploads (attachment answers, teacher materials)
+	api.POST("/uploads", handlerUpload.NewHandler(uc.Upload.Upload))
+
+	// Notifications
+	api.GET("/notifications", handlerNotification.NewListHandler(uc.Notification.List))
+	api.POST("/notifications/:id/read", handlerNotification.NewMarkReadHandler(uc.Notification.MarkRead))
+	api.POST("/notifications/read-all", handlerNotification.NewMarkAllReadHandler(uc.Notification.MarkAllRead))
+	api.DELETE("/notifications/:id", handlerNotification.NewDeleteHandler(uc.Notification.Delete))
 
 	// Learning Strategies
 	api.GET("/learning-strategies", handlerLS.NewListHandler(uc.LearningStrategy.List))

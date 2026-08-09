@@ -30,6 +30,10 @@ type (
 		CanvasData       string `json:"canvas_data"` // base64 PNG for canvas/handwritten exercises
 		TimeSpentSeconds int    `json:"time_spent_seconds"`
 		HintsUsed        int    `json:"hints_used"`
+		// Attachment answers: URL returned by POST /uploads plus its metadata.
+		AttachmentURL         string `json:"attachment_url"`
+		AttachmentName        string `json:"attachment_name"`
+		AttachmentContentType string `json:"attachment_content_type"`
 	}
 
 	SubmitInput struct {
@@ -63,6 +67,9 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if !hasAccess {
 		return nil, apperrors.NewForbiddenError()
 	}
+	if appErr := ensureSheetIsOpen(ctx, app, ps, studentID, false); appErr != nil {
+		return nil, appErr
+	}
 
 	// Get course for grade context
 	course, _ := app.Repositories.Course.Get(ctx, ps.CourseID)
@@ -85,6 +92,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	correct := 0
 	total := len(input.Attempts)
+	// Any answer waiting for a teacher blocks promotion on a level test.
+	hasPendingReview := false
 	totalHints := 0
 	totalTime := 0
 	resultAIFeedback := ""
@@ -113,7 +122,27 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
-		if ok {
+		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
+		needsTeacherReview := false
+		var aiSuggestion *bool
+
+		if ok && ex.Type == exerciseTypeAttachment {
+			if !hasAttachment {
+				// Nothing was uploaded: that is simply an unanswered exercise.
+				needsTeacherReview = false
+			} else {
+				outcome := evaluateAttachment(ctx, app, assistantCfg, ex, gradeName,
+					attempt.AttachmentURL, attempt.AttachmentName, attempt.AttachmentContentType,
+					ps.SheetType == sheetTypeLevelTest)
+				isCorrect = outcome.IsCorrect
+				aiSuggestion = outcome.AISuggestedCorrect
+				aiFeedback = outcome.Feedback
+				needsTeacherReview = outcome.NeedsReview
+				if resultAIFeedback == "" && aiFeedback != "" {
+					resultAIFeedback = aiFeedback
+				}
+			}
+		} else if ok {
 			normalizedCorrect := normalizeCanvasAnswer(ex.CorrectAnswer)
 			isCorrect = strings.EqualFold(
 				normalizeCanvasAnswer(answerText),
@@ -142,13 +171,19 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 
 		score := 0.0
-		if isCorrect {
+		switch {
+		case needsTeacherReview:
+			// Not graded yet: drop it from the denominator so an unread file
+			// cannot fail the student on its own.
+			total--
+			hasPendingReview = true
+		case isCorrect:
 			correct++
 			score = 100.0
 		}
 
 		// Track per-topic stats
-		if ok && ex.TopicID != "" {
+		if ok && ex.TopicID != "" && !needsTeacherReview {
 			stats := topicStats[ex.TopicID]
 			stats.total++
 			if isCorrect {
@@ -161,16 +196,21 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		totalTime += attempt.TimeSpentSeconds
 
 		attemptID, _ := app.Repositories.StudentAttempt.Create(ctx, domain.StudentAttempt{
-			StudentID:       studentID,
-			ExerciseID:      attempt.ExerciseID,
-			PracticeSheetID: sheetID,
-			AnswerText:      answerText,
-			ImageURL:        imageURL,
-			AIFeedback:      aiFeedback,
-			IsCorrect:       isCorrect,
-			Score:           score,
-			TimeSpentSecs:   attempt.TimeSpentSeconds,
-			HintsUsed:       attempt.HintsUsed,
+			StudentID:             studentID,
+			ExerciseID:            attempt.ExerciseID,
+			PracticeSheetID:       sheetID,
+			AnswerText:            answerText,
+			ImageURL:              imageURL,
+			AIFeedback:            aiFeedback,
+			IsCorrect:             isCorrect,
+			Score:                 score,
+			TimeSpentSecs:         attempt.TimeSpentSeconds,
+			HintsUsed:             attempt.HintsUsed,
+			AttachmentURL:         attempt.AttachmentURL,
+			AttachmentName:        attempt.AttachmentName,
+			AttachmentContentType: attempt.AttachmentContentType,
+			NeedsTeacherReview:    needsTeacherReview,
+			AIIsCorrect:           aiSuggestion,
 		})
 
 		if attempt.CanvasData != "" && attemptID != "" {
@@ -183,11 +223,12 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			correctAnswer = ex.CorrectAnswer
 		}
 		exerciseResults = append(exerciseResults, ExerciseResultData{
-			ExerciseID:    attempt.ExerciseID,
-			IsCorrect:     isCorrect,
-			StudentAnswer: answerText,
-			CorrectAnswer: correctAnswer,
-			AIFeedback:    aiFeedback,
+			ExerciseID:         attempt.ExerciseID,
+			IsCorrect:          isCorrect,
+			StudentAnswer:      answerText,
+			CorrectAnswer:      correctAnswer,
+			AIFeedback:         aiFeedback,
+			NeedsTeacherReview: needsTeacherReview,
 		})
 	}
 
@@ -195,6 +236,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if total > 0 {
 		sheetScore = float64(correct) / float64(total) * 100
 	}
+	// Every answer is awaiting review: there is no score to act on yet.
+	allPendingReview := total <= 0 && len(input.Attempts) > 0
 
 	kumon := domain.NewKumonStrategy()
 
@@ -206,12 +249,21 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 	}
 
-	currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
 	currentScore := 0.0
 	currentLevel := 1
-	if currentProgress != nil {
-		currentScore = currentProgress.MasteryScore
-		currentLevel = currentProgress.CurrentLevel
+	if ps.SheetType == "level_test" {
+		// Level tests advance the course, not the topic. Topic progress can be
+		// ahead because of regular practice and must not cause level skipping.
+		courseProgress, _ := app.Repositories.CourseProgress.Get(ctx, studentID, ps.CourseID)
+		if courseProgress != nil {
+			currentLevel = courseProgress.CurrentLevel
+		}
+	} else {
+		currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
+		if currentProgress != nil {
+			currentScore = currentProgress.MasteryScore
+			currentLevel = currentProgress.CurrentLevel
+		}
 	}
 
 	var newMastery float64
@@ -222,7 +274,23 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	const levelTestPassThreshold = 75.0
 
-	if ps.SheetType == "level_test" {
+	switch {
+	case allPendingReview:
+		// Nothing gradeable came back yet, so level progression waits for the
+		// teacher rather than acting on a score of zero.
+		shouldLevelUp = false
+		shouldRepeat = false
+		nextLevel = currentLevel
+		newMastery = currentScore
+		recommendation = "Tu entrega quedó pendiente de la revisión del docente."
+	case ps.SheetType == sheetTypeLevelTest && hasPendingReview:
+		// Some answer still needs a teacher, and this test decides promotion.
+		shouldLevelUp = false
+		shouldRepeat = false
+		nextLevel = currentLevel
+		newMastery = currentScore
+		recommendation = "Tu prueba quedó esperando la corrección del docente."
+	case ps.SheetType == sheetTypeLevelTest:
 		shouldLevelUp = sheetScore >= levelTestPassThreshold
 		shouldRepeat = !shouldLevelUp
 		if shouldLevelUp {
@@ -234,7 +302,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			newMastery = currentScore
 			recommendation = "Necesitás al menos 75% para pasar de nivel. ¡Seguí practicando!"
 		}
-	} else {
+	default:
 		newMastery = kumon.CalculateMasteryScore(domain.MasteryInput{
 			TotalAttempts:    total,
 			CorrectAttempts:  correct,
@@ -308,7 +376,9 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel)
 	}
 
-	return &SubmitOutput{Data: toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)}, nil
+	result := toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)
+	result.PendingReview = allPendingReview
+	return &SubmitOutput{Data: result}, nil
 }
 
 func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {

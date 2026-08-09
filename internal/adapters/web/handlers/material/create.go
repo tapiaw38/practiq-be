@@ -12,6 +12,8 @@ type createInput struct {
 	Title         string `json:"title" binding:"required"`
 	Type          string `json:"type" binding:"required"`
 	ExtractedText string `json:"extracted_text"`
+	// FileURL comes from POST /uploads; empty means a text-only material.
+	FileURL string `json:"file_url"`
 }
 
 func NewCreateHandler(uc ucMaterial.CreateUsecase) gin.HandlerFunc {
@@ -31,6 +33,7 @@ func NewCreateHandler(uc ucMaterial.CreateUsecase) gin.HandlerFunc {
 			Title:         input.Title,
 			Type:          input.Type,
 			ExtractedText: input.ExtractedText,
+			FileURL:       input.FileURL,
 		})
 		if appErr != nil {
 			appErr.Log(c)

@@ -12,6 +12,7 @@ import (
 type updateMaterialInput struct {
 	Title         string `json:"title" binding:"required"`
 	ExtractedText string `json:"extracted_text"`
+	FileURL       string `json:"file_url"`
 }
 
 func NewUpdateHandler(uc ucMaterial.UpdateUsecase) gin.HandlerFunc {
@@ -29,6 +30,7 @@ func NewUpdateHandler(uc ucMaterial.UpdateUsecase) gin.HandlerFunc {
 		output, appErr := uc.Execute(c, requesterID, isAdmin, id, ucMaterial.UpdateInput{
 			Title:         input.Title,
 			ExtractedText: input.ExtractedText,
+			FileURL:       input.FileURL,
 		})
 		if appErr != nil {
 			appErr.Log(c)

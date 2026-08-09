@@ -2,6 +2,8 @@ package practicesheet
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
+const timeFormat = "2006-01-02T15:04:05Z"
+
 type (
 	ExerciseData struct {
 		ID            string `json:"id"`
@@ -21,17 +23,19 @@ type (
 	}
 
 	PracticeSheetData struct {
-		ID         string              `json:"id"`
-		CourseID   string              `json:"course_id"`
-		TopicID    string              `json:"topic_id"`
-		StrategyID string              `json:"strategy_id"`
-		Title      string              `json:"title"`
-		Level      int                 `json:"level"`
-		SheetType  string              `json:"sheet_type"`
-		TestStyle  string              `json:"test_style"`
-		CreatedBy  string              `json:"created_by"`
-		CreatedAt  string              `json:"created_at"`
-		Exercises  []SheetExerciseData `json:"exercises"`
+		ID         string `json:"id"`
+		CourseID   string `json:"course_id"`
+		TopicID    string `json:"topic_id"`
+		StrategyID string `json:"strategy_id"`
+		Title      string `json:"title"`
+		Level      int    `json:"level"`
+		SheetType  string `json:"sheet_type"`
+		TestStyle  string `json:"test_style"`
+		// ScheduledAt is empty when the sheet can be taken at any time.
+		ScheduledAt string              `json:"scheduled_at,omitempty"`
+		CreatedBy   string              `json:"created_by"`
+		CreatedAt   string              `json:"created_at"`
+		Exercises   []SheetExerciseData `json:"exercises"`
 	}
 
 	ExerciseResultData struct {
@@ -40,6 +44,8 @@ type (
 		StudentAnswer string `json:"student_answer"`
 		CorrectAnswer string `json:"correct_answer"`
 		AIFeedback    string `json:"ai_feedback,omitempty"`
+		// NeedsTeacherReview marks an attachment the assistant could not grade.
+		NeedsTeacherReview bool `json:"needs_teacher_review,omitempty"`
 	}
 
 	SubmitResult struct {
@@ -51,6 +57,7 @@ type (
 		AIFeedback      string               `json:"ai_feedback,omitempty"`
 		ShouldLevelUp   bool                 `json:"should_level_up"`
 		ShouldRepeat    bool                 `json:"should_repeat"`
+		PendingReview   bool                 `json:"pending_review,omitempty"`
 		NextLevel       int                  `json:"next_level"`
 		ExerciseResults []ExerciseResultData `json:"exercise_results"`
 	}
@@ -82,7 +89,7 @@ func toSheetData(ps domain.PracticeSheet) PracticeSheetData {
 	if testStyle == "" {
 		testStyle = "keyboard"
 	}
-	return PracticeSheetData{
+	data := PracticeSheetData{
 		ID:         ps.ID,
 		CourseID:   ps.CourseID,
 		TopicID:    ps.TopicID,
@@ -92,9 +99,13 @@ func toSheetData(ps domain.PracticeSheet) PracticeSheetData {
 		SheetType:  sheetType,
 		TestStyle:  testStyle,
 		CreatedBy:  ps.CreatedBy,
-		CreatedAt:  ps.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		CreatedAt:  ps.CreatedAt.Format(timeFormat),
 		Exercises:  exercises,
 	}
+	if ps.ScheduledAt != nil {
+		data.ScheduledAt = ps.ScheduledAt.UTC().Format(timeFormat)
+	}
+	return data
 }
 
 func toSubmitOutputData(score float64, correct, total int, masteryScore float64, recommendation, aiFeedback string, shouldLevelUp, shouldRepeat bool, nextLevel int, exerciseResults []ExerciseResultData) SubmitResult {

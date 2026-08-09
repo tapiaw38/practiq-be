@@ -10,14 +10,14 @@ type StudentReportFilter struct {
 }
 
 type StudentReportData struct {
-	Student         UserProfile
-	GeneratedAt     time.Time
-	Period          ReportPeriod
-	Summary         ReportSummary
-	TopicProgress   []StudentTopicProgress
-	CourseProgress  []CourseProgressItem
-	DailyAttempts   []DailyAttemptCount
-	RecentAttempts  []StudentAttempt
+	Student        UserProfile
+	GeneratedAt    time.Time
+	Period         ReportPeriod
+	Summary        ReportSummary
+	TopicProgress  []StudentTopicProgress
+	CourseProgress []CourseProgressItem
+	DailyAttempts  []DailyAttemptCount
+	RecentAttempts []StudentAttempt
 }
 
 type ReportPeriod struct {
@@ -26,21 +26,21 @@ type ReportPeriod struct {
 }
 
 type ReportSummary struct {
-	TopicsPracticed   int
-	AverageMastery    float64
-	TotalAttempts     int
-	CorrectAttempts   int
-	AccuracyRate      float64
-	CurrentStreak     int
+	TopicsPracticed int
+	AverageMastery  float64
+	TotalAttempts   int
+	CorrectAttempts int
+	AccuracyRate    float64
+	CurrentStreak   int
 }
 
 type CourseProgressItem struct {
-	CourseID      string
-	CourseTitle   string
-	CurrentLevel  int
-	TopicCount    int
+	CourseID       string
+	CourseTitle    string
+	CurrentLevel   int
+	TopicCount     int
 	AverageMastery float64
-	LastActivity  *time.Time
+	LastActivity   *time.Time
 }
 
 type DailyAttemptCount struct {

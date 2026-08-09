@@ -12,6 +12,7 @@ import (
 	learningstrategy "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notebook"
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/practice_sheet"
 	studentattempt "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_attempt"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_progress"
@@ -41,6 +42,7 @@ type Repositories struct {
 	Notebook                 notebook.Repository
 	CourseProgress           courseprogress.Repository
 	SubmitJob                submitjob.Repository
+	Notification             notification.Repository
 }
 
 type Factory func() *Repositories
@@ -66,6 +68,7 @@ func NewFactory(ds *datasources.Datasources) func() *Repositories {
 			Notebook:                 notebook.NewRepository(ds.DB),
 			CourseProgress:           courseprogress.NewRepository(ds.DB),
 			SubmitJob:                submitjob.NewRepository(ds.DB),
+			Notification:             notification.NewRepository(ds.DB),
 		}
 	}
 }

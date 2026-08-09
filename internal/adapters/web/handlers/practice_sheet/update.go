@@ -16,6 +16,8 @@ type updateSheetInput struct {
 	SheetType   string   `json:"sheet_type"`
 	TestStyle   string   `json:"test_style"`
 	ExerciseIDs []string `json:"exercise_ids"`
+	// ScheduledAt is RFC 3339; empty clears the schedule.
+	ScheduledAt string `json:"scheduled_at"`
 }
 
 func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
@@ -35,6 +37,12 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 			return
 		}
 
+		scheduledAt, err := parseScheduledAt(input.ScheduledAt)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+
 		output, appErr := uc.Execute(c, requesterID, isAdmin, id, ucPS.UpdateInput{
 			Title:       input.Title,
 			TopicID:     input.TopicID,
@@ -42,6 +50,7 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 			SheetType:   input.SheetType,
 			TestStyle:   input.TestStyle,
 			ExerciseIDs: input.ExerciseIDs,
+			ScheduledAt: scheduledAt,
 		})
 		if appErr != nil {
 			appErr.Log(c)

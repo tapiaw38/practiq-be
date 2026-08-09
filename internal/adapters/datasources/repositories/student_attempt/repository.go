@@ -14,6 +14,11 @@ type Repository interface {
 	SaveCanvasWork(ctx context.Context, attemptID, imageData string) error
 	GetLastPracticedSheetID(ctx context.Context, studentID string) (string, error)
 	GetDailyAttempts(ctx context.Context, studentID, courseID string, from, to *time.Time) ([]domain.DailyAttemptCount, error)
+	ListPendingReview(ctx context.Context, teacherID string, includeReviewed bool) ([]domain.PendingAttemptReview, error)
+	GetTeacherForAttempt(ctx context.Context, attemptID string) (string, error)
+	Review(ctx context.Context, attemptID string, isCorrect bool, feedback string) error
+	GetSheetOutcome(ctx context.Context, studentID, sheetID string) (domain.SheetOutcome, error)
+	GetAttemptContext(ctx context.Context, attemptID string) (domain.AttemptContext, error)
 }
 type repository struct {
 	db *sql.DB

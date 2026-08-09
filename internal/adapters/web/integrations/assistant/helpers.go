@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -87,8 +88,14 @@ func (g *gateway) sendTextMessage(ctx context.Context, baseURL, apiKey, conversa
 		return "", fmt.Errorf("assistant add message returned status %d", resp.StatusCode)
 	}
 
+	return lastAssistantMessage(resp.Body)
+}
+
+// lastAssistantMessage picks the newest assistant reply out of the conversation
+// payload the assistant returns after a message is posted.
+func lastAssistantMessage(body io.Reader) (string, error) {
 	var parsed messageResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+	if err := json.NewDecoder(body).Decode(&parsed); err != nil {
 		return "", err
 	}
 

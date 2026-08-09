@@ -21,6 +21,7 @@ type (
 	UpdateInput struct {
 		Title         string
 		ExtractedText string
+		FileURL       string
 	}
 
 	UpdateOutput struct {
@@ -51,6 +52,8 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	if err := app.Repositories.Material.Update(ctx, id, domain.Material{
 		Title:         input.Title,
 		ExtractedText: input.ExtractedText,
+		FileURL:       input.FileURL,
+		Status:        materialStatus(input.FileURL),
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialUpdateError, err)
 	}

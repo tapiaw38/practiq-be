@@ -11,9 +11,11 @@ type PracticeSheet struct {
 	Level      int
 	SheetType  string // 'practice' | 'level_test'
 	TestStyle  string // 'keyboard' | 'canvas'
-	CreatedBy  string
-	CreatedAt  time.Time
-	Exercises  []PracticeSheetExercise
+	// ScheduledAt is when students may start the sheet. nil means no schedule.
+	ScheduledAt *time.Time
+	CreatedBy   string
+	CreatedAt   time.Time
+	Exercises   []PracticeSheetExercise
 }
 
 type PracticeSheetExercise struct {
@@ -35,5 +37,62 @@ type StudentAttempt struct {
 	Score           float64
 	TimeSpentSecs   int
 	HintsUsed       int
-	CreatedAt       time.Time
+	// Attachment answers: the uploaded file plus what it is.
+	AttachmentURL         string
+	AttachmentName        string
+	AttachmentContentType string
+	// NeedsTeacherReview is set on every attachment answer: the assistant only
+	// suggests, the teacher grades.
+	NeedsTeacherReview bool
+	// AIIsCorrect is the assistant's suggestion, nil when it had none.
+	AIIsCorrect       *bool
+	TeacherIsCorrect  *bool
+	TeacherFeedback   string
+	TeacherReviewedAt *time.Time
+	CreatedAt         time.Time
+}
+
+// PendingAttemptReview is an attachment answer waiting for a teacher, joined
+// with the context the teacher needs to judge it.
+type PendingAttemptReview struct {
+	AttemptID             string
+	StudentID             string
+	StudentName           string
+	ExerciseID            string
+	Question              string
+	ExerciseType          string
+	PracticeSheetID       string
+	PracticeSheetTitle    string
+	SheetType             string
+	CourseID              string
+	CourseTitle           string
+	AttachmentURL         string
+	AttachmentName        string
+	AttachmentContentType string
+	AnswerText            string
+	AIFeedback            string
+	// AIIsCorrect is what the assistant suggested, for the teacher to confirm.
+	AIIsCorrect       *bool
+	TeacherIsCorrect  *bool
+	TeacherFeedback   string
+	TeacherReviewedAt *time.Time
+	CreatedAt         time.Time
+}
+
+// SheetOutcome is a student's standing on a sheet, counting the latest answer
+// per exercise.
+type SheetOutcome struct {
+	Total   int
+	Correct int
+	// Pending counts answers still waiting for a teacher.
+	Pending int
+}
+
+// AttemptContext is what a review needs to know to recompute progress.
+type AttemptContext struct {
+	StudentID       string
+	PracticeSheetID string
+	SheetType       string
+	SheetTopicID    string
+	ExerciseTopicID string
 }

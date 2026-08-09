@@ -9,14 +9,14 @@ import (
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.PracticeSheet, error) {
 	query := `
-		SELECT ps.id, ps.course_id, COALESCE(ps.topic_id::text,''), COALESCE(ps.strategy_id::text,''), ps.title, ps.level, ps.sheet_type, ps.test_style, ps.created_by, ps.created_at
+		SELECT ps.id, ps.course_id, COALESCE(ps.topic_id::text,''), COALESCE(ps.strategy_id::text,''), ps.title, ps.level, ps.sheet_type, ps.test_style, ps.scheduled_at, ps.created_by, ps.created_at
 		FROM practice_sheets ps
 		JOIN courses c ON c.id = ps.course_id
 		WHERE ps.id = $1 AND c.deleted_at IS NULL
 	`
 	row := r.db.QueryRowContext(ctx, query, id)
 	var ps domain.PracticeSheet
-	err := row.Scan(&ps.ID, &ps.CourseID, &ps.TopicID, &ps.StrategyID, &ps.Title, &ps.Level, &ps.SheetType, &ps.TestStyle, &ps.CreatedBy, &ps.CreatedAt)
+	err := row.Scan(&ps.ID, &ps.CourseID, &ps.TopicID, &ps.StrategyID, &ps.Title, &ps.Level, &ps.SheetType, &ps.TestStyle, &ps.ScheduledAt, &ps.CreatedBy, &ps.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
