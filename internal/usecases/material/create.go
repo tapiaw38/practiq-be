@@ -2,6 +2,7 @@ package material
 
 import (
 	"context"
+	"strings"
 
 	materialRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -25,12 +26,22 @@ type (
 		Title         string `json:"title"`
 		Type          string `json:"type"`
 		ExtractedText string `json:"extracted_text"`
+		FileURL       string `json:"file_url"`
 	}
 
 	CreateOutput struct {
 		Data MaterialData `json:"data"`
 	}
 )
+
+// materialStatus reflects whether a file actually backs the material, instead
+// of always claiming "uploaded".
+func materialStatus(fileURL string) string {
+	if strings.TrimSpace(fileURL) == "" {
+		return "text_only"
+	}
+	return "uploaded"
+}
 
 func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
@@ -49,7 +60,8 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		Title:         input.Title,
 		Type:          input.Type,
 		ExtractedText: input.ExtractedText,
-		Status:        "uploaded",
+		FileURL:       input.FileURL,
+		Status:        materialStatus(input.FileURL),
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialCreateError, err)
