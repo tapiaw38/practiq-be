@@ -21,6 +21,34 @@ func scoreWith(results []attachmentOutcome) (correct, total int, score float64, 
 	return
 }
 
+// A graded file answer must not block the student: it scores right away and
+// records who graded it, so a teacher can review it later without the practice
+// flow waiting on them.
+func TestAssistantGradedAnswerScoresImmediately(t *testing.T) {
+	approved := true
+	outcome := attachmentOutcome{
+		IsCorrect:          true,
+		Feedback:           "Muy buena lectura",
+		NeedsReview:        false,
+		AISuggestedCorrect: &approved,
+	}
+
+	if outcome.NeedsReview {
+		t.Error("a graded answer must not hold the student up")
+	}
+	if outcome.AISuggestedCorrect == nil {
+		t.Error("the assistant's verdict must be recorded so the teacher can review it")
+	}
+
+	correct, total, score, allPending := scoreWith([]attachmentOutcome{outcome})
+	if correct != 1 || total != 1 || score != 100 {
+		t.Errorf("expected it to count as correct, got %d/%d at %v", correct, total, score)
+	}
+	if allPending {
+		t.Error("a graded answer is not pending review")
+	}
+}
+
 func TestPendingAttachmentsAreExcludedFromScore(t *testing.T) {
 	t.Run("a pending file does not drag the score down", func(t *testing.T) {
 		// One correct answer plus an ungradeable PDF should read as 100%,

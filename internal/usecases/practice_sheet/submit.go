@@ -92,6 +92,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	correct := 0
 	total := len(input.Attempts)
+	// Any answer waiting for a teacher blocks promotion on a level test.
+	hasPendingReview := false
 	totalHints := 0
 	totalTime := 0
 	resultAIFeedback := ""
@@ -122,6 +124,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
 		needsTeacherReview := false
+		var aiSuggestion *bool
 
 		if ok && ex.Type == exerciseTypeAttachment {
 			if !hasAttachment {
@@ -129,8 +132,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				needsTeacherReview = false
 			} else {
 				outcome := evaluateAttachment(ctx, app, assistantCfg, ex, gradeName,
-					attempt.AttachmentURL, attempt.AttachmentName, attempt.AttachmentContentType)
+					attempt.AttachmentURL, attempt.AttachmentName, attempt.AttachmentContentType,
+					ps.SheetType == sheetTypeLevelTest)
 				isCorrect = outcome.IsCorrect
+				aiSuggestion = outcome.AISuggestedCorrect
 				aiFeedback = outcome.Feedback
 				needsTeacherReview = outcome.NeedsReview
 				if resultAIFeedback == "" && aiFeedback != "" {
@@ -171,6 +176,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			// Not graded yet: drop it from the denominator so an unread file
 			// cannot fail the student on its own.
 			total--
+			hasPendingReview = true
 		case isCorrect:
 			correct++
 			score = 100.0
@@ -204,6 +210,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			AttachmentName:        attempt.AttachmentName,
 			AttachmentContentType: attempt.AttachmentContentType,
 			NeedsTeacherReview:    needsTeacherReview,
+			AIIsCorrect:           aiSuggestion,
 		})
 
 		if attempt.CanvasData != "" && attemptID != "" {
@@ -276,7 +283,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		nextLevel = currentLevel
 		newMastery = currentScore
 		recommendation = "Tu entrega quedó pendiente de la revisión del docente."
-	case ps.SheetType == "level_test":
+	case ps.SheetType == sheetTypeLevelTest && hasPendingReview:
+		// Some answer still needs a teacher, and this test decides promotion.
+		shouldLevelUp = false
+		shouldRepeat = false
+		nextLevel = currentLevel
+		newMastery = currentScore
+		recommendation = "Tu prueba quedó esperando la corrección del docente."
+	case ps.SheetType == sheetTypeLevelTest:
 		shouldLevelUp = sheetScore >= levelTestPassThreshold
 		shouldRepeat = !shouldLevelUp
 		if shouldLevelUp {

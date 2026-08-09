@@ -50,10 +50,12 @@ type (
 		AttachmentContentType string `json:"attachment_content_type,omitempty"`
 		AnswerText            string `json:"answer_text,omitempty"`
 		AIFeedback            string `json:"ai_feedback,omitempty"`
-		TeacherIsCorrect      *bool  `json:"teacher_is_correct,omitempty"`
-		TeacherFeedback       string `json:"teacher_feedback,omitempty"`
-		TeacherReviewedAt     string `json:"teacher_reviewed_at,omitempty"`
-		CreatedAt             string `json:"created_at"`
+		// AIIsCorrect is a suggestion, never the grade.
+		AIIsCorrect       *bool  `json:"ai_is_correct,omitempty"`
+		TeacherIsCorrect  *bool  `json:"teacher_is_correct,omitempty"`
+		TeacherFeedback   string `json:"teacher_feedback,omitempty"`
+		TeacherReviewedAt string `json:"teacher_reviewed_at,omitempty"`
+		CreatedAt         string `json:"created_at"`
 	}
 
 	ListOutput struct {
@@ -109,6 +111,11 @@ func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string
 	if err := app.Repositories.StudentAttempt.Review(ctx, attemptID, input.IsCorrect, input.Feedback); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewError, err)
 	}
+
+	// A level test holds promotion while an answer is pending; correcting the
+	// last one has to lift that hold.
+	applyLevelTestOutcome(ctx, app, attemptID)
+
 	return &ReviewOutput{Data: OperationResultData{Message: "attempt reviewed"}}, nil
 }
 
@@ -130,6 +137,7 @@ func toReviewData(r domain.PendingAttemptReview) ReviewData {
 		AttachmentContentType: r.AttachmentContentType,
 		AnswerText:            r.AnswerText,
 		AIFeedback:            r.AIFeedback,
+		AIIsCorrect:           r.AIIsCorrect,
 		TeacherIsCorrect:      r.TeacherIsCorrect,
 		TeacherFeedback:       r.TeacherFeedback,
 		CreatedAt:             r.CreatedAt.UTC().Format(timeFormat),

@@ -41,12 +41,15 @@ type StudentAttempt struct {
 	AttachmentURL         string
 	AttachmentName        string
 	AttachmentContentType string
-	// NeedsTeacherReview is set when the assistant could not grade the file.
+	// NeedsTeacherReview is set on every attachment answer: the assistant only
+	// suggests, the teacher grades.
 	NeedsTeacherReview bool
-	TeacherIsCorrect   *bool
-	TeacherFeedback    string
-	TeacherReviewedAt  *time.Time
-	CreatedAt          time.Time
+	// AIIsCorrect is the assistant's suggestion, nil when it had none.
+	AIIsCorrect       *bool
+	TeacherIsCorrect  *bool
+	TeacherFeedback   string
+	TeacherReviewedAt *time.Time
+	CreatedAt         time.Time
 }
 
 // PendingAttemptReview is an attachment answer waiting for a teacher, joined
@@ -68,8 +71,28 @@ type PendingAttemptReview struct {
 	AttachmentContentType string
 	AnswerText            string
 	AIFeedback            string
-	TeacherIsCorrect      *bool
-	TeacherFeedback       string
-	TeacherReviewedAt     *time.Time
-	CreatedAt             time.Time
+	// AIIsCorrect is what the assistant suggested, for the teacher to confirm.
+	AIIsCorrect       *bool
+	TeacherIsCorrect  *bool
+	TeacherFeedback   string
+	TeacherReviewedAt *time.Time
+	CreatedAt         time.Time
+}
+
+// SheetOutcome is a student's standing on a sheet, counting the latest answer
+// per exercise.
+type SheetOutcome struct {
+	Total   int
+	Correct int
+	// Pending counts answers still waiting for a teacher.
+	Pending int
+}
+
+// AttemptContext is what a review needs to know to recompute progress.
+type AttemptContext struct {
+	StudentID       string
+	PracticeSheetID string
+	SheetType       string
+	SheetTopicID    string
+	ExerciseTopicID string
 }

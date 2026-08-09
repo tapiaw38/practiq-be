@@ -7,15 +7,17 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// ListPendingReview returns attachment answers waiting for a teacher, limited
-// to courses that teacher owns.
+// ListPendingReview returns file answers from the teacher's courses. By default
+// only the ones nobody could grade; includeReviewed adds those the assistant
+// already graded and those the teacher already corrected, so a teacher can
+// review an AI grade without being blocked by it.
 func (r *repository) ListPendingReview(ctx context.Context, teacherID string, includeReviewed bool) ([]domain.PendingAttemptReview, error) {
 	query := `
 		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type,
 		       COALESCE(sa.practice_sheet_id::text, ''), COALESCE(ps.title, ''), COALESCE(ps.sheet_type, ''),
 		       c.id, c.title,
 		       COALESCE(sa.attachment_url, ''), COALESCE(sa.attachment_name, ''), COALESCE(sa.attachment_content_type, ''),
-		       COALESCE(sa.answer_text, ''), COALESCE(sa.ai_feedback, ''),
+		       COALESCE(sa.answer_text, ''), COALESCE(sa.ai_feedback, ''), sa.ai_is_correct,
 		       sa.teacher_is_correct, COALESCE(sa.teacher_feedback, ''), sa.teacher_reviewed_at, sa.created_at
 		FROM student_attempts sa
 		JOIN exercises e ON e.id = sa.exercise_id
@@ -23,12 +25,12 @@ func (r *repository) ListPendingReview(ctx context.Context, teacherID string, in
 		JOIN topics t ON t.id = e.topic_id
 		JOIN courses c ON c.id = t.course_id
 		LEFT JOIN user_profiles up ON up.id = sa.student_id
-		WHERE sa.needs_teacher_review
+		WHERE COALESCE(sa.attachment_url, '') <> ''
 		  AND c.teacher_id = $1
 		  AND c.deleted_at IS NULL
 	`
 	if !includeReviewed {
-		query += ` AND sa.teacher_reviewed_at IS NULL`
+		query += ` AND sa.needs_teacher_review AND sa.teacher_reviewed_at IS NULL`
 	}
 	query += ` ORDER BY sa.created_at DESC LIMIT 100`
 
@@ -58,6 +60,7 @@ func (r *repository) ListPendingReview(ctx context.Context, teacherID string, in
 			&review.AttachmentContentType,
 			&review.AnswerText,
 			&review.AIFeedback,
+			&review.AIIsCorrect,
 			&review.TeacherIsCorrect,
 			&review.TeacherFeedback,
 			&review.TeacherReviewedAt,
