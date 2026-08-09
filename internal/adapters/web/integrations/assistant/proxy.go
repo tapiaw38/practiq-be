@@ -5,14 +5,17 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/urlvalidator"
 )
 
 func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentType string, body []byte) (*ProxyResponse, error) {
+	startedAt := time.Now()
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 	apiKey := strings.TrimSpace(cfg.APIKey)
 
@@ -39,6 +42,7 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 
 	resp, err := g.client.Do(req)
 	if err != nil {
+		log.Printf("[assistant_proxy] method=%s path=%s request_bytes=%d duration_ms=%d error=%v", method, path, len(body), time.Since(startedAt).Milliseconds(), err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -47,6 +51,8 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("[assistant_proxy] method=%s path=%s status=%d request_bytes=%d response_bytes=%d duration_ms=%d", method, path, resp.StatusCode, len(body), len(responseBody), time.Since(startedAt).Milliseconds())
 
 	return &ProxyResponse{
 		StatusCode:  resp.StatusCode,

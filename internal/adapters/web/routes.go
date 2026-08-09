@@ -124,6 +124,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/assistant-proxy/conversation/:id", ai.NewProxyGetConversationHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/", ai.NewProxyCreateConversationHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/:id/message", ai.NewProxySendMessageHandler(uc.AI.Proxy))
+	api.POST("/assistant-proxy/conversation/:id/message/text", ai.NewProxySendTextMessageHandler(uc.AI.Proxy))
 
 	// Course levels
 	api.GET("/courses/:id/levels", courselevel.NewGetHandler(uc.CourseLevel.Get))
