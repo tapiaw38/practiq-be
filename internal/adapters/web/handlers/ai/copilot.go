@@ -35,9 +35,15 @@ func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"data": gin.H{
-			"context_id":        input.ContextID,
-			"blocks":            []gin.H{{"type": intent, "content": output.Data.Response}},
-			"suggested_actions": []string{"hint", "explanation", "similar_example"},
+			"context_id": input.ContextID,
+			"blocks":     []gin.H{{"type": intent, "content": output.Data.Response}},
+			// Only declarative prompt actions reach frontend. No remote tool name,
+			// selector or executable payload can be supplied by AI output.
+			"suggested_actions": []gin.H{
+				{"id": "hint", "type": "prompt", "label": "Otra pista", "prompt": "Dame otra pista sin revelar la respuesta."},
+				{"id": "explanation", "type": "prompt", "label": "Explicame", "prompt": "Explicame paso a paso usando el ejercicio actual."},
+				{"id": "similar_example", "type": "prompt", "label": "Ejemplo", "prompt": "Dame un ejemplo similar con números diferentes."},
+			},
 		}})
 	}
 }

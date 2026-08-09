@@ -144,7 +144,11 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 		}
 	}
 
-	prompt := buildHelpPrompt(helpType, input.Question, exercise, gradeName)
+	history, historyErr := app.Repositories.AIConversation.ListRecentHelpRequests(ctx, input.StudentID, input.ExerciseID, 3)
+	if historyErr != nil {
+		log.Printf("[ai_help] warning: failed to load exercise memory student_id=%s exercise_id=%s err=%v", input.StudentID, input.ExerciseID, historyErr)
+	}
+	prompt := buildHelpPrompt(helpType, input.Question, exercise, gradeName, history)
 
 	cfg := assistant.Config{
 		BaseURL: profile.AssistantBaseURL,
@@ -160,7 +164,7 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 	return strings.TrimSpace(aiResponse)
 }
 
-func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise, gradeName string) string {
+func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise, gradeName string, history []domain.AIHelpRequest) string {
 	var sb strings.Builder
 
 	if gradeName != "" {
@@ -230,6 +234,18 @@ func buildHelpPrompt(helpType, studentQuestion string, exercise *domain.Exercise
 		sb.WriteString("\nPregunta del estudiante: ")
 		sb.WriteString(studentQuestion)
 		sb.WriteString("\n")
+	}
+
+	if len(history) > 0 {
+		sb.WriteString("\nMemoria reciente de este ejercicio (no repitas ayuda ya dada):\n")
+		for i := len(history) - 1; i >= 0; i-- {
+			item := history[i]
+			sb.WriteString("- Estudiante: ")
+			sb.WriteString(item.Question)
+			sb.WriteString("\n- Tutor: ")
+			sb.WriteString(item.AIResponse)
+			sb.WriteString("\n")
+		}
 	}
 
 	sb.WriteString("\nResponde de forma concisa (máximo 3-4 oraciones para pistas, un poco más para explicaciones).")

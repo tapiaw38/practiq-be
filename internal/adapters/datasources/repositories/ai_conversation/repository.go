@@ -13,6 +13,7 @@ type Repository interface {
 	ListMessages(context.Context, string) ([]domain.AIMessage, error)
 	AddMessage(context.Context, domain.AIMessage) (string, error)
 	CreateHelpRequest(context.Context, domain.AIHelpRequest) (string, error)
+	ListRecentHelpRequests(context.Context, string, string, int) ([]domain.AIHelpRequest, error)
 }
 type repository struct {
 	db *sql.DB
