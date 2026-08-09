@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"log"
+	"strings"
 
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
@@ -74,13 +75,16 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 	if err != nil {
 		log.Printf("[ai_curiosities] warning: failed to get cached curiosities course_id=%s err=%v", input.CourseID, err)
 	}
-	if cached != nil && len(cached.Curiosities) > 0 {
+	if cached != nil && len(cached.Curiosities) > 0 && !containsTechnicalFallback(cached.Curiosities) {
 		return &GenerateCuriositiesOutput{
 			Data: CuriositiesData{
 				CourseID:    input.CourseID,
 				Curiosities: cached.Curiosities,
 			},
 		}, nil
+	}
+	if cached != nil && len(cached.Curiosities) > 0 {
+		log.Printf("[ai_curiosities] warning: discarding technical fallback from cache course_id=%s", input.CourseID)
 	}
 
 	// Get user profile for AI config
@@ -144,6 +148,16 @@ func (u *generateCuriositiesUsecase) fallbackResponse(courseID string) *Generate
 			Curiosities: defaultCuriosities,
 		},
 	}
+}
+
+func containsTechnicalFallback(curiosities []string) bool {
+	for _, curiosity := range curiosities {
+		text := strings.ToLower(curiosity)
+		if strings.Contains(text, "problemas técnicos") || strings.Contains(text, "intentarlo de nuevo en unos minutos") {
+			return true
+		}
+	}
+	return false
 }
 
 func userHasCourseAccess(ctx context.Context, app *appcontext.Context, userID, courseID string) (bool, error) {
