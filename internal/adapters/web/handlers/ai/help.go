@@ -12,6 +12,7 @@ import (
 type helpInput struct {
 	ExerciseID     string `json:"exercise_id"`
 	Question       string `json:"question" binding:"required"`
+	StudentAnswer  string `json:"student_answer"`
 	HelpType       string `json:"help_type"`
 	ConversationID string `json:"conversation_id"`
 }
@@ -29,6 +30,7 @@ func NewHelpHandler(uc ucAI.HelpUsecase) gin.HandlerFunc {
 			StudentID:      studentID,
 			ExerciseID:     input.ExerciseID,
 			Question:       input.Question,
+			StudentAnswer:  input.StudentAnswer,
 			HelpType:       input.HelpType,
 			ConversationID: input.ConversationID,
 		})

@@ -119,11 +119,14 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.POST("/ai/conversations", ai.NewCreateConversationHandler(uc.AI.CreateConversation))
 	api.GET("/ai/conversations/:id/messages", ai.NewGetMessagesHandler(uc.AI.GetMessages))
 	api.POST("/ai/help", ai.NewHelpHandler(uc.AI.Help))
+	api.POST("/ai/copilot", ai.NewCopilotHandler(uc.AI.Help))
+	api.POST("/ai/copilot/stream", ai.NewCopilotStreamHandler(uc.AI.Help))
 	api.POST("/ai/curiosities", ai.NewGenerateCuriositiesHandler(uc.AI.GenerateCuriosities))
 	api.GET("/assistant-proxy/conversation/user", ai.NewProxyListConversationsHandler(uc.AI.Proxy))
 	api.GET("/assistant-proxy/conversation/:id", ai.NewProxyGetConversationHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/", ai.NewProxyCreateConversationHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/:id/message", ai.NewProxySendMessageHandler(uc.AI.Proxy))
+	api.POST("/assistant-proxy/conversation/:id/message/text", ai.NewProxySendTextMessageHandler(uc.AI.Proxy))
 
 	// Course levels
 	api.GET("/courses/:id/levels", courselevel.NewGetHandler(uc.CourseLevel.Get))

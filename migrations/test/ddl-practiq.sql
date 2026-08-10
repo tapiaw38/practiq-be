@@ -208,7 +208,7 @@ CREATE TABLE IF NOT EXISTS ai_help_requests (
     exercise_id UUID REFERENCES exercises(id) ON DELETE SET NULL,
     question TEXT NOT NULL,
     ai_response TEXT,
-    help_type VARCHAR(50) CHECK (help_type IN ('hint', 'explanation', 'similar_example')),
+    help_type VARCHAR(50) CHECK (help_type IN ('hint', 'explanation', 'similar_example', 'review_answer')),
     created_at TIMESTAMP DEFAULT NOW()
 );
 
