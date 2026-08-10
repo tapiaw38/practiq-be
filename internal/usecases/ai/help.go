@@ -186,9 +186,13 @@ func buildHelpPrompt(helpType, studentQuestion, studentAnswer string, exercise *
 
 	if exercise != nil {
 		sb.WriteString("Contexto del ejercicio:\n")
-		sb.WriteString("- Enunciado: ")
-		sb.WriteString(exercise.Question)
-		sb.WriteString("\n")
+		if exercise.Type == "fill_blanks" {
+			sb.WriteString(buildFillBlanksPuzzleContext(exercise))
+		} else {
+			sb.WriteString("- Enunciado: ")
+			sb.WriteString(exercise.Question)
+			sb.WriteString("\n")
+		}
 		if exercise.Difficulty > 0 {
 			sb.WriteString("- Dificultad: ")
 			switch exercise.Difficulty {
@@ -215,14 +219,20 @@ func buildHelpPrompt(helpType, studentQuestion, studentAnswer string, exercise *
 			sb.WriteString(exercise.Explanation)
 			sb.WriteString("\n")
 		}
-		if exercise != nil && exercise.CorrectAnswer != "" {
+		if exercise != nil && exercise.Type == "fill_blanks" {
+			sb.WriteString("Completado final esperado: ")
+			sb.WriteString(formatFillBlanksAnswer(exercise.CorrectAnswer))
+			sb.WriteString("\n")
+		} else if exercise != nil && exercise.CorrectAnswer != "" {
 			sb.WriteString("La respuesta correcta es: ")
 			sb.WriteString(exercise.CorrectAnswer)
 			sb.WriteString("\n")
 		}
 	case "similar_example":
 		sb.WriteString("\nModo EJEMPLO: crea un ejercicio con números diferentes; máximo 3 líneas incluyendo resolución.\n")
-		if exercise != nil && exercise.CorrectAnswer != "" {
+		if exercise != nil && exercise.Type == "fill_blanks" {
+			sb.WriteString("Conservá formato de bloques y huecos, usando valores distintos.\n")
+		} else if exercise != nil && exercise.CorrectAnswer != "" {
 			sb.WriteString("Basándote en el ejercicio original (respuesta: ")
 			sb.WriteString(exercise.CorrectAnswer)
 			sb.WriteString("), ")
@@ -230,7 +240,13 @@ func buildHelpPrompt(helpType, studentQuestion, studentAnswer string, exercise *
 		sb.WriteString("usa números diferentes.\n")
 	case "review_answer":
 		sb.WriteString("\nModo REVISIÓN: comienza exactamente con `Correcta.` o `Incorrecta.`. Luego una comprobación concreta, máximo 2 líneas. No hagas preguntas.\n")
-		if studentAnswer != "" {
+		if exercise != nil && exercise.Type == "fill_blanks" {
+			sb.WriteString("Bloques colocados por estudiante: ")
+			sb.WriteString(formatFillBlanksAnswer(studentAnswer))
+			sb.WriteString("\nCompletado esperado: ")
+			sb.WriteString(formatFillBlanksAnswer(exercise.CorrectAnswer))
+			sb.WriteString("\nIndicá qué hueco revisar, sin mostrar JSON.\n")
+		} else if studentAnswer != "" {
 			sb.WriteString("Respuesta declarada por estudiante: ")
 			sb.WriteString(studentAnswer)
 			sb.WriteString("\n")
