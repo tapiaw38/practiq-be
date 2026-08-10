@@ -156,6 +156,11 @@ func isExpectedCanvasResponse(raw string) bool {
 	if strings.EqualFold(value, unreadableResponse) {
 		return true
 	}
+	// Gillie's conversational tutor can return a review verdict instead of
+	// transcribing the handwriting. A verdict is never a student answer.
+	if isCanvasVerdict(value) {
+		return false
+	}
 	if strings.HasPrefix(value, "{") || strings.HasPrefix(value, "[") || strings.Contains(value, "```") {
 		return false
 	}
@@ -163,6 +168,17 @@ func isExpectedCanvasResponse(raw string) bool {
 		return false
 	}
 	return true
+}
+
+func isCanvasVerdict(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.Trim(normalized, ".,!¡!¿?;: \t\n\r")
+	switch normalized {
+	case "correcta", "correcto", "incorrecta", "incorrecto", "es correcta", "es correcto", "es incorrecta", "es incorrecto":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeCanvasResponse(raw string) string {

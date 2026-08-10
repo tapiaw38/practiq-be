@@ -110,6 +110,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		aiFeedback := ""
 		hasTextAnswer := strings.TrimSpace(answerText) != ""
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
+		canvasUnreadable := false
 
 		if hasCanvasAnswer && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 			normalizedCanvas := normalizeCanvasDataURI(attempt.CanvasData)
@@ -118,12 +119,23 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				if normalizedRecognized != "" && normalizedRecognized != "UNREADABLE" {
 					answerText = normalizedRecognized
 					hasTextAnswer = true
+				} else if !hasTextAnswer {
+					canvasUnreadable = true
 				}
+			} else if !hasTextAnswer {
+				// Do not turn an OCR failure into a fabricated wrong answer.
+				canvasUnreadable = true
 			}
 		}
 
 		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
-		needsTeacherReview := false
+		// A canvas the OCR cannot transcribe must not lower the student's score.
+		// It is kept for a later review instead of being evaluated as arbitrary text.
+		needsTeacherReview := canvasUnreadable
+		if canvasUnreadable {
+			answerText = "UNREADABLE"
+			aiFeedback = "No pudimos leer tu respuesta escrita. Intentá escribirla más clara o pedí revisión."
+		}
 		var aiSuggestion *bool
 
 		if ok && ex.Type == exerciseTypeAttachment {
