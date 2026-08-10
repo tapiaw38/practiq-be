@@ -142,6 +142,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 					resultAIFeedback = aiFeedback
 				}
 			}
+		} else if ok && ex.Type == exerciseTypeFillBlanks {
+			// Blanks are graded by exact comparison against the expected
+			// placement. Sending them to the assistant would spend a call on a
+			// settled answer and risk it contradicting the exact match.
+			isCorrect = blanksAnswersMatch(answerText, ex.CorrectAnswer)
 		} else if ok {
 			normalizedCorrect := normalizeCanvasAnswer(ex.CorrectAnswer)
 			isCorrect = strings.EqualFold(

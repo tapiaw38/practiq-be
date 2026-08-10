@@ -69,6 +69,10 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		}
 	}
 
+	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata); appErr != nil {
+		return nil, appErr
+	}
+
 	if err := app.Repositories.Exercise.Update(ctx, id, domain.Exercise{
 		Type:          input.Type,
 		Question:      input.Question,

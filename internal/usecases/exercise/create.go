@@ -44,6 +44,10 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, appErr
 	}
 
+	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata); appErr != nil {
+		return nil, appErr
+	}
+
 	difficulty := input.Difficulty
 	if difficulty < 1 {
 		difficulty = 1
