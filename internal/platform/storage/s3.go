@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +30,10 @@ type ImageStorage interface {
 	UploadFile(ctx context.Context, folder, userID, filename, contentType string, body []byte) (string, error)
 	// FetchFile reads a stored object back, for forwarding to the assistant.
 	FetchFile(ctx context.Context, url string) ([]byte, string, error)
+	// PresignGetURL turns a stored object URL into a temporary URL a browser
+	// can open directly, so the bucket stays private. Reports false when the
+	// value is not one of our objects, and returns it unchanged.
+	PresignGetURL(rawURL string, ttl time.Duration) (string, bool)
 }
 
 type NoopImageStorage struct{}
@@ -39,6 +44,9 @@ func (NoopImageStorage) UploadDataURI(ctx context.Context, folder, userID, dataU
 }
 func (NoopImageStorage) ResolveDataURI(ctx context.Context, value string) (string, error) {
 	return strings.TrimSpace(value), nil
+}
+func (NoopImageStorage) PresignGetURL(rawURL string, ttl time.Duration) (string, bool) {
+	return rawURL, false
 }
 
 type S3ImageStorage struct {
@@ -204,6 +212,65 @@ func (s *S3ImageStorage) getObject(ctx context.Context, key string) ([]byte, str
 		return nil, "", err
 	}
 	return body, resp.Header.Get("Content-Type"), nil
+}
+
+// PresignGetURL builds a SigV4 query-signed GET URL. The signature carries the
+// authorization, so the browser can fetch the object without credentials and
+// the bucket never needs to be public. Range requests keep working, which is
+// what makes video and PDF streaming viable without proxying bytes through us.
+func (s *S3ImageStorage) PresignGetURL(rawURL string, ttl time.Duration) (string, bool) {
+	key, ok := s.keyFromValue(rawURL)
+	if !ok {
+		return rawURL, false
+	}
+	if ttl <= 0 {
+		ttl = 15 * time.Minute
+	}
+
+	u, err := url.Parse(s.objectURL(key))
+	if err != nil {
+		return rawURL, false
+	}
+
+	now := time.Now().UTC()
+	amzDate := now.Format("20060102T150405Z")
+	date := now.Format("20060102")
+	region := strings.TrimSpace(s.cfg.AWSRegion)
+	scope := date + "/" + region + "/s3/aws4_request"
+
+	query := url.Values{}
+	query.Set("X-Amz-Algorithm", "AWS4-HMAC-SHA256")
+	query.Set("X-Amz-Credential", strings.TrimSpace(s.cfg.AWSAccessKeyID)+"/"+scope)
+	query.Set("X-Amz-Date", amzDate)
+	query.Set("X-Amz-Expires", strconv.Itoa(int(ttl.Seconds())))
+	query.Set("X-Amz-SignedHeaders", "host")
+	if token := strings.TrimSpace(s.cfg.AWSSessionToken); token != "" {
+		query.Set("X-Amz-Security-Token", token)
+	}
+	u.RawQuery = query.Encode()
+
+	host := strings.ToLower(u.Host)
+	canonicalRequest := strings.Join([]string{
+		http.MethodGet,
+		canonicalURI(u),
+		canonicalQuery(u),
+		"host:" + host + "\n",
+		"host",
+		"UNSIGNED-PAYLOAD",
+	}, "\n")
+
+	stringToSign := strings.Join([]string{
+		"AWS4-HMAC-SHA256",
+		amzDate,
+		scope,
+		sha256Hex([]byte(canonicalRequest)),
+	}, "\n")
+	signature := hex.EncodeToString(hmacSHA256(
+		signingKey(s.cfg.AWSSecretAccessKey, date, region),
+		[]byte(stringToSign),
+	))
+
+	return u.String() + "&X-Amz-Signature=" + signature, true
 }
 
 func (s *S3ImageStorage) objectURL(key string) string {

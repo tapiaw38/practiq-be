@@ -2,6 +2,7 @@ package attemptreview
 
 import (
 	"context"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -10,6 +11,10 @@ import (
 )
 
 const timeFormat = "2006-01-02T15:04:05Z"
+
+// attachmentLinkTTL has to outlive a grading session without leaving a
+// shareable link around for long.
+const attachmentLinkTTL = time.Hour
 
 type (
 	ListUsecase interface {
@@ -34,18 +39,21 @@ type (
 	}
 
 	ReviewData struct {
-		AttemptID             string `json:"attempt_id"`
-		StudentID             string `json:"student_id"`
-		StudentName           string `json:"student_name,omitempty"`
-		ExerciseID            string `json:"exercise_id"`
-		Question              string `json:"question"`
-		ExerciseType          string `json:"exercise_type"`
-		PracticeSheetID       string `json:"practice_sheet_id,omitempty"`
-		PracticeSheetTitle    string `json:"practice_sheet_title,omitempty"`
-		SheetType             string `json:"sheet_type,omitempty"`
-		CourseID              string `json:"course_id"`
-		CourseTitle           string `json:"course_title"`
-		AttachmentURL         string `json:"attachment_url,omitempty"`
+		AttemptID          string `json:"attempt_id"`
+		StudentID          string `json:"student_id"`
+		StudentName        string `json:"student_name,omitempty"`
+		ExerciseID         string `json:"exercise_id"`
+		Question           string `json:"question"`
+		ExerciseType       string `json:"exercise_type"`
+		PracticeSheetID    string `json:"practice_sheet_id,omitempty"`
+		PracticeSheetTitle string `json:"practice_sheet_title,omitempty"`
+		SheetType          string `json:"sheet_type,omitempty"`
+		CourseID           string `json:"course_id"`
+		CourseTitle        string `json:"course_title"`
+		AttachmentURL      string `json:"attachment_url,omitempty"`
+		// AttachmentViewURL is a short-lived signed URL. The bucket is private,
+		// so AttachmentURL alone is not openable by a browser.
+		AttachmentViewURL     string `json:"attachment_view_url,omitempty"`
 		AttachmentName        string `json:"attachment_name,omitempty"`
 		AttachmentContentType string `json:"attachment_content_type,omitempty"`
 		AnswerText            string `json:"answer_text,omitempty"`
@@ -89,7 +97,13 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, includeRevi
 
 	data := make([]ReviewData, 0, len(reviews))
 	for _, review := range reviews {
-		data = append(data, toReviewData(review))
+		item := toReviewData(review)
+		if item.AttachmentURL != "" && app.ImageStorage != nil {
+			if signed, ok := app.ImageStorage.PresignGetURL(item.AttachmentURL, attachmentLinkTTL); ok {
+				item.AttachmentViewURL = signed
+			}
+		}
+		data = append(data, item)
 	}
 	return &ListOutput{Data: data}, nil
 }

@@ -5,12 +5,16 @@ import (
 	"errors"
 	"io"
 	"log"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 )
+
+// previewLinkTTL only has to cover the form the teacher is filling in.
+const previewLinkTTL = time.Hour
 
 type (
 	Usecase interface {
@@ -36,7 +40,10 @@ type (
 	}
 
 	FileData struct {
-		URL         string `json:"url"`
+		URL string `json:"url"`
+		// PreviewURL is a short-lived signed URL for opening the file right
+		// after upload. Only URL is meant to be stored.
+		PreviewURL  string `json:"preview_url,omitempty"`
 		Filename    string `json:"filename"`
 		ContentType string `json:"content_type"`
 		Kind        string `json:"kind"`
@@ -88,8 +95,11 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 		return nil, apperrors.NewApplicationError(mappings.UploadError, err)
 	}
 
+	previewURL, _ := app.ImageStorage.PresignGetURL(url, previewLinkTTL)
+
 	return &Output{Data: FileData{
 		URL:         url,
+		PreviewURL:  previewURL,
 		Filename:    input.Filename,
 		ContentType: contentType,
 		Kind:        string(kind),

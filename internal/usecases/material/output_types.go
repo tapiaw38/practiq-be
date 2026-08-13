@@ -4,12 +4,15 @@ import "github.com/tapiaw38/practiq-be/internal/domain"
 
 type (
 	MaterialData struct {
-		ID            string `json:"id"`
-		CourseID      string `json:"course_id"`
-		TeacherID     string `json:"teacher_id"`
-		Title         string `json:"title"`
-		Type          string `json:"type"`
-		FileURL       string `json:"file_url,omitempty"`
+		ID        string `json:"id"`
+		CourseID  string `json:"course_id"`
+		TeacherID string `json:"teacher_id"`
+		Title     string `json:"title"`
+		Type      string `json:"type"`
+		FileURL   string `json:"file_url,omitempty"`
+		// ViewURL is a short-lived signed URL; the bucket is private, so the
+		// canonical FileURL is not openable by a browser on its own.
+		ViewURL       string `json:"view_url,omitempty"`
 		ExtractedText string `json:"extracted_text,omitempty"`
 		Status        string `json:"status"`
 		CreatedAt     string `json:"created_at"`

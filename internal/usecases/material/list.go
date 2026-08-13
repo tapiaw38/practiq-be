@@ -53,7 +53,7 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin b
 
 	var data []MaterialData
 	for _, m := range materials {
-		data = append(data, toMaterialData(m))
+		data = append(data, withViewURL(app, toMaterialData(m)))
 	}
 	if data == nil {
 		data = []MaterialData{}

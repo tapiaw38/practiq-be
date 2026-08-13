@@ -66,5 +66,5 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewApplicationError(mappings.MaterialNotFoundError, nil)
 	}
 
-	return &UpdateOutput{Data: toMaterialData(*m)}, nil
+	return &UpdateOutput{Data: withViewURL(app, toMaterialData(*m))}, nil
 }

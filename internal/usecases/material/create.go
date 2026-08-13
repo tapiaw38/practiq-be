@@ -73,7 +73,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	}
 	for _, m := range materials {
 		if m.ID == id {
-			return &CreateOutput{Data: toMaterialData(m)}, nil
+			return &CreateOutput{Data: withViewURL(app, toMaterialData(m))}, nil
 		}
 	}
 

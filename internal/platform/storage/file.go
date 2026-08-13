@@ -15,6 +15,9 @@ type Storage = ImageStorage
 
 // MaxUploadBytes caps a single upload. Audio recordings and scanned PDFs are
 // the large cases; anything past this is likely a mistake.
+//
+// ponytail: 20 MiB also caps course videos, which fits short clips only. Raise
+// it (and move to multipart upload) if teachers start hitting it.
 const MaxUploadBytes = 20 << 20 // 20 MiB
 
 // FileKind groups accepted content types into the buckets the product talks
@@ -26,6 +29,7 @@ const (
 	FileKindImage    FileKind = "image"
 	FileKindPDF      FileKind = "pdf"
 	FileKindDocument FileKind = "doc"
+	FileKindVideo    FileKind = "video"
 )
 
 var ErrUnsupportedFileType = errors.New("unsupported file type")
@@ -48,6 +52,10 @@ var acceptedTypes = map[string]struct {
 	"image/jpg":          {FileKindImage, ".jpg"},
 	"image/webp":         {FileKindImage, ".webp"},
 	"image/gif":          {FileKindImage, ".gif"},
+	"video/mp4":          {FileKindVideo, ".mp4"},
+	"video/webm":         {FileKindVideo, ".webm"},
+	"video/ogg":          {FileKindVideo, ".ogv"},
+	"video/quicktime":    {FileKindVideo, ".mov"},
 	"application/pdf":    {FileKindPDF, ".pdf"},
 	"application/msword": {FileKindDocument, ".doc"},
 	"application/vnd.openxmlformats-officedocument.wordprocessingml.document": {FileKindDocument, ".docx"},
