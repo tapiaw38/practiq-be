@@ -103,5 +103,5 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 
 	notifyScheduledLevelTest(ctx, app, *ps)
 
-	return &CreateOutput{Data: toSheetData(*ps)}, nil
+	return &CreateOutput{Data: toSheetData(app, *ps, true)}, nil
 }

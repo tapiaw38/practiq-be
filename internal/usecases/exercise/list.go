@@ -53,7 +53,7 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin b
 
 	var data []ExerciseData
 	for _, e := range exercises {
-		data = append(data, toExerciseData(e))
+		data = append(data, toExerciseData(app, e))
 	}
 	if data == nil {
 		data = []ExerciseData{}

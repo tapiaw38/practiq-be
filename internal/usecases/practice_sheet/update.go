@@ -92,5 +92,5 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 
 	notifyScheduledLevelTest(ctx, app, *ps)
 
-	return &UpdateOutput{Data: toSheetData(*ps)}, nil
+	return &UpdateOutput{Data: toSheetData(app, *ps, true)}, nil
 }

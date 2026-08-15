@@ -47,6 +47,9 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata); appErr != nil {
 		return nil, appErr
 	}
+	if appErr := validateExerciseMediaURL(app, requesterID, input.Metadata, ""); appErr != nil {
+		return nil, appErr
+	}
 
 	difficulty := input.Difficulty
 	if difficulty < 1 {
@@ -74,5 +77,5 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewApplicationError(mappings.ExerciseListError, err)
 	}
 
-	return &CreateOutput{Data: toExerciseData(*e)}, nil
+	return &CreateOutput{Data: toExerciseData(app, *e)}, nil
 }

@@ -109,9 +109,12 @@ func (s *S3ImageStorage) UploadFile(ctx context.Context, folder, userID, filenam
 		return "", fmt.Errorf("file is larger than %d MiB", MaxUploadBytes>>20)
 	}
 
-	contentType, _, ext, err := ResolveContentType(contentType, body)
+	contentType, kind, ext, err := ResolveContentType(contentType, body)
 	if err != nil {
 		return "", err
+	}
+	if folder == "exercises" && kind != FileKindImage && kind != FileKindAudio {
+		return "", fmt.Errorf("%w: exercise media must be image or audio", ErrUnsupportedFileType)
 	}
 
 	// The extension always comes from the verified content type, never from the

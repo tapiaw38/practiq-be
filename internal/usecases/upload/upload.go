@@ -85,6 +85,9 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.UploadUnsupportedTypeError, err)
 	}
+	if folder == "exercises" && kind != storage.FileKindImage && kind != storage.FileKindAudio {
+		return nil, apperrors.NewApplicationError(mappings.UploadUnsupportedTypeError, storage.ErrUnsupportedFileType)
+	}
 
 	url, err := app.ImageStorage.UploadFile(ctx, folder, input.UserID, input.Filename, contentType, body)
 	if err != nil {

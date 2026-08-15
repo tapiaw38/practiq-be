@@ -34,6 +34,9 @@ type ImageStorage interface {
 	// can open directly, so the bucket stays private. Reports false when the
 	// value is not one of our objects, and returns it unchanged.
 	PresignGetURL(rawURL string, ttl time.Duration) (string, bool)
+	// OwnsFileURL reports whether rawURL is an object uploaded by userID in the
+	// given folder. It is used before persisting references from user metadata.
+	OwnsFileURL(rawURL, folder, userID string) bool
 }
 
 type NoopImageStorage struct{}
@@ -48,6 +51,7 @@ func (NoopImageStorage) ResolveDataURI(ctx context.Context, value string) (strin
 func (NoopImageStorage) PresignGetURL(rawURL string, ttl time.Duration) (string, bool) {
 	return rawURL, false
 }
+func (NoopImageStorage) OwnsFileURL(rawURL, folder, userID string) bool { return false }
 
 type S3ImageStorage struct {
 	cfg    config.S3Config
@@ -271,6 +275,17 @@ func (s *S3ImageStorage) PresignGetURL(rawURL string, ttl time.Duration) (string
 	))
 
 	return u.String() + "&X-Amz-Signature=" + signature, true
+}
+
+// OwnsFileURL prevents metadata from turning another private object in the
+// bucket into a browser-accessible, signed URL.
+func (s *S3ImageStorage) OwnsFileURL(rawURL, folder, userID string) bool {
+	key, ok := s.keyFromValue(rawURL)
+	if !ok {
+		return false
+	}
+	prefix := path.Join("file", cleanPathPart(folder), cleanPathPart(userID)) + "/"
+	return strings.HasPrefix(key, prefix)
 }
 
 func (s *S3ImageStorage) objectURL(key string) string {

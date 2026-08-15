@@ -14,6 +14,7 @@ import (
 var allowedFolders = map[string]bool{
 	"attachments": true,
 	"materials":   true,
+	"exercises":   true,
 }
 
 // multipartOverhead leaves room for the form boundaries and the folder field

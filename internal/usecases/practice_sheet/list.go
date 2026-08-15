@@ -52,8 +52,12 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin b
 	}
 
 	var data []PracticeSheetData
+	includeTeacherData, appErr := requesterCanViewTeacherData(ctx, app, requesterID, isAdmin, input.CourseID)
+	if appErr != nil {
+		return nil, appErr
+	}
 	for _, ps := range sheets {
-		data = append(data, toSheetData(ps))
+		data = append(data, toSheetData(app, ps, includeTeacherData))
 	}
 	if data == nil {
 		data = []PracticeSheetData{}

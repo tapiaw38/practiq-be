@@ -31,3 +31,20 @@ func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, reques
 	}
 	return nil
 }
+
+// requesterCanViewTeacherData distinguishes a course teacher from a student
+// who is allowed to solve the same sheet. It controls answers and canonical
+// storage URLs in output, not authorization to read the sheet itself.
+func requesterCanViewTeacherData(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) (bool, apperrors.ApplicationError) {
+	if isAdmin {
+		return true, nil
+	}
+	course, err := app.Repositories.Course.Get(ctx, courseID)
+	if err != nil {
+		return false, apperrors.NewApplicationError(mappings.CourseNotFoundError, err)
+	}
+	if course == nil {
+		return false, apperrors.NewNotFoundError("course not found")
+	}
+	return course.TeacherID == requesterID, nil
+}

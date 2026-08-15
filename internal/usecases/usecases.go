@@ -84,12 +84,13 @@ type EnrollmentUsecases struct {
 }
 
 type PracticeSheetUsecases struct {
-	Create ucPracticeSheet.CreateUsecase
-	List   ucPracticeSheet.ListUsecase
-	Get    ucPracticeSheet.GetUsecase
-	Submit ucPracticeSheet.SubmitUsecase
-	Update ucPracticeSheet.UpdateUsecase
-	Delete ucPracticeSheet.DeleteUsecase
+	Create            ucPracticeSheet.CreateUsecase
+	List              ucPracticeSheet.ListUsecase
+	Get               ucPracticeSheet.GetUsecase
+	GetAssistantMedia ucPracticeSheet.GetAssistantMediaUsecase
+	Submit            ucPracticeSheet.SubmitUsecase
+	Update            ucPracticeSheet.UpdateUsecase
+	Delete            ucPracticeSheet.DeleteUsecase
 }
 
 type ProgressUsecases struct {
@@ -259,12 +260,13 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			ListStudents: ucEnrollment.NewListStudentsUsecase(contextFactory),
 		},
 		PracticeSheet: PracticeSheetUsecases{
-			Create: ucPracticeSheet.NewCreateUsecase(contextFactory),
-			List:   ucPracticeSheet.NewListUsecase(contextFactory),
-			Get:    ucPracticeSheet.NewGetUsecase(contextFactory),
-			Submit: ucPracticeSheet.NewSubmitUsecase(contextFactory),
-			Update: ucPracticeSheet.NewUpdateUsecase(contextFactory),
-			Delete: ucPracticeSheet.NewDeleteUsecase(contextFactory),
+			Create:            ucPracticeSheet.NewCreateUsecase(contextFactory),
+			List:              ucPracticeSheet.NewListUsecase(contextFactory),
+			Get:               ucPracticeSheet.NewGetUsecase(contextFactory),
+			GetAssistantMedia: ucPracticeSheet.NewGetAssistantMediaUsecase(contextFactory),
+			Submit:            ucPracticeSheet.NewSubmitUsecase(contextFactory),
+			Update:            ucPracticeSheet.NewUpdateUsecase(contextFactory),
+			Delete:            ucPracticeSheet.NewDeleteUsecase(contextFactory),
 		},
 		Progress: ProgressUsecases{
 			GetMy:                    ucProgress.NewGetMyProgressUsecase(contextFactory),
