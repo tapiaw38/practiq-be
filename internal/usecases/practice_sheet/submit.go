@@ -70,6 +70,18 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if appErr := ensureSheetIsOpen(ctx, app, ps, studentID, false); appErr != nil {
 		return nil, appErr
 	}
+	if ps.SheetType == sheetTypeLevelTest {
+		if appErr := validateLevelTestAttempts(ps.Exercises, input.Attempts); appErr != nil {
+			return nil, appErr
+		}
+		claimed, claimErr := app.Repositories.StudentAttempt.ClaimLevelTestSubmission(ctx, studentID, sheetID)
+		if claimErr != nil {
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, claimErr)
+		}
+		if !claimed {
+			return nil, apperrors.NewBadRequestError("this level test was already submitted")
+		}
+	}
 
 	// Get course for grade context
 	course, _ := app.Repositories.Course.Get(ctx, ps.CourseID)
@@ -257,7 +269,12 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			app.Repositories.StudentAttempt.SaveCanvasWork(ctx, attemptID, attempt.CanvasData)
 		}
 
-		// Collect per-exercise result
+		// Practice sheets teach from their detailed result. A level test must not
+		// become an answer oracle, so it deliberately returns no verdict, answer
+		// or assistant feedback for an individual exercise.
+		if ps.SheetType == sheetTypeLevelTest {
+			continue
+		}
 		correctAnswer := ""
 		if ok {
 			correctAnswer = ex.CorrectAnswer
@@ -416,9 +433,37 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel)
 	}
 
+	if ps.SheetType == sheetTypeLevelTest {
+		resultAIFeedback = ""
+	}
 	result := toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)
 	result.PendingReview = hasPendingReview
 	return &SubmitOutput{Data: result}, nil
+}
+
+// validateLevelTestAttempts keeps the server's pass/fail calculation tied to
+// the complete test. UI validation alone is bypassable: submitting only one
+// easy exercise previously produced a 100% score and promoted the student.
+func validateLevelTestAttempts(exercises []domain.PracticeSheetExercise, attempts []AttemptInput) apperrors.ApplicationError {
+	if len(attempts) != len(exercises) {
+		return apperrors.NewBadRequestError("a level test must include every exercise exactly once")
+	}
+
+	exerciseIDs := make(map[string]struct{}, len(exercises))
+	for _, pse := range exercises {
+		exerciseIDs[pse.Exercise.ID] = struct{}{}
+	}
+	seen := make(map[string]struct{}, len(attempts))
+	for _, attempt := range attempts {
+		if _, exists := exerciseIDs[attempt.ExerciseID]; !exists {
+			return apperrors.NewBadRequestError("the level test contains an unknown exercise")
+		}
+		if _, duplicate := seen[attempt.ExerciseID]; duplicate {
+			return apperrors.NewBadRequestError("each level test exercise can be submitted only once")
+		}
+		seen[attempt.ExerciseID] = struct{}{}
+	}
+	return nil
 }
 
 func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAnswer, hasAttachment bool) bool {

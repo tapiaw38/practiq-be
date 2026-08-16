@@ -78,14 +78,23 @@ func ClassifyContentType(contentType string) (FileKind, string, error) {
 }
 
 // ResolveContentType returns the content type an upload will actually be
-// stored with: the declared one when the whitelist accepts it, otherwise the
-// sniffed one. Callers use it to report the file kind back to the client.
+// stored with: the declared one when the whitelist accepts it *and* the bytes
+// do not say otherwise, else the sniffed one.
 //
-// Note this validates the declared type, not the bytes: a renamed file whose
-// declared type is allowed is stored as declared. That is acceptable because
-// objects are only ever served with a whitelisted content type.
+// Checking the declaration alone used to be enough, because the type only
+// decided how the object was served. It no longer is: the stored type now
+// picks the assistant channel an attachment is sent through and answers the
+// exercise's accepted-format check, so PDF bytes declared as audio/mpeg would
+// slip past an audio-only exercise and be handed to the voice channel.
+//
+// http.DetectContentType only recognizes some formats; when it cannot tell
+// (application/octet-stream and friends) the declaration stands, since
+// rejecting there would break every format Go cannot sniff.
 func ResolveContentType(contentType string, body []byte) (string, FileKind, string, error) {
 	if kind, ext, err := ClassifyContentType(contentType); err == nil {
+		if sniffedKind, _, sniffErr := ClassifyContentType(http.DetectContentType(body)); sniffErr == nil && conflictingKinds(kind, sniffedKind) {
+			return "", "", "", fmt.Errorf("%w: declared %s but the file is %s", ErrUnsupportedFileType, contentType, sniffedKind)
+		}
 		return contentType, kind, ext, nil
 	}
 	// Some browsers send an empty or generic type; sniff the bytes before
@@ -96,6 +105,22 @@ func ResolveContentType(contentType string, body []byte) (string, FileKind, stri
 		return "", "", "", err
 	}
 	return sniffed, kind, ext, nil
+}
+
+// conflictingKinds reports a declaration the bytes contradict.
+//
+// Audio and video are never treated as a conflict: WebM and Ogg are the same
+// container either way, so a voice recording is sniffed as video/webm and
+// rejecting it would break the student's audio answers. Everything else that
+// Go can identify has to agree.
+func conflictingKinds(declared, sniffed FileKind) bool {
+	if declared == sniffed {
+		return false
+	}
+	mediaContainer := func(k FileKind) bool {
+		return k == FileKindAudio || k == FileKindVideo
+	}
+	return !(mediaContainer(declared) && mediaContainer(sniffed))
 }
 
 // UploadFile stores a file and returns its URL. contentType is trusted only

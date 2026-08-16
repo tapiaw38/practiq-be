@@ -10,6 +10,9 @@ import (
 
 type Repository interface {
 	Create(context.Context, domain.StudentAttempt) (string, error)
+	// ClaimLevelTestSubmission atomically reserves a student's one submission
+	// for a level test. False means it was already submitted.
+	ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string) (bool, error)
 	ListBySheet(ctx context.Context, studentID, sheetID string) ([]domain.StudentAttempt, error)
 	SaveCanvasWork(ctx context.Context, attemptID, imageData string) error
 	GetLastPracticedSheetID(ctx context.Context, studentID string) (string, error)

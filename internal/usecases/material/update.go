@@ -2,6 +2,7 @@ package material
 
 import (
 	"context"
+	"errors"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -47,6 +48,16 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 
 	if !isAdmin && material.TeacherID != requesterID {
 		return nil, apperrors.NewForbiddenError()
+	}
+
+	// Same rule as create, except an unchanged URL always passes: the file may
+	// predate this check, or belong to another teacher of the same course, and
+	// re-saving a title must not fail because of it.
+	if input.FileURL != "" && input.FileURL != material.FileURL &&
+		(app.ImageStorage == nil ||
+			!app.ImageStorage.OwnsFileURL(input.FileURL, materialsFolder, requesterID)) {
+		return nil, apperrors.NewApplicationError(mappings.MaterialUpdateError,
+			errors.New("the file does not belong to this teacher"))
 	}
 
 	if err := app.Repositories.Material.Update(ctx, id, domain.Material{

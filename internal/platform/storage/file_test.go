@@ -89,3 +89,39 @@ func TestClassifyContentTypeRejectsUnknown(t *testing.T) {
 		}
 	}
 }
+
+// The stored content type decides the assistant channel and answers the
+// exercise's accepted-format check, so a declaration the bytes contradict has
+// to be rejected rather than trusted.
+func TestResolveContentTypeRejectsMismatchedBytes(t *testing.T) {
+	pdf := []byte("%PDF-1.4\n%âãÏÓ\nstartxref\n0\n%%EOF\n")
+
+	t.Run("pdf bytes declared as audio", func(t *testing.T) {
+		if _, _, _, err := ResolveContentType("audio/mpeg", pdf); err == nil {
+			t.Fatal("expected the mismatch to be rejected")
+		}
+	})
+
+	t.Run("pdf bytes declared as pdf", func(t *testing.T) {
+		contentType, kind, _, err := ResolveContentType("application/pdf", pdf)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if contentType != "application/pdf" || kind != FileKindPDF {
+			t.Fatalf("got %s / %s", contentType, kind)
+		}
+	})
+
+	t.Run("unsniffable bytes keep the declaration", func(t *testing.T) {
+		// http.DetectContentType cannot identify these; rejecting here would
+		// break every format Go does not know.
+		opaque := []byte{0x1A, 0x45, 0xDF, 0xA3, 0x01, 0x02, 0x03, 0x04}
+		contentType, kind, _, err := ResolveContentType("audio/webm", opaque)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if contentType != "audio/webm" || kind != FileKindAudio {
+			t.Fatalf("got %s / %s", contentType, kind)
+		}
+	})
+}

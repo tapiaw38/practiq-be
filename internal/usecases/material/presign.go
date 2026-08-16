@@ -10,6 +10,10 @@ import (
 // link around for long. Reloading the course view issues fresh ones.
 const viewLinkTTL = time.Hour
 
+// materialsFolder is the bucket prefix material files are uploaded under; it is
+// what ownership is checked against.
+const materialsFolder = "materials"
+
 // withViewURL fills the temporary URL the browser can actually open. FileURL
 // stays canonical so it can be written back unchanged.
 func withViewURL(app *appcontext.Context, data MaterialData) MaterialData {

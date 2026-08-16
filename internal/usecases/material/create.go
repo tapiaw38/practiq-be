@@ -2,6 +2,7 @@ package material
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	materialRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
@@ -52,6 +53,16 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 
 	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isAdmin, input.CourseID); appErr != nil {
 		return nil, appErr
+	}
+
+	// A canonical bucket URL is guessable and readable from other courses'
+	// material responses. Without this, a teacher could paste someone else's
+	// object into their own course, and withViewURL would then presign it for
+	// every reader of that course.
+	if input.FileURL != "" && (app.ImageStorage == nil ||
+		!app.ImageStorage.OwnsFileURL(input.FileURL, materialsFolder, input.TeacherID)) {
+		return nil, apperrors.NewApplicationError(mappings.MaterialCreateError,
+			errors.New("the file does not belong to this teacher"))
 	}
 
 	id, err := app.Repositories.Material.Create(ctx, domain.Material{
