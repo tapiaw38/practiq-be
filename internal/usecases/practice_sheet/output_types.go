@@ -46,10 +46,12 @@ type (
 		SheetType  string `json:"sheet_type"`
 		TestStyle  string `json:"test_style"`
 		// ScheduledAt is empty when the sheet can be taken at any time.
-		ScheduledAt string              `json:"scheduled_at,omitempty"`
-		CreatedBy   string              `json:"created_by"`
-		CreatedAt   string              `json:"created_at"`
-		Exercises   []SheetExerciseData `json:"exercises"`
+		ScheduledAt string `json:"scheduled_at,omitempty"`
+		// AvailableUntil closes the window; empty means it stays open.
+		AvailableUntil string              `json:"available_until,omitempty"`
+		CreatedBy      string              `json:"created_by"`
+		CreatedAt      string              `json:"created_at"`
+		Exercises      []SheetExerciseData `json:"exercises"`
 	}
 
 	ExerciseResultData struct {
@@ -128,6 +130,9 @@ func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeache
 	}
 	if ps.ScheduledAt != nil {
 		data.ScheduledAt = ps.ScheduledAt.UTC().Format(timeFormat)
+	}
+	if ps.AvailableUntil != nil {
+		data.AvailableUntil = ps.AvailableUntil.UTC().Format(timeFormat)
 	}
 	return data
 }

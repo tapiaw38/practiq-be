@@ -12,7 +12,9 @@ type (
 		// ScheduledAt is UTC and empty when the sheet has no date. The client
 		// uses it to show the date and disable the sheet until then.
 		ScheduledAt string `json:"scheduled_at,omitempty"`
-		Exercises   int    `json:"exercises"`
+		// AvailableUntil is UTC and empty when the sheet remains open.
+		AvailableUntil string `json:"available_until,omitempty"`
+		Exercises      int    `json:"exercises"`
 	}
 
 	NotebookData struct {
@@ -43,6 +45,9 @@ func toSheetData(s domain.PracticeSheet) SheetData {
 	}
 	if s.ScheduledAt != nil {
 		data.ScheduledAt = s.ScheduledAt.UTC().Format("2006-01-02T15:04:05Z")
+	}
+	if s.AvailableUntil != nil {
+		data.AvailableUntil = s.AvailableUntil.UTC().Format("2006-01-02T15:04:05Z")
 	}
 	return data
 }

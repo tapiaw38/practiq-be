@@ -13,6 +13,9 @@ type PracticeSheet struct {
 	TestStyle  string // 'keyboard' | 'canvas'
 	// ScheduledAt is when students may start the sheet. nil means no schedule.
 	ScheduledAt *time.Time
+	// AvailableUntil closes the window opened by ScheduledAt. nil means the
+	// sheet stays open once it opens.
+	AvailableUntil *time.Time
 	CreatedBy   string
 	CreatedAt   time.Time
 	Exercises   []PracticeSheetExercise

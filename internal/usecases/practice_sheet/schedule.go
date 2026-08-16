@@ -28,8 +28,16 @@ func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID s
 	return course.TeacherID == requesterID
 }
 
-// ensureSheetIsOpen blocks students before and after a scheduled level test.
-// Teachers and admins bypass the schedule so they can review or reprogram it.
+// ensureSheetIsOpen gates a scheduled level test to its availability window.
+// Teachers and admins bypass it so they can review or reprogram the sheet.
+//
+// The window opens at ScheduledAt and closes at AvailableUntil. A nil
+// AvailableUntil leaves it open, which is what the student UI has always
+// promised ("Disponible en la fecha").
+//
+// This used to return "expired" for everything from ScheduledAt onwards, with
+// no window ever defined — so a scheduled test was blocked before the date and
+// expired from the date on, and could never be taken at all.
 func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.PracticeSheet, requesterID string, isAdmin bool) apperrors.ApplicationError {
 	if isCourseTeacher(ctx, app, requesterID, isAdmin, ps.CourseID) {
 		return nil
@@ -37,10 +45,38 @@ func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.
 	if ps.ScheduledAt == nil {
 		return nil
 	}
-	if time.Now().Before(*ps.ScheduledAt) {
+
+	switch sheetWindowState(ps, time.Now()) {
+	case windowNotYetOpen:
 		return apperrors.NewApplicationError(mappings.PracticeSheetNotYetAvailableError, nil)
+	case windowClosed:
+		return apperrors.NewApplicationError(mappings.PracticeSheetExpiredError, nil)
+	default:
+		return nil
 	}
-	return apperrors.NewApplicationError(mappings.PracticeSheetExpiredError, nil)
+}
+
+type windowState int
+
+const (
+	windowOpen windowState = iota
+	windowNotYetOpen
+	windowClosed
+)
+
+// sheetWindowState is the schedule rule on its own: no context, no
+// repositories, so the branch that used to be inverted can be pinned by a test.
+func sheetWindowState(ps *domain.PracticeSheet, now time.Time) windowState {
+	if ps.ScheduledAt == nil {
+		return windowOpen
+	}
+	if now.Before(*ps.ScheduledAt) {
+		return windowNotYetOpen
+	}
+	if ps.AvailableUntil != nil && !now.Before(*ps.AvailableUntil) {
+		return windowClosed
+	}
+	return windowOpen
 }
 
 // notifyScheduledLevelTest tells every enrolled student when a level test gets a

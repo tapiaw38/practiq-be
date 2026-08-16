@@ -20,15 +20,16 @@ type (
 	}
 
 	CreateInput struct {
-		CourseID    string
-		TopicID     string `json:"topic_id"`
-		StrategyID  string `json:"strategy_id"`
-		Title       string `json:"title"`
-		Level       int    `json:"level"`
-		SheetType   string `json:"sheet_type"`
-		TestStyle   string `json:"test_style"`
-		ScheduledAt *time.Time
-		ExerciseIDs []string `json:"exercise_ids"`
+		CourseID       string
+		TopicID        string `json:"topic_id"`
+		StrategyID     string `json:"strategy_id"`
+		Title          string `json:"title"`
+		Level          int    `json:"level"`
+		SheetType      string `json:"sheet_type"`
+		TestStyle      string `json:"test_style"`
+		ScheduledAt    *time.Time
+		AvailableUntil *time.Time
+		ExerciseIDs    []string `json:"exercise_ids"`
 	}
 
 	CreateOutput struct {
@@ -76,15 +77,16 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		scheduledAt = nil
 	}
 	id, err := app.Repositories.PracticeSheet.Create(ctx, domain.PracticeSheet{
-		CourseID:    input.CourseID,
-		TopicID:     input.TopicID,
-		StrategyID:  input.StrategyID,
-		Title:       input.Title,
-		Level:       level,
-		SheetType:   sheetType,
-		TestStyle:   testStyle,
-		ScheduledAt: scheduledAt,
-		CreatedBy:   "teacher",
+		CourseID:       input.CourseID,
+		TopicID:        input.TopicID,
+		StrategyID:     input.StrategyID,
+		Title:          input.Title,
+		Level:          level,
+		SheetType:      sheetType,
+		TestStyle:      testStyle,
+		ScheduledAt:    scheduledAt,
+		AvailableUntil: input.AvailableUntil,
+		CreatedBy:      "teacher",
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetCreateError, err)

@@ -18,6 +18,8 @@ type createInput struct {
 	ExerciseIDs []string `json:"exercise_ids"`
 	// ScheduledAt is RFC 3339; empty clears the schedule.
 	ScheduledAt string `json:"scheduled_at"`
+	// AvailableUntil is RFC 3339; empty leaves the window open.
+	AvailableUntil string `json:"available_until"`
 }
 
 func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
@@ -42,16 +44,39 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 			return
 		}
 
+		availableUntil, err := parseScheduledAt(input.AvailableUntil)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
+			return
+		}
+		if availableUntil != nil && scheduledAt == nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "practice_sheet:invalid-window",
+				"message": "the closing date requires an opening date",
+			})
+			return
+		}
+		// A window that closes before it opens locks the students out with no
+		// sign that anything is wrong.
+		if scheduledAt != nil && availableUntil != nil && !availableUntil.After(*scheduledAt) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "practice_sheet:invalid-window",
+				"message": "the closing date must be after the opening date",
+			})
+			return
+		}
+
 		output, appErr := uc.Execute(c, requesterID, isAdmin, ucPS.CreateInput{
-			CourseID:    courseID,
-			SheetType:   input.SheetType,
-			TestStyle:   input.TestStyle,
-			TopicID:     input.TopicID,
-			StrategyID:  input.StrategyID,
-			Title:       input.Title,
-			Level:       input.Level,
-			ExerciseIDs: input.ExerciseIDs,
-			ScheduledAt: scheduledAt,
+			CourseID:       courseID,
+			SheetType:      input.SheetType,
+			TestStyle:      input.TestStyle,
+			TopicID:        input.TopicID,
+			StrategyID:     input.StrategyID,
+			Title:          input.Title,
+			Level:          input.Level,
+			ExerciseIDs:    input.ExerciseIDs,
+			ScheduledAt:    scheduledAt,
+			AvailableUntil: availableUntil,
 		})
 		if appErr != nil {
 			appErr.Log(c)
