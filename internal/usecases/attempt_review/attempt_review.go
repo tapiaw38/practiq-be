@@ -51,7 +51,10 @@ type (
 		SheetType             string `json:"sheet_type,omitempty"`
 		CourseID              string `json:"course_id"`
 		CourseTitle           string `json:"course_title"`
-		AttachmentURL         string `json:"attachment_url,omitempty"`
+		// ImageViewURL is the signed canvas image; like the attachment, the
+		// stored URL is not openable on its own.
+		ImageViewURL  string `json:"image_view_url,omitempty"`
+		AttachmentURL string `json:"attachment_url,omitempty"`
 		// AttachmentViewURL is a short-lived signed URL. The bucket is private,
 		// so AttachmentURL alone is not openable by a browser.
 		AttachmentViewURL     string `json:"attachment_view_url,omitempty"`
@@ -102,6 +105,11 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, includeRevi
 		if item.AttachmentURL != "" && app.ImageStorage != nil {
 			if signed, ok := app.ImageStorage.PresignGetURL(item.AttachmentURL, attachmentLinkTTL); ok {
 				item.AttachmentViewURL = signed
+			}
+		}
+		if review.ImageURL != "" && app.ImageStorage != nil {
+			if signed, ok := app.ImageStorage.PresignGetURL(review.ImageURL, attachmentLinkTTL); ok {
+				item.ImageViewURL = signed
 			}
 		}
 		if review.StatementMediaURL != "" && app.ImageStorage != nil {

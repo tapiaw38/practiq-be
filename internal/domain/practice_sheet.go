@@ -16,9 +16,9 @@ type PracticeSheet struct {
 	// AvailableUntil closes the window opened by ScheduledAt. nil means the
 	// sheet stays open once it opens.
 	AvailableUntil *time.Time
-	CreatedBy   string
-	CreatedAt   time.Time
-	Exercises   []PracticeSheetExercise
+	CreatedBy      string
+	CreatedAt      time.Time
+	Exercises      []PracticeSheetExercise
 }
 
 type PracticeSheetExercise struct {
@@ -58,18 +58,21 @@ type StudentAttempt struct {
 // PendingAttemptReview is an answer waiting for a teacher, joined with the
 // context and statement material the teacher needs to judge it.
 type PendingAttemptReview struct {
-	AttemptID             string
-	StudentID             string
-	StudentName           string
-	ExerciseID            string
-	Question              string
-	ExerciseType          string
-	StatementMediaURL     string
-	PracticeSheetID       string
-	PracticeSheetTitle    string
-	SheetType             string
-	CourseID              string
-	CourseTitle           string
+	AttemptID          string
+	StudentID          string
+	StudentName        string
+	ExerciseID         string
+	Question           string
+	ExerciseType       string
+	StatementMediaURL  string
+	PracticeSheetID    string
+	PracticeSheetTitle string
+	SheetType          string
+	CourseID           string
+	CourseTitle        string
+	// ImageURL is the canvas the student drew, when the answer was handwritten.
+	// Without it the teacher grades work they cannot see.
+	ImageURL              string
 	AttachmentURL         string
 	AttachmentName        string
 	AttachmentContentType string

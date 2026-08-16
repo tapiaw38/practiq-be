@@ -15,7 +15,7 @@ func (r *repository) ListPendingReview(ctx context.Context, teacherID string, in
 		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
 		       COALESCE(sa.practice_sheet_id::text, ''), COALESCE(ps.title, ''), COALESCE(ps.sheet_type, ''),
 		       c.id, c.title,
-		       COALESCE(sa.attachment_url, ''), COALESCE(sa.attachment_name, ''), COALESCE(sa.attachment_content_type, ''),
+		       COALESCE(sa.image_url, ''), COALESCE(sa.attachment_url, ''), COALESCE(sa.attachment_name, ''), COALESCE(sa.attachment_content_type, ''),
 		       COALESCE(sa.answer_text, ''), COALESCE(sa.ai_feedback, ''), sa.ai_is_correct,
 		       sa.teacher_is_correct, COALESCE(sa.teacher_feedback, ''), sa.teacher_reviewed_at, sa.created_at
 		FROM student_attempts sa
@@ -56,6 +56,7 @@ func (r *repository) ListPendingReview(ctx context.Context, teacherID string, in
 			&review.SheetType,
 			&review.CourseID,
 			&review.CourseTitle,
+			&review.ImageURL,
 			&review.AttachmentURL,
 			&review.AttachmentName,
 			&review.AttachmentContentType,
