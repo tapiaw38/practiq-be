@@ -2,6 +2,7 @@ package attemptreview
 
 import (
 	"context"
+	studentAttemptRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_attempt"
 	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -16,9 +17,14 @@ const timeFormat = "2006-01-02T15:04:05Z"
 // shareable link around for long.
 const attachmentLinkTTL = time.Hour
 
+const (
+	defaultPageSize = 20
+	maxPageSize     = 100
+)
+
 type (
 	ListUsecase interface {
-		Execute(ctx context.Context, teacherID string, includeReviewed bool) (*ListOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, teacherID string, input ListInput) (*ListOutput, apperrors.ApplicationError)
 	}
 
 	ReviewUsecase interface {
@@ -73,8 +79,19 @@ type (
 		CreatedAt         string `json:"created_at"`
 	}
 
+	ListInput struct {
+		CourseID  string
+		StudentID string
+		SheetType string
+		Reviewed  string
+		Limit     int
+		Offset    int
+	}
+
 	ListOutput struct {
 		Data []ReviewData `json:"data"`
+		// HasMore says another page exists without returning a total count.
+		HasMore bool `json:"has_more"`
 	}
 
 	ReviewOutput struct {
@@ -94,12 +111,32 @@ func NewReviewUsecase(contextFactory appcontext.Factory) ReviewUsecase {
 	return &reviewUsecase{contextFactory: contextFactory}
 }
 
-func (u *listUsecase) Execute(ctx context.Context, teacherID string, includeReviewed bool) (*ListOutput, apperrors.ApplicationError) {
+func (u *listUsecase) Execute(ctx context.Context, teacherID string, input ListInput) (*ListOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	reviews, err := app.Repositories.StudentAttempt.ListPendingReview(ctx, teacherID, includeReviewed)
+	limit := input.Limit
+	if limit <= 0 || limit > maxPageSize {
+		limit = defaultPageSize
+	}
+
+	reviews, err := app.Repositories.StudentAttempt.ListPendingReview(ctx, studentAttemptRepo.PendingReviewFilter{
+		TeacherID: teacherID,
+		CourseID:  input.CourseID,
+		StudentID: input.StudentID,
+		SheetType: input.SheetType,
+		Reviewed:  input.Reviewed,
+		Limit:     limit,
+		Offset:    input.Offset,
+	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewListError, err)
+	}
+
+	// The repository asks for one extra row to report whether another page
+	// exists; it is never shown.
+	hasMore := len(reviews) > limit
+	if hasMore {
+		reviews = reviews[:limit]
 	}
 
 	data := make([]ReviewData, 0, len(reviews))
@@ -122,7 +159,7 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, includeRevi
 		}
 		data = append(data, item)
 	}
-	return &ListOutput{Data: data}, nil
+	return &ListOutput{Data: data, HasMore: hasMore}, nil
 }
 
 func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string, isAdmin bool, input ReviewInput) (*ReviewOutput, apperrors.ApplicationError) {

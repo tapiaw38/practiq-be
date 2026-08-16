@@ -3,14 +3,31 @@ package studentattempt
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
+// PendingReviewFilter narrows the queue. Empty strings mean "no filter", the
+// same convention the notebook submission queue uses.
+type PendingReviewFilter struct {
+	TeacherID string
+	CourseID  string
+	StudentID string
+	// SheetType is "practice" or "level_test". A level test holds the student's
+	// promotion until it is corrected, so it is worth being able to see those
+	// on their own.
+	SheetType string
+	// Reviewed is "", "reviewed" or "unreviewed".
+	Reviewed string
+	Limit    int
+	Offset   int
+}
+
 // ListPendingReview returns answers requiring a teacher from that teacher's
 // courses. Statement image/audio answers are included because text-only
 // automatic grading cannot assess them safely.
-func (r *repository) ListPendingReview(ctx context.Context, teacherID string, includeReviewed bool) ([]domain.PendingAttemptReview, error) {
+func (r *repository) ListPendingReview(ctx context.Context, filter PendingReviewFilter) ([]domain.PendingAttemptReview, error) {
 	query := `
 		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
 		       COALESCE(sa.practice_sheet_id::text, ''), COALESCE(ps.title, ''), COALESCE(ps.sheet_type, ''),
@@ -27,13 +44,25 @@ func (r *repository) ListPendingReview(ctx context.Context, teacherID string, in
 		WHERE (COALESCE(sa.attachment_url, '') <> '' OR sa.needs_teacher_review)
 		  AND c.teacher_id = $1
 		  AND c.deleted_at IS NULL
+		  AND ($2 = '' OR c.id::text = $2)
+		  AND ($3 = '' OR sa.student_id = $3)
+		  AND ($4 = '' OR COALESCE(ps.sheet_type, '') = $4)
+		  AND ($5 = '' OR ($5 = 'reviewed' AND sa.teacher_reviewed_at IS NOT NULL)
+		               OR ($5 = 'unreviewed' AND sa.teacher_reviewed_at IS NULL))
+		ORDER BY sa.created_at DESC
 	`
-	if !includeReviewed {
-		query += ` AND sa.needs_teacher_review AND sa.teacher_reviewed_at IS NULL`
-	}
-	query += ` ORDER BY sa.created_at DESC LIMIT 100`
+	args := []any{filter.TeacherID, filter.CourseID, filter.StudentID, filter.SheetType, filter.Reviewed}
 
-	rows, err := r.db.QueryContext(ctx, query, teacherID)
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = 100
+	}
+	// One row past the page so the caller can tell whether another exists; a
+	// full page is not proof of it.
+	query += fmt.Sprintf(` LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
+	args = append(args, limit+1, filter.Offset)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
