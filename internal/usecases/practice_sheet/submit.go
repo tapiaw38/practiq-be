@@ -108,6 +108,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	hasPendingReview := false
 	totalHints := 0
 	totalTime := 0
+	// A level test claims its single submission before any of this is written.
+	// Any persistence failure must compensate every saved attempt and release
+	// the claim, otherwise a partial delivery could be scored or lock the user.
+	var persistenceErr error
 	resultAIFeedback := ""
 	exerciseResults := make([]ExerciseResultData, 0, total)
 
@@ -247,7 +251,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		totalHints += attempt.HintsUsed
 		totalTime += attempt.TimeSpentSeconds
 
-		attemptID, _ := app.Repositories.StudentAttempt.Create(ctx, domain.StudentAttempt{
+		attemptID, createErr := app.Repositories.StudentAttempt.Create(ctx, domain.StudentAttempt{
 			StudentID:             studentID,
 			ExerciseID:            attempt.ExerciseID,
 			PracticeSheetID:       sheetID,
@@ -264,6 +268,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			NeedsTeacherReview:    needsTeacherReview,
 			AIIsCorrect:           aiSuggestion,
 		})
+
+		if createErr != nil {
+			log.Printf("[practice_submit] could not persist attempt student_id=%s sheet_id=%s err=%v", studentID, sheetID, createErr)
+			if ps.SheetType == sheetTypeLevelTest {
+				persistenceErr = createErr
+				break
+			}
+		}
 
 		if attempt.CanvasData != "" && attemptID != "" {
 			app.Repositories.StudentAttempt.SaveCanvasWork(ctx, attemptID, attempt.CanvasData)
@@ -287,6 +299,21 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			AIFeedback:         aiFeedback,
 			NeedsTeacherReview: needsTeacherReview,
 		})
+	}
+
+	if ps.SheetType == sheetTypeLevelTest && persistenceErr != nil {
+		// The claim makes these attempts exclusive to this submission. Delete
+		// before release: reversing the order would let a retry race with stale
+		// rows from this failed delivery.
+		if cleanupErr := app.Repositories.StudentAttempt.DeleteBySheet(ctx, studentID, sheetID); cleanupErr != nil {
+			log.Printf("[practice_submit] could not remove partial level test student_id=%s sheet_id=%s err=%v", studentID, sheetID, cleanupErr)
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, cleanupErr)
+		}
+		if releaseErr := app.Repositories.StudentAttempt.ReleaseLevelTestSubmission(ctx, studentID, sheetID); releaseErr != nil {
+			log.Printf("[practice_submit] could not release the level test claim student_id=%s sheet_id=%s err=%v", studentID, sheetID, releaseErr)
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, releaseErr)
+		}
+		return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, persistenceErr)
 	}
 
 	sheetScore := 0.0
