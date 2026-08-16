@@ -12,7 +12,7 @@ import (
 // automatic grading cannot assess them safely.
 func (r *repository) ListPendingReview(ctx context.Context, teacherID string, includeReviewed bool) ([]domain.PendingAttemptReview, error) {
 	query := `
-		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type, COALESCE(e.metadata, ''),
+		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
 		       COALESCE(sa.practice_sheet_id::text, ''), COALESCE(ps.title, ''), COALESCE(ps.sheet_type, ''),
 		       c.id, c.title,
 		       COALESCE(sa.attachment_url, ''), COALESCE(sa.attachment_name, ''), COALESCE(sa.attachment_content_type, ''),
