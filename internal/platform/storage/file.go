@@ -16,9 +16,9 @@ type Storage = ImageStorage
 // MaxUploadBytes caps a single upload. Audio recordings and scanned PDFs are
 // the large cases; anything past this is likely a mistake.
 //
-// ponytail: 20 MiB also caps course videos, which fits short clips only. Raise
-// it (and move to multipart upload) if teachers start hitting it.
-const MaxUploadBytes = 20 << 20 // 20 MiB
+// 50 MiB accommodates scans and longer audio without allowing unbounded
+// request bodies. Larger media should move to multipart uploads.
+const MaxUploadBytes = 50 << 20 // 50 MiB
 
 // FileKind groups accepted content types into the buckets the product talks
 // about, so exercises can say "accepts audio" instead of listing MIME types.

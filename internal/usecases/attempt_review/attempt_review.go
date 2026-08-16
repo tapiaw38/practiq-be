@@ -39,18 +39,19 @@ type (
 	}
 
 	ReviewData struct {
-		AttemptID          string `json:"attempt_id"`
-		StudentID          string `json:"student_id"`
-		StudentName        string `json:"student_name,omitempty"`
-		ExerciseID         string `json:"exercise_id"`
-		Question           string `json:"question"`
-		ExerciseType       string `json:"exercise_type"`
-		PracticeSheetID    string `json:"practice_sheet_id,omitempty"`
-		PracticeSheetTitle string `json:"practice_sheet_title,omitempty"`
-		SheetType          string `json:"sheet_type,omitempty"`
-		CourseID           string `json:"course_id"`
-		CourseTitle        string `json:"course_title"`
-		AttachmentURL      string `json:"attachment_url,omitempty"`
+		AttemptID             string `json:"attempt_id"`
+		StudentID             string `json:"student_id"`
+		StudentName           string `json:"student_name,omitempty"`
+		ExerciseID            string `json:"exercise_id"`
+		Question              string `json:"question"`
+		ExerciseType          string `json:"exercise_type"`
+		StatementMediaViewURL string `json:"statement_media_view_url,omitempty"`
+		PracticeSheetID       string `json:"practice_sheet_id,omitempty"`
+		PracticeSheetTitle    string `json:"practice_sheet_title,omitempty"`
+		SheetType             string `json:"sheet_type,omitempty"`
+		CourseID              string `json:"course_id"`
+		CourseTitle           string `json:"course_title"`
+		AttachmentURL         string `json:"attachment_url,omitempty"`
 		// AttachmentViewURL is a short-lived signed URL. The bucket is private,
 		// so AttachmentURL alone is not openable by a browser.
 		AttachmentViewURL     string `json:"attachment_view_url,omitempty"`
@@ -101,6 +102,11 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, includeRevi
 		if item.AttachmentURL != "" && app.ImageStorage != nil {
 			if signed, ok := app.ImageStorage.PresignGetURL(item.AttachmentURL, attachmentLinkTTL); ok {
 				item.AttachmentViewURL = signed
+			}
+		}
+		if review.StatementMediaURL != "" && app.ImageStorage != nil {
+			if signed, ok := app.ImageStorage.PresignGetURL(review.StatementMediaURL, attachmentLinkTTL); ok {
+				item.StatementMediaViewURL = signed
 			}
 		}
 		data = append(data, item)

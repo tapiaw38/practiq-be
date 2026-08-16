@@ -52,8 +52,8 @@ type StudentAttempt struct {
 	CreatedAt         time.Time
 }
 
-// PendingAttemptReview is an attachment answer waiting for a teacher, joined
-// with the context the teacher needs to judge it.
+// PendingAttemptReview is an answer waiting for a teacher, joined with the
+// context and statement material the teacher needs to judge it.
 type PendingAttemptReview struct {
 	AttemptID             string
 	StudentID             string
@@ -61,6 +61,7 @@ type PendingAttemptReview struct {
 	ExerciseID            string
 	Question              string
 	ExerciseType          string
+	StatementMediaURL     string
 	PracticeSheetID       string
 	PracticeSheetTitle    string
 	SheetType             string
