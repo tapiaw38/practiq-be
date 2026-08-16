@@ -2,9 +2,12 @@ package assistant
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/tapiaw38/practiq-be/internal/platform/urlvalidator"
 )
 
 type Gateway interface {
@@ -21,10 +24,31 @@ type gateway struct {
 	client *http.Client
 }
 
+// maxAssistantRedirects is generous for a legitimate endpoint and short enough
+// that a redirect loop cannot tie up a request for the full timeout.
+const maxAssistantRedirects = 5
+
 func NewGateway() Gateway {
 	return &gateway{
 		client: &http.Client{
 			Timeout: 5 * time.Minute,
+			// Every URL this client reaches is user-configured, and validating
+			// only the first one left the door open: an attacker-controlled
+			// assistant could answer with a redirect to a link-local address
+			// like 169.254.169.254, and the default client would follow it and
+			// hand the internal response back to the caller. Each hop is
+			// revalidated with the same rules as the original.
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= maxAssistantRedirects {
+					return fmt.Errorf("stopped after %d redirects", maxAssistantRedirects)
+				}
+				if err := urlvalidator.ValidateURLWithOptions(req.URL.String(), urlvalidator.Options{
+					AllowedPrivateHostnames: allowedPrivateHostnames(),
+				}); err != nil {
+					return fmt.Errorf("redirect target rejected: %w", err)
+				}
+				return nil
+			},
 		},
 	}
 }

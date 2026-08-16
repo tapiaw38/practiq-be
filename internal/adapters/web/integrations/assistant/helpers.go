@@ -11,9 +11,15 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+
+	"github.com/tapiaw38/practiq-be/internal/platform/urlvalidator"
 )
 
 func (g *gateway) createConversation(ctx context.Context, baseURL, apiKey string) (string, error) {
+	if err := validateAssistantURL(baseURL); err != nil {
+		return "", fmt.Errorf("assistant URL validation failed: %w", err)
+	}
+
 	body, err := json.Marshal(createConversationRequest{
 		Title:     "Practiq Canvas Evaluation",
 		IsSandbox: false,
@@ -41,8 +47,13 @@ func (g *gateway) createConversation(ctx context.Context, baseURL, apiKey string
 		return "", fmt.Errorf("assistant create conversation returned status %d", resp.StatusCode)
 	}
 
+	responseBody, err := readAssistantResponseBody(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
 	var parsed createConversationResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+	if err := json.Unmarshal(responseBody, &parsed); err != nil {
 		return "", err
 	}
 	if parsed.Data.ID == "" {
@@ -94,8 +105,13 @@ func (g *gateway) sendTextMessage(ctx context.Context, baseURL, apiKey, conversa
 // lastAssistantMessage picks the newest assistant reply out of the conversation
 // payload the assistant returns after a message is posted.
 func lastAssistantMessage(body io.Reader) (string, error) {
+	responseBody, err := readAssistantResponseBody(body)
+	if err != nil {
+		return "", err
+	}
+
 	var parsed messageResponse
-	if err := json.NewDecoder(body).Decode(&parsed); err != nil {
+	if err := json.Unmarshal(responseBody, &parsed); err != nil {
 		return "", err
 	}
 
@@ -107,6 +123,23 @@ func lastAssistantMessage(body io.Reader) (string, error) {
 	}
 
 	return "", errors.New("assistant response missing")
+}
+
+func validateAssistantURL(rawURL string) error {
+	return urlvalidator.ValidateURLWithOptions(rawURL, urlvalidator.Options{
+		AllowedPrivateHostnames: allowedPrivateHostnames(),
+	})
+}
+
+func readAssistantResponseBody(body io.Reader) ([]byte, error) {
+	responseBody, err := io.ReadAll(io.LimitReader(body, maxAssistantResponseBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(responseBody) > maxAssistantResponseBytes {
+		return nil, fmt.Errorf("assistant response exceeds %d bytes", maxAssistantResponseBytes)
+	}
+	return responseBody, nil
 }
 
 func truncateForLog(value string, max int) string {

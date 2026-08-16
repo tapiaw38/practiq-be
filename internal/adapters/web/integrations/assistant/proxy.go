@@ -10,9 +10,11 @@ import (
 	"os"
 	"strings"
 	"time"
-
-	"github.com/tapiaw38/practiq-be/internal/platform/urlvalidator"
 )
+
+// maxAssistantResponseBytes bounds every body read from a user-configured
+// assistant endpoint, preventing an unbounded response from exhausting memory.
+const maxAssistantResponseBytes = 25 << 20
 
 func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentType string, body []byte) (*ProxyResponse, error) {
 	startedAt := time.Now()
@@ -20,9 +22,7 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 	apiKey := strings.TrimSpace(cfg.APIKey)
 
 	fullURL := baseURL + path
-	if err := urlvalidator.ValidateURLWithOptions(fullURL, urlvalidator.Options{
-		AllowedPrivateHostnames: allowedPrivateHostnames(),
-	}); err != nil {
+	if err := validateAssistantURL(fullURL); err != nil {
 		return nil, fmt.Errorf("URL validation failed: %w", err)
 	}
 
@@ -47,7 +47,7 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 	}
 	defer resp.Body.Close()
 
-	responseBody, err := io.ReadAll(resp.Body)
+	responseBody, err := readAssistantResponseBody(resp.Body)
 	if err != nil {
 		return nil, err
 	}

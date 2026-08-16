@@ -1,6 +1,15 @@
-DELETE FROM course_learning_strategies cls
-USING learning_strategies ls
-WHERE cls.strategy_id = ls.id
-  AND ls.code = 'kumon'
-  AND cls.is_default = TRUE
-  AND cls.config = '{}'::jsonb;
+-- Intentionally a no-op.
+--
+-- The up migration inserts a kumon default only for courses that had no
+-- strategy at all. The application's course-creation path inserts a row with
+-- exactly the same shape (kumon, is_default = TRUE, config = '{}'), and the
+-- table has no marker recording which rows the migration wrote.
+--
+-- The previous version deleted every row matching that shape, so rolling back
+-- also removed assignments the migration never created — teacher data the
+-- rollback had no business touching. Leaving an extra default strategy in
+-- place is harmless; deleting a real assignment is not.
+--
+-- To make this reversible, have the up migration tag its rows (for example
+-- config = '{"source":"migration_000016"}') and delete only those here.
+SELECT 1;

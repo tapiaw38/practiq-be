@@ -2,8 +2,10 @@ package studentreport
 
 import (
 	"context"
+	"sort"
 	"time"
 
+	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -54,6 +56,22 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 		return nil, apperrors.NewNotFoundError("student not found")
 	}
 
+	// Sharing one course with the student is enough to pass HasAccess, but the
+	// unfiltered report used to load every topic row — including courses that
+	// belong to other teachers. Without a course filter, restrict it to the
+	// requester's own courses.
+	var ownCourseIDs map[string]bool
+	if !isAdmin && filter.CourseID == "" {
+		ownCourses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{TeacherID: teacherID})
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseListError, err)
+		}
+		ownCourseIDs = make(map[string]bool, len(ownCourses))
+		for _, c := range ownCourses {
+			ownCourseIDs[c.ID] = true
+		}
+	}
+
 	var topicProgress []domain.StudentTopicProgress
 	if filter.CourseID != "" {
 		topicProgress, err = app.Repositories.StudentProgress.ListByStudentAndCourse(ctx, filter.StudentID, filter.CourseID)
@@ -63,6 +81,9 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
+	if ownCourseIDs != nil {
+		topicProgress = filterProgressByCourses(ctx, app, topicProgress, ownCourseIDs)
+	}
 
 	if filter.From != nil || filter.To != nil {
 		topicProgress = filterProgressByDate(topicProgress, filter.From, filter.To)
@@ -71,6 +92,15 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	courseProgressList, err := app.Repositories.CourseProgress.ListByStudent(ctx, filter.StudentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
+	}
+	if ownCourseIDs != nil {
+		kept := courseProgressList[:0]
+		for _, cp := range courseProgressList {
+			if ownCourseIDs[cp.CourseID] {
+				kept = append(kept, cp)
+			}
+		}
+		courseProgressList = kept
 	}
 
 	courseItems := buildCourseProgressItems(ctx, app, courseProgressList, topicProgress)
@@ -85,7 +115,12 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	}
 
 	recentAttempts := []domain.StudentAttempt{}
-	dailyAttempts, err := app.Repositories.StudentAttempt.GetDailyAttempts(ctx, filter.StudentID, filter.CourseID, filter.From, filter.To)
+	var dailyAttempts []domain.DailyAttemptCount
+	if ownCourseIDs != nil {
+		dailyAttempts, err = dailyAttemptsForCourses(ctx, app, filter.StudentID, ownCourseIDs, filter.From, filter.To)
+	} else {
+		dailyAttempts, err = app.Repositories.StudentAttempt.GetDailyAttempts(ctx, filter.StudentID, filter.CourseID, filter.From, filter.To)
+	}
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
@@ -113,6 +148,39 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	}
 
 	return pdfBytes, nil
+}
+
+func dailyAttemptsForCourses(
+	ctx context.Context,
+	app *appcontext.Context,
+	studentID string,
+	courseIDs map[string]bool,
+	from, to *time.Time,
+) ([]domain.DailyAttemptCount, error) {
+	byDate := make(map[string]domain.DailyAttemptCount)
+	for courseID := range courseIDs {
+		attempts, err := app.Repositories.StudentAttempt.GetDailyAttempts(ctx, studentID, courseID, from, to)
+		if err != nil {
+			return nil, err
+		}
+		for _, attempt := range attempts {
+			key := attempt.Date.Format("2006-01-02")
+			current := byDate[key]
+			current.Date = attempt.Date
+			current.Total += attempt.Total
+			current.Correct += attempt.Correct
+			byDate[key] = current
+		}
+	}
+
+	result := make([]domain.DailyAttemptCount, 0, len(byDate))
+	for _, attempt := range byDate {
+		result = append(result, attempt)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Date.After(result[j].Date)
+	})
+	return result, nil
 }
 
 func filterProgressByDate(progress []domain.StudentTopicProgress, from, to *time.Time) []domain.StudentTopicProgress {
@@ -242,4 +310,25 @@ func calculateSummary(progress []domain.StudentTopicProgress, dailyAttempts []do
 		AccuracyRate:    accuracyRate,
 		CurrentStreak:   maxStreak,
 	}
+}
+
+// filterProgressByCourses keeps only the topics that belong to the given
+// courses. Topic rows carry no course id, so the topic is resolved to find it.
+func filterProgressByCourses(
+	ctx context.Context,
+	app *appcontext.Context,
+	progress []domain.StudentTopicProgress,
+	allowed map[string]bool,
+) []domain.StudentTopicProgress {
+	kept := make([]domain.StudentTopicProgress, 0, len(progress))
+	for _, p := range progress {
+		topic, err := app.Repositories.Topic.Get(ctx, p.TopicID)
+		// A topic that cannot be resolved (deleted course) is dropped: the
+		// safe default for a report that crosses teachers is to omit.
+		if err != nil || topic == nil || !allowed[topic.CourseID] {
+			continue
+		}
+		kept = append(kept, p)
+	}
+	return kept
 }

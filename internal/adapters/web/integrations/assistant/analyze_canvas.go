@@ -114,8 +114,13 @@ func (g *gateway) sendCanvasMessage(ctx context.Context, baseURL, apiKey, conver
 		return "", fmt.Errorf("assistant add message returned status %d", resp.StatusCode)
 	}
 
+	responseBody, err := readAssistantResponseBody(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
 	var parsed messageResponse
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+	if err := json.Unmarshal(responseBody, &parsed); err != nil {
 		return "", err
 	}
 
