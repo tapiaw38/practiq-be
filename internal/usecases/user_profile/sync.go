@@ -23,6 +23,7 @@ type (
 		Name             string
 		Email            string
 		ProfileType      string
+		Timezone         string
 		AssistantBaseURL string
 		AssistantAPIKey  string
 	}
@@ -52,6 +53,7 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 		Name:             input.Name,
 		Email:            input.Email,
 		ProfileType:      profileType,
+		Timezone:         input.Timezone,
 		AssistantBaseURL: input.AssistantBaseURL,
 		AssistantAPIKey:  input.AssistantAPIKey,
 	}

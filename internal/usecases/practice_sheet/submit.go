@@ -115,6 +115,13 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	resultAIFeedback := ""
 	exerciseResults := make([]ExerciseResultData, 0, total)
 
+	// The streak counts calendar days in the student's own zone, so it has to
+	// be resolved before any topic is updated.
+	studentLoc := domain.StudentLocation("")
+	if profile, profileErr := app.Repositories.UserProfile.Get(ctx, studentID); profileErr == nil && profile != nil {
+		studentLoc = domain.StudentLocation(profile.Timezone)
+	}
+
 	// Track progress per topic
 	topicStats := make(map[string]struct{ correct, total int })
 
@@ -434,7 +441,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			CurrentScore:     topicCurrentScore,
 		})
 
-		topicStreak := calcStreak(topicProgress)
+		topicStreak := calcStreak(topicProgress, studentLoc)
 
 		levelToSave := 1
 		if topicProgress != nil {
@@ -539,22 +546,17 @@ func normalizeCanvasDataURI(value string) string {
 	return "data:image/png;base64," + trimmed
 }
 
-func calcStreak(current *domain.StudentTopicProgress) int {
+// calcStreak counts consecutive days of practice in the student's own zone.
+// Measuring in UTC broke it for a UTC-3 audience: see domain.StudentLocation.
+func calcStreak(current *domain.StudentTopicProgress, loc *time.Location) int {
 	if current == nil || current.LastPracticedAt == nil {
 		return 1
 	}
-	now := time.Now().UTC()
-	last := current.LastPracticedAt.UTC()
 
-	nowDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, time.UTC)
-
-	diff := int(nowDay.Sub(lastDay).Hours() / 24)
-
-	switch {
-	case diff == 0:
+	switch domain.DaysBetween(*current.LastPracticedAt, time.Now(), loc) {
+	case 0:
 		return current.StreakDays
-	case diff == 1:
+	case 1:
 		return current.StreakDays + 1
 	default:
 		return 1

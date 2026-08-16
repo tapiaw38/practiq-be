@@ -45,9 +45,10 @@ func (u *getStudentCourseProgressUsecase) Execute(ctx context.Context, requester
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
+	loc := studentLocation(ctx, app, studentID)
 	var data []ProgressData
 	for _, p := range list {
-		data = append(data, toProgressData(p))
+		data = append(data, toProgressData(p, loc))
 	}
 	if data == nil {
 		data = []ProgressData{}

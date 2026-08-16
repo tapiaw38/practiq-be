@@ -125,7 +125,15 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
 
-	summary := calculateSummary(topicProgress, dailyAttempts)
+	// The report is generated for a teacher, but the streak belongs to the
+	// student, so it is measured in the student's zone rather than anyone
+	// else's.
+	studentLoc := domain.StudentLocation("")
+	if student != nil {
+		studentLoc = domain.StudentLocation(student.Timezone)
+	}
+
+	summary := calculateSummary(topicProgress, dailyAttempts, studentLoc)
 
 	reportData := &domain.StudentReportData{
 		Student:     *student,
@@ -275,14 +283,17 @@ func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, cour
 	return items
 }
 
-func calculateSummary(progress []domain.StudentTopicProgress, dailyAttempts []domain.DailyAttemptCount) domain.ReportSummary {
+func calculateSummary(progress []domain.StudentTopicProgress, dailyAttempts []domain.DailyAttemptCount, loc *time.Location) domain.ReportSummary {
 	var totalMastery float64
 	var maxStreak int
 
 	for _, p := range progress {
 		totalMastery += p.MasteryScore
-		if p.StreakDays > maxStreak {
-			maxStreak = p.StreakDays
+		// Through the same decay the screen applies: the raw column keeps the
+		// streak a student had when they stopped, so a report could show 12
+		// days for someone who has not practised in a month.
+		if streak := domain.EffectiveStreak(p, loc); streak > maxStreak {
+			maxStreak = streak
 		}
 	}
 

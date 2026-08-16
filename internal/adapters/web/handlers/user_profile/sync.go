@@ -9,9 +9,12 @@ import (
 )
 
 type syncInput struct {
-	Name             string `json:"name" binding:"required"`
-	Email            string `json:"email" binding:"required"`
-	ProfileType      string `json:"profile_type"`
+	Name        string `json:"name" binding:"required"`
+	Email       string `json:"email" binding:"required"`
+	ProfileType string `json:"profile_type"`
+	// Timezone is the IANA zone the browser reports. Empty leaves whatever is
+	// stored: the streak is measured with it and most clients do not send one.
+	Timezone         string `json:"timezone"`
 	AssistantBaseURL string `json:"assistant_base_url"`
 	AssistantAPIKey  string `json:"assistant_api_key"`
 }
@@ -37,6 +40,7 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 			Name:             input.Name,
 			Email:            input.Email,
 			ProfileType:      input.ProfileType,
+			Timezone:         input.Timezone,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,
 		})
