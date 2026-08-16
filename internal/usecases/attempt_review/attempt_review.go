@@ -46,11 +46,14 @@ type (
 		Question              string `json:"question"`
 		ExerciseType          string `json:"exercise_type"`
 		StatementMediaViewURL string `json:"statement_media_view_url,omitempty"`
-		PracticeSheetID       string `json:"practice_sheet_id,omitempty"`
-		PracticeSheetTitle    string `json:"practice_sheet_title,omitempty"`
-		SheetType             string `json:"sheet_type,omitempty"`
-		CourseID              string `json:"course_id"`
-		CourseTitle           string `json:"course_title"`
+		// HasTeacherImage marks a handwritten statement; fetch it from
+		// /attempt-reviews/:id/statement-image when the teacher opens it.
+		HasTeacherImage    bool   `json:"has_teacher_image,omitempty"`
+		PracticeSheetID    string `json:"practice_sheet_id,omitempty"`
+		PracticeSheetTitle string `json:"practice_sheet_title,omitempty"`
+		SheetType          string `json:"sheet_type,omitempty"`
+		CourseID           string `json:"course_id"`
+		CourseTitle        string `json:"course_title"`
 		// ImageViewURL is the signed canvas image; like the attachment, the
 		// stored URL is not openable on its own.
 		ImageViewURL  string `json:"image_view_url,omitempty"`
@@ -154,6 +157,7 @@ func toReviewData(r domain.PendingAttemptReview) ReviewData {
 		StudentName:           r.StudentName,
 		ExerciseID:            r.ExerciseID,
 		Question:              r.Question,
+		HasTeacherImage:       r.HasTeacherImage,
 		ExerciseType:          r.ExerciseType,
 		PracticeSheetID:       r.PracticeSheetID,
 		PracticeSheetTitle:    r.PracticeSheetTitle,

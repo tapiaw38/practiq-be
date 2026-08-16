@@ -58,13 +58,15 @@ type StudentAttempt struct {
 // PendingAttemptReview is an answer waiting for a teacher, joined with the
 // context and statement material the teacher needs to judge it.
 type PendingAttemptReview struct {
-	AttemptID          string
-	StudentID          string
-	StudentName        string
-	ExerciseID         string
-	Question           string
-	ExerciseType       string
-	StatementMediaURL  string
+	AttemptID         string
+	StudentID         string
+	StudentName       string
+	ExerciseID        string
+	Question          string
+	ExerciseType      string
+	StatementMediaURL string
+	// HasTeacherImage says a handwritten statement exists without carrying it.
+	HasTeacherImage    bool
 	PracticeSheetID    string
 	PracticeSheetTitle string
 	SheetType          string

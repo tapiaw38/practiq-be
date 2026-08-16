@@ -2,6 +2,7 @@ package domain
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -32,6 +33,32 @@ func (e Exercise) AcceptedAttachmentKinds() []string {
 		return nil
 	}
 	return parsed.Accept
+}
+
+// teacherImageKeys mirrors the frontend: the handwritten prompt has been
+// stored under several names over time.
+var teacherImageKeys = []string{"teacher_image", "teacherImage", "image_data", "imageData"}
+
+// TeacherImage is the statement the teacher drew by hand, stored in Metadata
+// as a base64 data URL. Empty when the exercise has none.
+//
+// It is deliberately not part of the review list payload: a canvas is hundreds
+// of KB of base64, and a hundred of them would make the queue unusable. The
+// list reports whether one exists and it is fetched when actually opened.
+func (e Exercise) TeacherImage() string {
+	if e.Metadata == "" {
+		return ""
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal([]byte(e.Metadata), &parsed); err != nil {
+		return ""
+	}
+	for _, key := range teacherImageKeys {
+		if value, ok := parsed[key].(string); ok && strings.HasPrefix(value, "data:image/") {
+			return value
+		}
+	}
+	return ""
 }
 
 // MediaURL is the image/audio/video the teacher attached to the statement, or

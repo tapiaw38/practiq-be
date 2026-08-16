@@ -151,8 +151,9 @@ type CourseProgressUsecases struct {
 }
 
 type AttemptReviewUsecases struct {
-	List   ucAttemptReview.ListUsecase
-	Review ucAttemptReview.ReviewUsecase
+	List           ucAttemptReview.ListUsecase
+	Review         ucAttemptReview.ReviewUsecase
+	StatementImage ucAttemptReview.StatementImageUsecase
 }
 
 type UploadUsecases struct {
@@ -203,8 +204,9 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Delete: ucCourse.NewDeleteUsecase(contextFactory),
 		},
 		AttemptReview: AttemptReviewUsecases{
-			List:   ucAttemptReview.NewListUsecase(contextFactory),
-			Review: ucAttemptReview.NewReviewUsecase(contextFactory),
+			List:           ucAttemptReview.NewListUsecase(contextFactory),
+			Review:         ucAttemptReview.NewReviewUsecase(contextFactory),
+			StatementImage: ucAttemptReview.NewStatementImageUsecase(contextFactory),
 		},
 		Upload: UploadUsecases{
 			Upload: ucUpload.NewUsecase(contextFactory),

@@ -150,6 +150,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// Attachment answers the assistant could not grade
 	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
 	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))
+	teacherOnly.GET("/attempt-reviews/:id/statement-image", handlerReview.NewStatementImageHandler(uc.AttemptReview.StatementImage))
 
 	// File uploads (attachment answers, teacher materials)
 	api.POST("/uploads", handlerUpload.NewHandler(uc.Upload.Upload))

@@ -70,7 +70,10 @@ func (r *repository) ListPendingReview(ctx context.Context, teacherID string, in
 		); err != nil {
 			return nil, err
 		}
-		review.StatementMediaURL = (domain.Exercise{Metadata: exerciseMetadata}).MediaURL()
+		exercise := domain.Exercise{Metadata: exerciseMetadata}
+		review.StatementMediaURL = exercise.MediaURL()
+		// Only the flag: the image itself is fetched when the teacher opens it.
+		review.HasTeacherImage = exercise.TeacherImage() != ""
 		reviews = append(reviews, review)
 	}
 	return reviews, rows.Err()
@@ -92,6 +95,19 @@ func (r *repository) GetTeacherForAttempt(ctx context.Context, attemptID string)
 		return "", nil
 	}
 	return teacherID, err
+}
+
+// GetExerciseIDForAttempt resolves which exercise an attempt answered, so the
+// statement can be fetched without trusting an id from the client.
+func (r *repository) GetExerciseIDForAttempt(ctx context.Context, attemptID string) (string, error) {
+	var exerciseID string
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(exercise_id::text, '') FROM student_attempts WHERE id = $1
+	`, attemptID).Scan(&exerciseID)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return exerciseID, err
 }
 
 // Review records the teacher's verdict. The score follows the verdict so

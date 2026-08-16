@@ -21,6 +21,24 @@ func NewListHandler(uc ucReview.ListUsecase) gin.HandlerFunc {
 	}
 }
 
+func NewStatementImageHandler(uc ucReview.StatementImageUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		output, appErr := uc.Execute(
+			c,
+			c.Param("id"),
+			middlewares.GetUserID(c),
+			middlewares.HasRole(c, "admin", "superadmin"),
+		)
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, output)
+	}
+}
+
 type reviewInput struct {
 	IsCorrect *bool  `json:"is_correct" binding:"required"`
 	Feedback  string `json:"feedback"`
