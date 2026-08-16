@@ -42,6 +42,10 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 	if appErr := ensureSheetIsOpen(ctx, app, ps, requesterID, isAdmin); appErr != nil {
 		return nil, appErr
 	}
+	includeTeacherData, appErr := requesterCanViewTeacherData(ctx, app, requesterID, isAdmin, ps.CourseID)
+	if appErr != nil {
+		return nil, appErr
+	}
 
-	return &GetOutput{Data: toSheetData(*ps)}, nil
+	return &GetOutput{Data: toSheetData(app, *ps, includeTeacherData)}, nil
 }

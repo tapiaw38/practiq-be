@@ -1,8 +1,18 @@
 package practicesheet
 
-import "github.com/tapiaw38/practiq-be/internal/domain"
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+)
 
 const timeFormat = "2006-01-02T15:04:05Z"
+
+// mediaLinkTTL has to outlive solving the sheet without leaving a shareable
+// link around for long. Reloading the sheet issues fresh ones.
+const mediaLinkTTL = time.Hour
 
 type (
 	ExerciseData struct {
@@ -14,6 +24,9 @@ type (
 		Explanation   string `json:"explanation,omitempty"`
 		Difficulty    int    `json:"difficulty"`
 		Metadata      string `json:"metadata"`
+		// MediaViewURL is the temporary URL for the statement's attached media.
+		// Metadata keeps the canonical one so it can be written back unchanged.
+		MediaViewURL string `json:"media_view_url,omitempty"`
 	}
 
 	SheetExerciseData struct {
@@ -63,22 +76,32 @@ type (
 	}
 )
 
-func toSheetData(ps domain.PracticeSheet) PracticeSheetData {
+func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeacherData bool) PracticeSheetData {
 	exercises := make([]SheetExerciseData, 0, len(ps.Exercises))
 	for _, pse := range ps.Exercises {
+		metadata := metadataWithoutMediaURL(pse.Exercise.Metadata)
+		if includeTeacherData {
+			metadata = pse.Exercise.Metadata
+		}
+		exercise := ExerciseData{
+			ID:           pse.Exercise.ID,
+			TopicID:      pse.Exercise.TopicID,
+			Type:         pse.Exercise.Type,
+			Question:     pse.Exercise.Question,
+			Difficulty:   pse.Exercise.Difficulty,
+			Metadata:     metadata,
+			MediaViewURL: mediaViewURL(app, pse.Exercise),
+		}
+		// Correct answers and explanations are teacher-only data. The backend
+		// grades submissions, so students never need either in the sheet payload.
+		if includeTeacherData {
+			exercise.CorrectAnswer = pse.Exercise.CorrectAnswer
+			exercise.Explanation = pse.Exercise.Explanation
+		}
 		exercises = append(exercises, SheetExerciseData{
 			ID:         pse.ID,
 			OrderIndex: pse.OrderIndex,
-			Exercise: ExerciseData{
-				ID:            pse.Exercise.ID,
-				TopicID:       pse.Exercise.TopicID,
-				Type:          pse.Exercise.Type,
-				Question:      pse.Exercise.Question,
-				CorrectAnswer: pse.Exercise.CorrectAnswer,
-				Explanation:   pse.Exercise.Explanation,
-				Difficulty:    pse.Exercise.Difficulty,
-				Metadata:      pse.Exercise.Metadata,
-			},
+			Exercise:   exercise,
 		})
 	}
 	sheetType := ps.SheetType
@@ -106,6 +129,36 @@ func toSheetData(ps domain.PracticeSheet) PracticeSheetData {
 		data.ScheduledAt = ps.ScheduledAt.UTC().Format(timeFormat)
 	}
 	return data
+}
+
+// Practice sheets are read by students. Keep non-media exercise metadata
+// (fill-blanks options, attachment rules, etc.) but never expose the stable
+// bucket URL; MediaViewURL is the short-lived browser URL instead.
+func metadataWithoutMediaURL(metadata string) string {
+	var values map[string]json.RawMessage
+	if err := json.Unmarshal([]byte(metadata), &values); err != nil {
+		return metadata
+	}
+	delete(values, "media_url")
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		return metadata
+	}
+	return string(encoded)
+}
+
+// mediaViewURL signs the statement's media so the browser can load it. An
+// unsigned or unconfigured storage just means no media is shown.
+func mediaViewURL(app *appcontext.Context, e domain.Exercise) string {
+	url := e.MediaURL()
+	if url == "" || app == nil || app.ImageStorage == nil {
+		return ""
+	}
+	signed, ok := app.ImageStorage.PresignGetURL(url, mediaLinkTTL)
+	if !ok {
+		return ""
+	}
+	return signed
 }
 
 func toSubmitOutputData(score float64, correct, total int, masteryScore float64, recommendation, aiFeedback string, shouldLevelUp, shouldRepeat bool, nextLevel int, exerciseResults []ExerciseResultData) SubmitResult {

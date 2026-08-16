@@ -110,9 +110,15 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		aiFeedback := ""
 		hasTextAnswer := strings.TrimSpace(answerText) != ""
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
+		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
+		// Gillie does not participate in grading. A statement image or audio can
+		// change what the answer means, so do not grade it from the text-only
+		// question and answer fields. Keep a submitted answer for teacher review.
+		hasStatementMedia := ok && ex.MediaURL() != ""
+		statementMediaNeedsReview := needsReviewForStatementMedia(ex, hasTextAnswer, hasCanvasAnswer, hasAttachment)
 		canvasUnreadable := false
 
-		if hasCanvasAnswer && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+		if hasCanvasAnswer && !hasStatementMedia && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 			normalizedCanvas := normalizeCanvasDataURI(attempt.CanvasData)
 			if recognizedText, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, normalizedCanvas, ex.CorrectAnswer); recognizeErr == nil {
 				normalizedRecognized := normalizeCanvasAnswer(recognizedText)
@@ -128,17 +134,20 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
-		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
 		// A canvas the OCR cannot transcribe must not lower the student's score.
 		// It is kept for a later review instead of being evaluated as arbitrary text.
-		needsTeacherReview := canvasUnreadable
+		needsTeacherReview := canvasUnreadable || statementMediaNeedsReview
 		if canvasUnreadable {
 			answerText = "UNREADABLE"
 			aiFeedback = "No pudimos leer tu respuesta escrita. Intentá escribirla más clara o pedí revisión."
+		} else if statementMediaNeedsReview {
+			aiFeedback = "Tu respuesta quedó pendiente de la revisión del docente porque este ejercicio incluye material visual o de audio."
 		}
 		var aiSuggestion *bool
 
-		if ok && ex.Type == exerciseTypeAttachment {
+		if statementMediaNeedsReview {
+			// The answer is deliberately not auto-graded: see hasStatementMedia.
+		} else if ok && ex.Type == exerciseTypeAttachment {
 			if !hasAttachment {
 				// Nothing was uploaded: that is simply an unanswered exercise.
 				needsTeacherReview = false
@@ -394,8 +403,12 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	result := toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)
-	result.PendingReview = allPendingReview
+	result.PendingReview = hasPendingReview
 	return &SubmitOutput{Data: result}, nil
+}
+
+func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAnswer, hasAttachment bool) bool {
+	return ex.MediaURL() != "" && (hasTextAnswer || hasCanvasAnswer || hasAttachment)
 }
 
 func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {

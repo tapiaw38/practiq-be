@@ -78,3 +78,18 @@ func TestPresignGetURLDefaultsTTL(t *testing.T) {
 		t.Errorf("default expires: got %q, want 900", got)
 	}
 }
+
+func TestOwnsFileURLRequiresMatchingFolderAndUser(t *testing.T) {
+	s := testStorage()
+	owned := "https://practiq.s3.us-east-1.amazonaws.com/file/exercises/teacher-1/video.mp4"
+
+	if !s.OwnsFileURL(owned, "exercises", "teacher-1") {
+		t.Fatal("expected teacher's exercise upload to be accepted")
+	}
+	if s.OwnsFileURL(owned, "exercises", "teacher-2") {
+		t.Fatal("must reject another teacher's upload")
+	}
+	if s.OwnsFileURL(owned, "materials", "teacher-1") {
+		t.Fatal("must reject a file in another folder")
+	}
+}

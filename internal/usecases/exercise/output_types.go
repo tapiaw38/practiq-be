@@ -1,6 +1,15 @@
 package exercise
 
-import "github.com/tapiaw38/practiq-be/internal/domain"
+import (
+	"time"
+
+	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+)
+
+// mediaLinkTTL has to outlive solving the exercise without leaving a shareable
+// link around for long. Reloading the sheet issues a fresh one.
+const mediaLinkTTL = time.Hour
 
 type (
 	ExerciseData struct {
@@ -13,11 +22,14 @@ type (
 		Explanation   string `json:"explanation,omitempty"`
 		Difficulty    int    `json:"difficulty"`
 		Metadata      string `json:"metadata"`
-		CreatedAt     string `json:"created_at"`
+		// MediaViewURL is the temporary URL for the statement's attached media.
+		// Metadata keeps the canonical one so it can be written back unchanged.
+		MediaViewURL string `json:"media_view_url,omitempty"`
+		CreatedAt    string `json:"created_at"`
 	}
 )
 
-func toExerciseData(e domain.Exercise) ExerciseData {
+func toExerciseData(app *appcontext.Context, e domain.Exercise) ExerciseData {
 	return ExerciseData{
 		ID:            e.ID,
 		TopicID:       e.TopicID,
@@ -28,6 +40,21 @@ func toExerciseData(e domain.Exercise) ExerciseData {
 		Explanation:   e.Explanation,
 		Difficulty:    e.Difficulty,
 		Metadata:      e.Metadata,
+		MediaViewURL:  mediaViewURL(app, e),
 		CreatedAt:     e.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
+}
+
+// mediaViewURL signs the statement's media so the browser can load it. An
+// unsigned or unconfigured storage just means no media is shown.
+func mediaViewURL(app *appcontext.Context, e domain.Exercise) string {
+	url := e.MediaURL()
+	if url == "" || app == nil || app.ImageStorage == nil {
+		return ""
+	}
+	signed, ok := app.ImageStorage.PresignGetURL(url, mediaLinkTTL)
+	if !ok {
+		return ""
+	}
+	return signed
 }

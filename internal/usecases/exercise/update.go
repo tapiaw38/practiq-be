@@ -72,6 +72,9 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata); appErr != nil {
 		return nil, appErr
 	}
+	if appErr := validateExerciseMediaURL(app, requesterID, input.Metadata, exercise.Metadata); appErr != nil {
+		return nil, appErr
+	}
 
 	if err := app.Repositories.Exercise.Update(ctx, id, domain.Exercise{
 		Type:          input.Type,
@@ -92,5 +95,5 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewApplicationError(mappings.ExerciseNotFoundError, nil)
 	}
 
-	return &UpdateOutput{Data: toExerciseData(*e)}, nil
+	return &UpdateOutput{Data: toExerciseData(app, *e)}, nil
 }

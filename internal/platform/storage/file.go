@@ -16,9 +16,9 @@ type Storage = ImageStorage
 // MaxUploadBytes caps a single upload. Audio recordings and scanned PDFs are
 // the large cases; anything past this is likely a mistake.
 //
-// ponytail: 20 MiB also caps course videos, which fits short clips only. Raise
-// it (and move to multipart upload) if teachers start hitting it.
-const MaxUploadBytes = 20 << 20 // 20 MiB
+// 50 MiB accommodates scans and longer audio without allowing unbounded
+// request bodies. Larger media should move to multipart uploads.
+const MaxUploadBytes = 50 << 20 // 50 MiB
 
 // FileKind groups accepted content types into the buckets the product talks
 // about, so exercises can say "accepts audio" instead of listing MIME types.
@@ -109,9 +109,12 @@ func (s *S3ImageStorage) UploadFile(ctx context.Context, folder, userID, filenam
 		return "", fmt.Errorf("file is larger than %d MiB", MaxUploadBytes>>20)
 	}
 
-	contentType, _, ext, err := ResolveContentType(contentType, body)
+	contentType, kind, ext, err := ResolveContentType(contentType, body)
 	if err != nil {
 		return "", err
+	}
+	if folder == "exercises" && kind != FileKindImage && kind != FileKindAudio {
+		return "", fmt.Errorf("%w: exercise media must be image or audio", ErrUnsupportedFileType)
 	}
 
 	// The extension always comes from the verified content type, never from the
