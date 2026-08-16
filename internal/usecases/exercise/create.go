@@ -44,7 +44,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, appErr
 	}
 
-	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata); appErr != nil {
+	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata, input.CorrectAnswer); appErr != nil {
 		return nil, appErr
 	}
 	if appErr := validateExerciseMediaURL(app, requesterID, input.Metadata, ""); appErr != nil {

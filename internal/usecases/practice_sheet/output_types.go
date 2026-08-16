@@ -2,6 +2,7 @@ package practicesheet
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -79,7 +80,7 @@ type (
 func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeacherData bool) PracticeSheetData {
 	exercises := make([]SheetExerciseData, 0, len(ps.Exercises))
 	for _, pse := range ps.Exercises {
-		metadata := metadataWithoutMediaURL(pse.Exercise.Metadata)
+		metadata := studentMetadata(pse.Exercise.Metadata)
 		if includeTeacherData {
 			metadata = pse.Exercise.Metadata
 		}
@@ -131,20 +132,51 @@ func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeache
 	return data
 }
 
-// Practice sheets are read by students. Keep non-media exercise metadata
-// (fill-blanks options, attachment rules, etc.) but never expose the stable
-// bucket URL; MediaViewURL is the short-lived browser URL instead.
-func metadataWithoutMediaURL(metadata string) string {
+// studentMetadata strips everything a student must not see before solving.
+//
+// Two things are removed:
+//   - media_url, the stable bucket URL (MediaViewURL carries a signed one)
+//   - the answer of every fill-blank, which is the solution itself
+//
+// Blank ids, the option pool and the layout stay: the student needs them to
+// render the exercise, and the pool alone does not say which option goes where.
+func studentMetadata(metadata string) string {
+	if strings.TrimSpace(metadata) == "" {
+		return ""
+	}
 	var values map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(metadata), &values); err != nil {
-		return metadata
+		// Metadata may hold fill-blank answers. A malformed value cannot be
+		// redacted reliably, so fail closed instead of returning a secret.
+		return "{}"
 	}
 	delete(values, "media_url")
+
+	if raw, ok := values["blanks"]; ok {
+		if redacted, err := redactBlankAnswers(raw); err == nil {
+			values["blanks"] = redacted
+		} else {
+			// Unknown shape: drop it rather than risk shipping the answers.
+			delete(values, "blanks")
+		}
+	}
+
 	encoded, err := json.Marshal(values)
 	if err != nil {
-		return metadata
+		return "{}"
 	}
 	return string(encoded)
+}
+
+func redactBlankAnswers(raw json.RawMessage) (json.RawMessage, error) {
+	var blanks []map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &blanks); err != nil {
+		return nil, err
+	}
+	for _, blank := range blanks {
+		delete(blank, "answer")
+	}
+	return json.Marshal(blanks)
 }
 
 // mediaViewURL signs the statement's media so the browser can load it. An

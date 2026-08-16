@@ -45,9 +45,17 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewForbiddenError()
 	}
 
+	// Authorization on update/delete/pages and the submission queue all filter
+	// by TeacherID, so storing the admin here locked the actual course teacher
+	// out of the notebook they are supposed to manage.
+	owner := course.TeacherID
+	if owner == "" {
+		owner = requesterID
+	}
+
 	id, err := app.Repositories.Notebook.Create(ctx, domain.Notebook{
 		CourseID:    input.CourseID,
-		TeacherID:   requesterID,
+		TeacherID:   owner,
 		Title:       input.Title,
 		Description: input.Description,
 		Level:       input.Level,

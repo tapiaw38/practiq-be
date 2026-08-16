@@ -36,7 +36,16 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 			CreatedAt: now,
 			UpdatedAt: now,
 		}); err != nil {
+			// Returning 202 with a job that was never stored hands the client an
+			// id that polls as not-found forever, while the submission still
+			// runs — so the student cannot see the result and may retry work
+			// that was already applied.
 			log.Printf("failed to create submit job: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"code":    "practice_sheet:submit-job-not-created",
+				"message": "could not start the submission",
+			})
+			return
 		}
 
 		go func(sheetID, uid, jid string, payload submitInput) {

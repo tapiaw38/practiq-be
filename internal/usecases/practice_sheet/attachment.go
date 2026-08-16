@@ -14,6 +14,10 @@ import (
 
 const exerciseTypeAttachment = "attachment"
 
+// attachmentsFolder is the bucket prefix student deliveries are uploaded under;
+// it is what ownership is checked against.
+const attachmentsFolder = "attachments"
+
 // attachmentOutcome is what the submit flow needs to know about a file answer.
 type attachmentOutcome struct {
 	IsCorrect bool
@@ -39,19 +43,11 @@ func evaluateAttachment(
 	cfg assistant.Config,
 	ex domain.Exercise,
 	gradeName string,
-	attachmentURL, filename, contentType string,
+	attachmentURL, filename string,
 	requireTeacher bool,
 ) attachmentOutcome {
 	pending := attachmentOutcome{NeedsReview: true, Feedback: "Tu entrega quedó pendiente de revisión del docente."}
 
-	kind, _, err := storage.ClassifyContentType(contentType)
-	if err != nil {
-		return pending
-	}
-	if kind != storage.FileKindAudio && kind != storage.FileKindImage &&
-		kind != storage.FileKindPDF && kind != storage.FileKindDocument {
-		return pending
-	}
 	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return pending
 	}
@@ -59,9 +55,20 @@ func evaluateAttachment(
 		return pending
 	}
 
-	content, _, err := app.ImageStorage.FetchFile(ctx, attachmentURL)
+	content, storedContentType, err := app.ImageStorage.FetchFile(ctx, attachmentURL)
 	if err != nil {
 		log.Printf("[practice_attachment] could not fetch file url=%q err=%v", attachmentURL, err)
+		return pending
+	}
+	// The submission body is user-controlled. The storage response is the
+	// authoritative MIME for the object we actually fetched and evaluated.
+	kind, _, err := storage.ClassifyContentType(storedContentType)
+	if err != nil || (kind != storage.FileKindAudio && kind != storage.FileKindImage &&
+		kind != storage.FileKindPDF && kind != storage.FileKindDocument) {
+		return pending
+	}
+	if !attachmentKindAccepted(ex, string(kind)) {
+		log.Printf("[practice_attachment] kind not accepted exercise_id=%s kind=%s", ex.ID, kind)
 		return pending
 	}
 
@@ -102,4 +109,19 @@ func evaluateAttachment(
 		NeedsReview:        false,
 		AISuggestedCorrect: &verdict,
 	}
+}
+
+// attachmentKindAccepted reports whether the delivered file matches what the
+// exercise allows. No configured list means any supported format.
+func attachmentKindAccepted(ex domain.Exercise, kind string) bool {
+	accepted := ex.AcceptedAttachmentKinds()
+	if len(accepted) == 0 {
+		return true
+	}
+	for _, allowed := range accepted {
+		if strings.EqualFold(strings.TrimSpace(allowed), kind) {
+			return true
+		}
+	}
+	return false
 }

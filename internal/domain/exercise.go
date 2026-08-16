@@ -18,6 +18,22 @@ type Exercise struct {
 	CreatedAt     time.Time
 }
 
+// AcceptedAttachmentKinds lists the file families the teacher allows as an
+// answer, empty when any supported format goes. Stored in Metadata next to
+// media_url; see MediaURL for why it lives there.
+func (e Exercise) AcceptedAttachmentKinds() []string {
+	if e.Metadata == "" {
+		return nil
+	}
+	var parsed struct {
+		Accept []string `json:"accept"`
+	}
+	if err := json.Unmarshal([]byte(e.Metadata), &parsed); err != nil {
+		return nil
+	}
+	return parsed.Accept
+}
+
 // MediaURL is the image/audio/video the teacher attached to the statement, or
 // empty when there is none. It lives inside Metadata (like teacher_image and
 // accept already do) so attaching media needed no schema change.

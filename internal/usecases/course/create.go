@@ -2,6 +2,7 @@ package course
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -64,8 +65,19 @@ func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input Creat
 		return nil, apperrors.NewApplicationError(mappings.CourseCreateError, err)
 	}
 
+	// The repositories share a *sql.DB with no transaction plumbing, so failing
+	// after the insert used to leave the course committed: the client retried
+	// the "failed" creation and ended up with duplicates, while the first one
+	// sat there without its default strategy. Undo the insert instead.
+	rollbackCourse := func() {
+		if err := app.Repositories.Course.Delete(ctx, id); err != nil {
+			log.Printf("[course_create] could not roll back course_id=%s err=%v", id, err)
+		}
+	}
+
 	defaultStrategy, err := app.Repositories.LearningStrategy.GetByCode(ctx, "kumon")
 	if err != nil {
+		rollbackCourse()
 		return nil, apperrors.NewApplicationError(mappings.LearningStrategyGetError, err)
 	}
 	if defaultStrategy != nil {
@@ -75,6 +87,7 @@ func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input Creat
 			IsDefault:  true,
 			Config:     "{}",
 		}); err != nil {
+			rollbackCourse()
 			return nil, apperrors.NewApplicationError(mappings.LearningStrategyAssignError, err)
 		}
 	}

@@ -16,12 +16,13 @@ import (
 var blankMarkerPattern = regexp.MustCompile(`\{\{\s*(\d+)\s*\}\}`)
 
 var (
-	ErrNoBlanks          = errors.New("the statement has no {{n}} blanks")
-	ErrDuplicateMarker   = errors.New("a blank number is repeated in the statement")
-	ErrDuplicateAnswerID = errors.New("the answer repeats a blank number")
-	ErrBlanksMismatch    = errors.New("the configured blanks do not match the statement")
-	ErrEmptyBlankAnswer  = errors.New("a blank has no answer")
-	ErrMissingOptions    = errors.New("the options do not cover every answer")
+	ErrNoBlanks              = errors.New("the statement has no {{n}} blanks")
+	ErrDuplicateMarker       = errors.New("a blank number is repeated in the statement")
+	ErrDuplicateAnswerID     = errors.New("the answer repeats a blank number")
+	ErrBlanksMismatch        = errors.New("the configured blanks do not match the statement")
+	ErrEmptyBlankAnswer      = errors.New("a blank has no answer")
+	ErrMissingOptions        = errors.New("the options do not cover every answer")
+	ErrGradingAnswerMismatch = errors.New("the grading answer does not match the blanks in metadata")
 )
 
 // BlankIDsInStatement returns the blank numbers in the order they appear.
@@ -128,6 +129,31 @@ type FillBlanksMetadata struct {
 	} `json:"blanks"`
 	Options []string `json:"options"`
 	Layout  string   `json:"layout"`
+}
+
+// ValidateFillBlanksGradingAnswer rejects a correct_answer that disagrees with
+// the blanks in metadata. Grading compares the student's JSON only against
+// correct_answer, so a mismatch here marks every right selection as wrong and
+// nothing else in the system notices.
+func ValidateFillBlanksGradingAnswer(correctAnswer, metadata string) error {
+	var config FillBlanksMetadata
+	if err := json.Unmarshal([]byte(strings.TrimSpace(metadata)), &config); err != nil {
+		return fmt.Errorf("metadata is not valid JSON: %w", err)
+	}
+
+	placements := make(map[int]string, len(config.Blanks))
+	for _, blank := range config.Blanks {
+		placements[blank.ID] = NormalizeBlankAnswer(blank.Answer)
+	}
+	expected, err := json.Marshal(placements)
+	if err != nil {
+		return err
+	}
+
+	if !BlanksAnswersMatch(correctAnswer, string(expected)) {
+		return ErrGradingAnswerMismatch
+	}
+	return nil
 }
 
 // ValidateFillBlanksExercise rejects an exercise a student could not solve.

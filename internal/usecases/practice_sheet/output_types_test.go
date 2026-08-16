@@ -4,64 +4,77 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-func TestMetadataWithoutMediaURLKeepsExerciseConfiguration(t *testing.T) {
-	metadata := `{"media_url":"https://bucket/file/exercises/teacher/video.mp4","blanks":{"1":"5"},"accept":["audio"]}`
+func TestStudentMetadataHidesSolutions(t *testing.T) {
+	const full = `{"media_url":"https://s3/x.png","layout":"text",` +
+		`"blanks":[{"id":1,"answer":"sol"},{"id":2,"answer":"luna"}],` +
+		`"options":["sol","luna","mar"]}`
 
-	got := metadataWithoutMediaURL(metadata)
-	var values map[string]json.RawMessage
+	got := studentMetadata(full)
+
+	if strings.Contains(got, "media_url") {
+		t.Fatalf("the canonical bucket URL leaked: %s", got)
+	}
+	// The secret is the blank-to-option mapping, not the words themselves:
+	// the option pool legitimately contains every answer, shuffled, because the
+	// student picks from it. What must not ship is which one goes where.
+	if strings.Contains(got, `"answer"`) {
+		t.Fatalf("a blank answer leaked: %s", got)
+	}
+
+	var values map[string]any
 	if err := json.Unmarshal([]byte(got), &values); err != nil {
-		t.Fatalf("returned invalid metadata: %v", err)
+		t.Fatalf("result is not JSON: %v", err)
 	}
-	if _, ok := values["media_url"]; ok {
-		t.Fatal("canonical media URL must not be returned in a practice sheet")
+	// What the student still needs to render the exercise.
+	if values["layout"] != "text" {
+		t.Fatalf("layout was dropped: %s", got)
 	}
-	if string(values["blanks"]) != `{"1":"5"}` || string(values["accept"]) != `["audio"]` {
-		t.Fatalf("non-media configuration was changed: %s", got)
+	options, ok := values["options"].([]any)
+	if !ok || len(options) != 3 {
+		t.Fatalf("the option pool was dropped: %s", got)
 	}
-}
-
-func TestToSheetDataHidesTeacherOnlyFieldsFromStudents(t *testing.T) {
-	ps := domain.PracticeSheet{Exercises: []domain.PracticeSheetExercise{{
-		Exercise: domain.Exercise{
-			ID:            "exercise-1",
-			CorrectAnswer: "42",
-			Explanation:   "sumalos",
-			Metadata:      `{"media_url":"https://bucket/file/exercises/teacher/image.png","options":["42"]}`,
-			CreatedAt:     time.Now(),
-		},
-	}}}
-
-	student := toSheetData(nil, ps, false).Exercises[0].Exercise
-	if student.CorrectAnswer != "" || student.Explanation != "" {
-		t.Fatal("student response must not include a solution or explanation")
+	blanks, ok := values["blanks"].([]any)
+	if !ok || len(blanks) != 2 {
+		t.Fatalf("blank ids were dropped: %s", got)
 	}
-	if got := metadataWithoutMediaURL(student.Metadata); got != student.Metadata {
-		t.Fatalf("student metadata still contains media URL: %s", student.Metadata)
-	}
-	encoded, err := json.Marshal(student)
-	if err != nil {
-		t.Fatalf("marshal student exercise: %v", err)
-	}
-	if strings.Contains(string(encoded), "correct_answer") || strings.Contains(string(encoded), "explanation") || strings.Contains(string(encoded), "media_url") {
-		t.Fatalf("student JSON leaks teacher-only data: %s", encoded)
-	}
-
-	teacher := toSheetData(nil, ps, true).Exercises[0].Exercise
-	if teacher.CorrectAnswer != "42" || teacher.Explanation != "sumalos" {
-		t.Fatal("teacher response lost solution data")
-	}
-	if teacher.Metadata != ps.Exercises[0].Exercise.Metadata {
-		t.Fatal("teacher response lost canonical metadata")
+	first, ok := blanks[0].(map[string]any)
+	if !ok || first["id"] != float64(1) {
+		t.Fatalf("blank id was dropped: %s", got)
 	}
 }
 
-func TestMetadataWithoutMediaURLLeavesInvalidMetadataUnchanged(t *testing.T) {
-	if got := metadataWithoutMediaURL(`{invalid`); got != `{invalid` {
-		t.Fatalf("got %q", got)
+func TestStudentMetadataEdgeCases(t *testing.T) {
+	cases := []struct {
+		name     string
+		metadata string
+		want     string
+	}{
+		{"empty stays empty", "", ""},
+		{"broken json fails closed", `{oops`, `{}`},
+		{"no blanks key", `{"accept":["audio"]}`, `{"accept":["audio"]}`},
 	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := studentMetadata(tc.metadata); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	t.Run("an unexpected blanks shape is dropped, not forwarded", func(t *testing.T) {
+		got := studentMetadata(`{"blanks":"sol,luna"}`)
+		if strings.Contains(got, "sol") {
+			t.Fatalf("unparsable blanks were forwarded: %s", got)
+		}
+	})
+
+	t.Run("malformed metadata cannot leak an answer", func(t *testing.T) {
+		got := studentMetadata(`{"blanks":[{"id":1,"answer":"secreto"}]`)
+		if strings.Contains(got, "secreto") {
+			t.Fatalf("malformed metadata leaked an answer: %s", got)
+		}
+	})
 }

@@ -52,6 +52,14 @@ func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attempt
 		return
 	}
 
+	// The sheet carries the level this test belongs to and the course it lives
+	// in; the attempt context has neither.
+	sheet, err := app.Repositories.PracticeSheet.Get(ctx, attemptCtx.PracticeSheetID)
+	if err != nil || sheet == nil {
+		log.Printf("[attempt_review] could not read sheet sheet_id=%s err=%v", attemptCtx.PracticeSheetID, err)
+		return
+	}
+
 	progress, err := app.Repositories.StudentProgress.Get(ctx, attemptCtx.StudentID, topicID)
 	if err != nil {
 		log.Printf("[attempt_review] could not read progress student_id=%s err=%v", attemptCtx.StudentID, err)
@@ -63,11 +71,27 @@ func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attempt
 		currentLevel = progress.CurrentLevel
 	}
 
+	// Passing a test for level N means level N+1, an absolute target rather
+	// than an increment. Editing feedback on an already-reviewed attempt runs
+	// this again, and `currentLevel + 1` promoted the student one more level
+	// every time.
+	targetLevel := sheet.Level + 1
+	// Course progression and topic progression can have diverged because older
+	// reviews only advanced the topic. Repair the course independently: a topic
+	// already at the target must not prevent this test from unlocking the next
+	// course level.
+	advanceCourseProgress(ctx, app, attemptCtx.StudentID, sheet.CourseID, targetLevel)
+	if currentLevel >= targetLevel {
+		log.Printf("[attempt_review] promotion already applied student_id=%s sheet_id=%s level=%d",
+			attemptCtx.StudentID, attemptCtx.PracticeSheetID, currentLevel)
+		return
+	}
+
 	updated := domain.StudentTopicProgress{
 		StudentID:    attemptCtx.StudentID,
 		TopicID:      topicID,
 		MasteryScore: score,
-		CurrentLevel: currentLevel + 1,
+		CurrentLevel: targetLevel,
 	}
 	if progress != nil {
 		updated.TotalAttempts = progress.TotalAttempts
@@ -81,4 +105,21 @@ func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attempt
 	}
 	log.Printf("[attempt_review] level test passed after review student_id=%s sheet_id=%s score=%.0f level=%d",
 		attemptCtx.StudentID, attemptCtx.PracticeSheetID, score, updated.CurrentLevel)
+}
+
+func advanceCourseProgress(ctx context.Context, app *appcontext.Context, studentID, courseID string, targetLevel int) {
+	if courseID == "" {
+		return
+	}
+	courseProgress, err := app.Repositories.CourseProgress.Get(ctx, studentID, courseID)
+	if err != nil {
+		log.Printf("[attempt_review] could not read course progress student_id=%s err=%v", studentID, err)
+		return
+	}
+	if courseProgress != nil && courseProgress.CurrentLevel >= targetLevel {
+		return
+	}
+	if err := app.Repositories.CourseProgress.Upsert(ctx, studentID, courseID, targetLevel); err != nil {
+		log.Printf("[attempt_review] could not save course progress student_id=%s err=%v", studentID, err)
+	}
 }

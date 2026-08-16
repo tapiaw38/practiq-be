@@ -110,6 +110,20 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		aiFeedback := ""
 		hasTextAnswer := strings.TrimSpace(answerText) != ""
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
+		// Only a file this student uploaded counts. Without the ownership check
+		// a crafted attachment_url pointed at any object in the bucket — another
+		// student's delivery or a course material — and the submit flow both
+		// forwarded its contents to the assistant and stored it on this attempt,
+		// where the teacher's review view later presigns it.
+		if strings.TrimSpace(attempt.AttachmentURL) != "" &&
+			(app.ImageStorage == nil ||
+				!app.ImageStorage.OwnsFileURL(attempt.AttachmentURL, attachmentsFolder, studentID)) {
+			log.Printf("[practice_attachment] rejected foreign attachment student_id=%s url=%q", studentID, attempt.AttachmentURL)
+			attempt.AttachmentURL = ""
+			attempt.AttachmentName = ""
+			attempt.AttachmentContentType = ""
+		}
+
 		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
 		// Gillie does not participate in grading. A statement image or audio can
 		// change what the answer means, so do not grade it from the text-only
@@ -153,7 +167,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				needsTeacherReview = false
 			} else {
 				outcome := evaluateAttachment(ctx, app, assistantCfg, ex, gradeName,
-					attempt.AttachmentURL, attempt.AttachmentName, attempt.AttachmentContentType,
+					attempt.AttachmentURL, attempt.AttachmentName,
 					ps.SheetType == sheetTypeLevelTest)
 				isCorrect = outcome.IsCorrect
 				aiSuggestion = outcome.AISuggestedCorrect
