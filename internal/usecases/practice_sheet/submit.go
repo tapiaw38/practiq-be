@@ -302,14 +302,22 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	if ps.SheetType == sheetTypeLevelTest && persistenceErr != nil {
+		// Detached from the request: the usual reason a submission fails is that
+		// this very context expired, and running the recovery through it meant
+		// both queries failed instantly and the student stayed locked out — the
+		// exact case the compensation exists for. WithoutCancel keeps the
+		// request's values (tracing, logging) and drops only the cancellation.
+		cleanupCtx, cancelCleanup := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+		defer cancelCleanup()
+
 		// The claim makes these attempts exclusive to this submission. Delete
 		// before release: reversing the order would let a retry race with stale
 		// rows from this failed delivery.
-		if cleanupErr := app.Repositories.StudentAttempt.DeleteBySheet(ctx, studentID, sheetID); cleanupErr != nil {
+		if cleanupErr := app.Repositories.StudentAttempt.DeleteBySheet(cleanupCtx, studentID, sheetID); cleanupErr != nil {
 			log.Printf("[practice_submit] could not remove partial level test student_id=%s sheet_id=%s err=%v", studentID, sheetID, cleanupErr)
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, cleanupErr)
 		}
-		if releaseErr := app.Repositories.StudentAttempt.ReleaseLevelTestSubmission(ctx, studentID, sheetID); releaseErr != nil {
+		if releaseErr := app.Repositories.StudentAttempt.ReleaseLevelTestSubmission(cleanupCtx, studentID, sheetID); releaseErr != nil {
 			log.Printf("[practice_submit] could not release the level test claim student_id=%s sheet_id=%s err=%v", studentID, sheetID, releaseErr)
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, releaseErr)
 		}
