@@ -18,6 +18,7 @@ type Repository interface {
 	List(context.Context, ListFilterOptions) ([]domain.Course, error)
 	Update(context.Context, string, domain.Course) error
 	Delete(context.Context, string) error
+	ListDashboardSummaries(ctx context.Context, studentID string) ([]domain.CourseDashboardSummary, error)
 }
 type repository struct {
 	db *sql.DB

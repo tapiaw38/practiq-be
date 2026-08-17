@@ -99,6 +99,7 @@ type ProgressUsecases struct {
 	GetStudentProgress       ucProgress.GetStudentProgressUsecase
 	GetStudentCourseProgress ucProgress.GetStudentCourseProgressUsecase
 	GetStudentAttempts       ucProgress.GetStudentAttemptsUsecase
+	Dashboard                ucProgress.DashboardUsecase
 }
 
 type AIUsecases struct {
@@ -276,6 +277,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			GetStudentProgress:       ucProgress.NewGetStudentProgressUsecase(contextFactory),
 			GetStudentCourseProgress: ucProgress.NewGetStudentCourseProgressUsecase(contextFactory),
 			GetStudentAttempts:       ucProgress.NewGetStudentAttemptsUsecase(contextFactory),
+			Dashboard:                ucProgress.NewDashboardUsecase(contextFactory),
 		},
 		AI: AIUsecases{
 			CreateConversation:  ucAI.NewCreateConversationUsecase(contextFactory),

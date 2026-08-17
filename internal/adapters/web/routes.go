@@ -108,6 +108,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 
 	// Student Progress (self-service)
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
+	api.GET("/students/me/dashboard", studentprogress.NewDashboardHandler(uc.Progress.Dashboard))
 	api.GET("/students/me/courses/:id/progress", studentprogress.NewGetCourseProgressHandler(uc.Progress.GetCourse))
 
 	// Teacher view of student progress

@@ -39,8 +39,13 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 		ids[i] = nb.ID
 	}
 
+	// content_data is deliberately absent: it is the page canvas as a base64
+	// data URL, hundreds of KB each, and a listing only ever shows titles and
+	// counts. Shipping it made this the slowest endpoint on the dashboard by an
+	// order of magnitude. Get(id) still returns it for the screens that draw a
+	// page.
 	pRows, err := r.db.QueryContext(ctx, `
-		SELECT id, notebook_id, page_number, title, content_type, content_data, instructions, created_at
+		SELECT id, notebook_id, page_number, title, content_type, instructions, created_at
 		FROM notebook_pages WHERE notebook_id = ANY($1::uuid[]) ORDER BY notebook_id, page_number ASC
 	`, "{"+joinIDs(ids)+"}")
 	if err != nil {
@@ -54,7 +59,7 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 	}
 	for pRows.Next() {
 		var p domain.NotebookPage
-		if err := pRows.Scan(&p.ID, &p.NotebookID, &p.PageNumber, &p.Title, &p.ContentType, &p.ContentData, &p.Instructions, &p.CreatedAt); err != nil {
+		if err := pRows.Scan(&p.ID, &p.NotebookID, &p.PageNumber, &p.Title, &p.ContentType, &p.Instructions, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		if i, ok := index[p.NotebookID]; ok {
