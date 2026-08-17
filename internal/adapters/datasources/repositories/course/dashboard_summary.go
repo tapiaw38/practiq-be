@@ -19,11 +19,19 @@ import (
 func (r *repository) ListDashboardSummaries(ctx context.Context, studentID string) ([]domain.CourseDashboardSummary, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		WITH student_courses AS (
-			SELECT c.id, c.title, COALESCE(c.subject, '') AS subject
+			SELECT c.id, c.title, COALESCE(c.subject, '') AS subject, c.created_at
 			FROM courses c
-			JOIN enrollments e ON e.course_id = c.id
-			WHERE e.student_id = $1 AND c.deleted_at IS NULL
-			  AND COALESCE(e.status, 'active') = 'active'
+			WHERE c.deleted_at IS NULL
+			  -- A student reaches a course either by enrolling in it directly or
+			  -- by belonging to its grade, and the grade is the usual route.
+			  -- Matching on enrolments alone returned an empty home for those
+			  -- students. Same rule the course listing applies.
+			  AND (
+			    EXISTS (SELECT 1 FROM enrollments e
+			            WHERE e.course_id = c.id AND e.student_id = $1)
+			    OR EXISTS (SELECT 1 FROM grade_memberships gm
+			               WHERE gm.grade_id = c.grade_id AND gm.user_id = $1)
+			  )
 		),
 		sheet_counts AS (
 			SELECT ps.course_id,
@@ -60,7 +68,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 		LEFT JOIN notebook_counts nb ON nb.course_id = sc.id
 		LEFT JOIN levels l ON l.course_id = sc.id
 		LEFT JOIN course_topics ct ON ct.course_id = sc.id
-		ORDER BY sc.title
+		ORDER BY sc.created_at DESC
 	`, studentID)
 	if err != nil {
 		return nil, err
