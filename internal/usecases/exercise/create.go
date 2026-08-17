@@ -59,6 +59,10 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		difficulty = 10
 	}
 
+	// There is no previous exercise to inherit a drawing from on create; this
+	// call is here to upload the one the editor posted inline.
+	metadata := storeTeacherImage(ctx, app, requesterID, input.Metadata, domain.Exercise{})
+
 	id, err := app.Repositories.Exercise.Create(ctx, domain.Exercise{
 		TopicID:       input.TopicID,
 		Type:          input.Type,
@@ -66,7 +70,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		CorrectAnswer: input.CorrectAnswer,
 		Explanation:   input.Explanation,
 		Difficulty:    difficulty,
-		Metadata:      input.Metadata,
+		Metadata:      metadata,
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ExerciseCreateError, err)

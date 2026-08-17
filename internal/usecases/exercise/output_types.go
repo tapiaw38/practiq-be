@@ -25,23 +25,28 @@ type (
 		// MediaViewURL is the temporary URL for the statement's attached media.
 		// Metadata keeps the canonical one so it can be written back unchanged.
 		MediaViewURL string `json:"media_view_url,omitempty"`
-		CreatedAt    string `json:"created_at"`
+		// HasTeacherImage says the statement was drawn by hand. The drawing is
+		// not here: it is fetched from the exercise's statement-image endpoint
+		// by whoever needs to display it.
+		HasTeacherImage bool   `json:"has_teacher_image,omitempty"`
+		CreatedAt       string `json:"created_at"`
 	}
 )
 
 func toExerciseData(app *appcontext.Context, e domain.Exercise) ExerciseData {
 	return ExerciseData{
-		ID:            e.ID,
-		TopicID:       e.TopicID,
-		MaterialID:    e.MaterialID,
-		Type:          e.Type,
-		Question:      e.Question,
-		CorrectAnswer: e.CorrectAnswer,
-		Explanation:   e.Explanation,
-		Difficulty:    e.Difficulty,
-		Metadata:      e.Metadata,
-		MediaViewURL:  mediaViewURL(app, e),
-		CreatedAt:     e.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		ID:              e.ID,
+		TopicID:         e.TopicID,
+		MaterialID:      e.MaterialID,
+		Type:            e.Type,
+		Question:        e.Question,
+		CorrectAnswer:   e.CorrectAnswer,
+		Explanation:     e.Explanation,
+		Difficulty:      e.Difficulty,
+		Metadata:        e.MetadataWithoutTeacherImage(),
+		MediaViewURL:    mediaViewURL(app, e),
+		HasTeacherImage: e.TeacherImage() != "",
+		CreatedAt:       e.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 }
 

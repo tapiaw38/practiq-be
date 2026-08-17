@@ -76,13 +76,15 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, appErr
 	}
 
+	metadata := storeTeacherImage(ctx, app, requesterID, input.Metadata, *exercise)
+
 	if err := app.Repositories.Exercise.Update(ctx, id, domain.Exercise{
 		Type:          input.Type,
 		Question:      input.Question,
 		CorrectAnswer: input.CorrectAnswer,
 		Explanation:   input.Explanation,
 		Difficulty:    input.Difficulty,
-		Metadata:      input.Metadata,
+		Metadata:      metadata,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ExerciseUpdateError, err)
 	}

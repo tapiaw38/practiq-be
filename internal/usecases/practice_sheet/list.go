@@ -51,13 +51,12 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin b
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetListError, err)
 	}
 
+	// The listing carries no exercise bodies, so there is nothing here that
+	// depends on who is asking: the answers and statements it used to gate are
+	// no longer part of this payload at all.
 	var data []PracticeSheetData
-	includeTeacherData, appErr := requesterCanViewTeacherData(ctx, app, requesterID, isAdmin, input.CourseID)
-	if appErr != nil {
-		return nil, appErr
-	}
 	for _, ps := range sheets {
-		data = append(data, toSheetData(app, ps, includeTeacherData))
+		data = append(data, toSheetSummary(ps))
 	}
 	if data == nil {
 		data = []PracticeSheetData{}

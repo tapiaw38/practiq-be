@@ -2,6 +2,8 @@ package attemptreview
 
 import (
 	"context"
+	"encoding/base64"
+	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -71,6 +73,28 @@ func (u *statementImageUsecase) Execute(ctx context.Context, attemptID, teacherI
 	}
 
 	return &StatementImageOutput{
-		Data: StatementImageData{Image: exercise.TeacherImage()},
+		Data: StatementImageData{Image: u.asDataURL(ctx, app, exercise.TeacherImage())},
 	}, nil
+}
+
+// asDataURL keeps this endpoint's contract while the storage underneath changed.
+//
+// Exercises saved by the current editor keep the drawing in the bucket, so the
+// value here is a URL the reviewer's browser cannot open on its own. Older ones
+// already hold a data URL and pass straight through.
+func (u *statementImageUsecase) asDataURL(ctx context.Context, app *appcontext.Context, image string) string {
+	if image == "" || strings.HasPrefix(image, "data:") {
+		return image
+	}
+	if app.ImageStorage == nil {
+		return ""
+	}
+	content, contentType, err := app.ImageStorage.FetchFile(ctx, image)
+	if err != nil || len(content) == 0 {
+		return ""
+	}
+	if contentType == "" {
+		contentType = "image/png"
+	}
+	return "data:" + contentType + ";base64," + base64.StdEncoding.EncodeToString(content)
 }

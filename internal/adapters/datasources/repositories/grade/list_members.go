@@ -8,7 +8,7 @@ import (
 
 func (r *repository) ListMembers(ctx context.Context, gradeID string) ([]domain.UserProfile, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT up.id, up.name, up.email, up.profile_type, up.assistant_base_url, up.assistant_api_key, up.created_at
+		SELECT up.id, up.name, up.email, up.profile_type, up.created_at
 		FROM user_profiles up
 		JOIN grade_memberships gm ON gm.user_id = up.id
 		WHERE gm.grade_id = $1
@@ -27,8 +27,6 @@ func (r *repository) ListMembers(ctx context.Context, gradeID string) ([]domain.
 			&user.Name,
 			&user.Email,
 			&user.ProfileType,
-			&user.AssistantBaseURL,
-			&user.AssistantAPIKey,
 			&user.CreatedAt,
 		); err != nil {
 			return nil, err

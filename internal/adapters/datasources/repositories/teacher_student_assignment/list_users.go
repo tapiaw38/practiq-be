@@ -31,7 +31,7 @@ func (r *repository) listUsers(ctx context.Context, query, id string, limit, off
 	users := []domain.UserProfile{}
 	for rows.Next() {
 		var user domain.UserProfile
-		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.ProfileType, &user.AcademicStatus, &user.AssistantBaseURL, &user.AssistantAPIKey, &user.CreatedAt); err != nil {
+		if err := rows.Scan(&user.ID, &user.Name, &user.Email, &user.ProfileType, &user.AcademicStatus, &user.CreatedAt); err != nil {
 			return nil, err
 		}
 		users = append(users, user)

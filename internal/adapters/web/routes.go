@@ -80,6 +80,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// Materials
 	api.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
 	api.GET("/courses/:id/materials", material.NewListHandler(uc.Material.List))
+	api.GET("/materials/:id", material.NewGetHandler(uc.Material.Get))
 	api.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
 	api.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
 
@@ -92,6 +93,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// Exercises
 	api.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
 	api.GET("/topics/:id/exercises", exercise.NewListHandler(uc.Exercise.List))
+	api.GET("/exercises/:id/statement-image", exercise.NewStatementImageHandler(uc.Exercise.StatementImage))
 	api.PUT("/exercises/:id", exercise.NewUpdateHandler(uc.Exercise.Update))
 	api.DELETE("/exercises/:id", exercise.NewDeleteHandler(uc.Exercise.Delete))
 

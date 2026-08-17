@@ -28,6 +28,10 @@ type (
 		// MediaViewURL is the temporary URL for the statement's attached media.
 		// Metadata keeps the canonical one so it can be written back unchanged.
 		MediaViewURL string `json:"media_view_url,omitempty"`
+		// HasTeacherImage says the statement was drawn by hand. The drawing is
+		// fetched from the exercise's statement-image endpoint, never embedded:
+		// one canvas outweighed the whole sheet around it.
+		HasTeacherImage bool `json:"has_teacher_image,omitempty"`
 	}
 
 	SheetExerciseData struct {
@@ -82,18 +86,19 @@ type (
 func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeacherData bool) PracticeSheetData {
 	exercises := make([]SheetExerciseData, 0, len(ps.Exercises))
 	for _, pse := range ps.Exercises {
-		metadata := studentMetadata(pse.Exercise.Metadata)
+		metadata := studentMetadata(pse.Exercise.MetadataWithoutTeacherImage())
 		if includeTeacherData {
-			metadata = pse.Exercise.Metadata
+			metadata = pse.Exercise.MetadataWithoutTeacherImage()
 		}
 		exercise := ExerciseData{
-			ID:           pse.Exercise.ID,
-			TopicID:      pse.Exercise.TopicID,
-			Type:         pse.Exercise.Type,
-			Question:     pse.Exercise.Question,
-			Difficulty:   pse.Exercise.Difficulty,
-			Metadata:     metadata,
-			MediaViewURL: mediaViewURL(app, pse.Exercise),
+			ID:              pse.Exercise.ID,
+			TopicID:         pse.Exercise.TopicID,
+			Type:            pse.Exercise.Type,
+			Question:        pse.Exercise.Question,
+			Difficulty:      pse.Exercise.Difficulty,
+			Metadata:        metadata,
+			MediaViewURL:    mediaViewURL(app, pse.Exercise),
+			HasTeacherImage: pse.Exercise.TeacherImage() != "",
 		}
 		// Correct answers and explanations are teacher-only data. The backend
 		// grades submissions, so students never need either in the sheet payload.
@@ -107,6 +112,37 @@ func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeache
 			Exercise:   exercise,
 		})
 	}
+	data := sheetScalars(ps)
+	data.Exercises = exercises
+	return data
+}
+
+// toSheetSummary is the listing shape: the sheet, and the identity of the
+// exercises on it, without their bodies.
+//
+// Every listing consumer only counts the exercises or collects their ids. The
+// statement, its metadata and the signed media belong to the practice screen,
+// which loads a single sheet by id. Sending them once per sheet made one course
+// listing 46 KB, of which 93% was base64 images.
+func toSheetSummary(ps domain.PracticeSheet) PracticeSheetData {
+	exercises := make([]SheetExerciseData, 0, len(ps.Exercises))
+	for _, pse := range ps.Exercises {
+		exercises = append(exercises, SheetExerciseData{
+			ID:         pse.ID,
+			OrderIndex: pse.OrderIndex,
+			Exercise: ExerciseData{
+				ID:      pse.Exercise.ID,
+				TopicID: pse.Exercise.TopicID,
+				Type:    pse.Exercise.Type,
+			},
+		})
+	}
+	data := sheetScalars(ps)
+	data.Exercises = exercises
+	return data
+}
+
+func sheetScalars(ps domain.PracticeSheet) PracticeSheetData {
 	sheetType := ps.SheetType
 	if sheetType == "" {
 		sheetType = "practice"
@@ -126,7 +162,6 @@ func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeache
 		TestStyle:  testStyle,
 		CreatedBy:  ps.CreatedBy,
 		CreatedAt:  ps.CreatedAt.Format(timeFormat),
-		Exercises:  exercises,
 	}
 	if ps.ScheduledAt != nil {
 		data.ScheduledAt = ps.ScheduledAt.UTC().Format(timeFormat)

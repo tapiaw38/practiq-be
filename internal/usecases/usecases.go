@@ -65,15 +65,17 @@ type TopicUsecases struct {
 }
 
 type ExerciseUsecases struct {
-	Create ucExercise.CreateUsecase
-	List   ucExercise.ListUsecase
-	Update ucExercise.UpdateUsecase
-	Delete ucExercise.DeleteUsecase
+	Create         ucExercise.CreateUsecase
+	List           ucExercise.ListUsecase
+	Update         ucExercise.UpdateUsecase
+	Delete         ucExercise.DeleteUsecase
+	StatementImage ucExercise.StatementImageUsecase
 }
 
 type MaterialUsecases struct {
 	Create ucMaterial.CreateUsecase
 	List   ucMaterial.ListUsecase
+	Get    ucMaterial.GetUsecase
 	Update ucMaterial.UpdateUsecase
 	Delete ucMaterial.DeleteUsecase
 }
@@ -247,14 +249,16 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Delete: ucTopic.NewDeleteUsecase(contextFactory),
 		},
 		Exercise: ExerciseUsecases{
-			Create: ucExercise.NewCreateUsecase(contextFactory),
-			List:   ucExercise.NewListUsecase(contextFactory),
-			Update: ucExercise.NewUpdateUsecase(contextFactory),
-			Delete: ucExercise.NewDeleteUsecase(contextFactory),
+			Create:         ucExercise.NewCreateUsecase(contextFactory),
+			List:           ucExercise.NewListUsecase(contextFactory),
+			Update:         ucExercise.NewUpdateUsecase(contextFactory),
+			Delete:         ucExercise.NewDeleteUsecase(contextFactory),
+			StatementImage: ucExercise.NewStatementImageUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
 			Create: ucMaterial.NewCreateUsecase(contextFactory),
 			List:   ucMaterial.NewListUsecase(contextFactory),
+			Get:    ucMaterial.NewGetUsecase(contextFactory),
 			Update: ucMaterial.NewUpdateUsecase(contextFactory),
 			Delete: ucMaterial.NewDeleteUsecase(contextFactory),
 		},
