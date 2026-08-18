@@ -13,7 +13,7 @@ import (
 
 type (
 	AddPageUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError)
 	}
 
 	AddPageInput struct {
@@ -36,7 +36,7 @@ func NewAddPageUsecase(contextFactory appcontext.Factory) AddPageUsecase {
 	return &addPageUsecase{contextFactory: contextFactory}
 }
 
-func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError) {
+func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 	notebook, err := app.Repositories.Notebook.Get(ctx, input.NotebookID)
 	if err != nil {
@@ -45,7 +45,7 @@ func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isAdmi
 	if notebook == nil {
 		return nil, apperrors.NewNotFoundError("notebook not found")
 	}
-	if !isAdmin && notebook.TeacherID != requesterID {
+	if !isSuperAdmin && notebook.TeacherID != requesterID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

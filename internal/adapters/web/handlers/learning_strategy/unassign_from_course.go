@@ -12,9 +12,9 @@ func NewUnassignFromCourseHandler(uc ucLS.UnassignFromCourseUsecase) gin.Handler
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
 		id := c.Param("id")
-		isAdmin := middlewares.HasRole(c, "admin") || middlewares.HasRole(c, "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
-		if appErr := uc.Execute(c, requesterID, id, isAdmin); appErr != nil {
+		if appErr := uc.Execute(c, requesterID, id, isSuperAdmin); appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
 			return

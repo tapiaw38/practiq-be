@@ -12,7 +12,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -37,7 +37,7 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if strings.TrimSpace(input.GradeID) == "" {
@@ -55,7 +55,7 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
 
-	if !isAdmin && course.TeacherID != requesterID {
+	if !isSuperAdmin && course.TeacherID != requesterID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

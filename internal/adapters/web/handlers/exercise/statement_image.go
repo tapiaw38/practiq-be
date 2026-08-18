@@ -14,7 +14,7 @@ func NewStatementImageHandler(uc ucExercise.StatementImageUsecase) gin.HandlerFu
 		output, appErr := uc.Execute(
 			c,
 			middlewares.GetUserID(c),
-			middlewares.HasRole(c, "admin", "superadmin"),
+			middlewares.IsSuperAdmin(c),
 			c.Param("id"),
 		)
 		if appErr != nil {

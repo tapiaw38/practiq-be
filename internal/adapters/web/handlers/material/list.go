@@ -31,8 +31,8 @@ func NewListHandler(uc ucMaterial.ListUsecase) gin.HandlerFunc {
 		}
 
 		userID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
-		output, appErr := uc.Execute(c, userID, isAdmin, input)
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
+		output, appErr := uc.Execute(c, userID, isSuperAdmin, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

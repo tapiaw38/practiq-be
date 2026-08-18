@@ -15,7 +15,7 @@ type (
 	// course's materials do not ship every document's full text, and this one
 	// serves the rest when a reader actually opens one.
 	GetUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, materialID string) (*GetOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, materialID string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	getUsecase struct {
@@ -31,7 +31,7 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, materialID string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, materialID string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	material, err := app.Repositories.Material.Get(ctx, materialID)
@@ -44,7 +44,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 
 	// Reading a material is reading its course. Checking after the lookup is
 	// what lets the course be known at all; the material id alone says nothing.
-	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, material.CourseID); appErr != nil {
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, material.CourseID); appErr != nil {
 		return nil, appErr
 	}
 

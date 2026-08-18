@@ -11,7 +11,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	UpdateInput struct {
@@ -30,7 +30,7 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	// Verify notebook exists and check ownership
@@ -42,7 +42,7 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewNotFoundError("notebook not found")
 	}
 
-	if !isAdmin && nb.TeacherID != requesterID {
+	if !isSuperAdmin && nb.TeacherID != requesterID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

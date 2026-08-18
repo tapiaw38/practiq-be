@@ -33,10 +33,10 @@ func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
 	return &listUsecase{contextFactory: contextFactory}
 }
 
-func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input ListInput) (*ListOutput, apperrors.ApplicationError) {
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input ListInput) (*ListOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isAdmin, input.TopicID); appErr != nil {
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, input.TopicID); appErr != nil {
 		return nil, appErr
 	}
 

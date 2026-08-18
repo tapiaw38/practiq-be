@@ -15,7 +15,7 @@ import (
 func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		jobID := c.Param("jobId")
 
 		job, err := repo.GetByID(c.Request.Context(), jobID)
@@ -30,7 +30,7 @@ func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 		}
 
 		// Authorization check: only the job owner or admin can view results
-		if !isAdmin && job.StudentID != requesterID {
+		if !isSuperAdmin && job.StudentID != requesterID {
 			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user's submit job results"})
 			return
 		}

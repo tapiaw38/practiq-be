@@ -12,9 +12,9 @@ func NewListForStudentHandler(uc ucCP.ListForStudentUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
 		studentID := c.Param("studentId")
-		isAdmin := middlewares.HasRole(c, "admin") || middlewares.HasRole(c, "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
-		output, appErr := uc.Execute(c, requesterID, studentID, isAdmin)
+		output, appErr := uc.Execute(c, requesterID, studentID, isSuperAdmin)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

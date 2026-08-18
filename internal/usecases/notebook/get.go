@@ -11,7 +11,7 @@ import (
 
 type (
 	GetUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id, studentID string) (*GetOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, studentID string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	GetOutput struct {
@@ -25,7 +25,7 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id, studentID string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, studentID string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 	nb, err := app.Repositories.Notebook.Get(ctx, id)
 	if err != nil {
@@ -36,7 +36,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 	}
 
 	if studentID == "" {
-		if !isAdmin && nb.TeacherID != requesterID {
+		if !isSuperAdmin && nb.TeacherID != requesterID {
 			hasAccess, _ := studentHasNotebookCourseAccess(ctx, app, requesterID, nb.CourseID)
 			if hasAccess {
 				studentID = requesterID
@@ -45,7 +45,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 			}
 		}
 	}
-	if studentID != "" && !isAdmin {
+	if studentID != "" && !isSuperAdmin {
 		if studentID == requesterID {
 			hasAccess, err := studentHasNotebookCourseAccess(ctx, app, studentID, nb.CourseID)
 			if err != nil {

@@ -12,7 +12,7 @@ import (
 
 type (
 	UpdatePageUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, input UpdatePageInput) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdatePageInput) apperrors.ApplicationError
 	}
 
 	UpdatePageInput struct {
@@ -30,7 +30,7 @@ func NewUpdatePageUsecase(contextFactory appcontext.Factory) UpdatePageUsecase {
 	return &updatePageUsecase{contextFactory: contextFactory}
 }
 
-func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input UpdatePageInput) apperrors.ApplicationError {
+func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdatePageInput) apperrors.ApplicationError {
 	app := u.contextFactory()
 	page, err := app.Repositories.Notebook.GetPage(ctx, input.PageID)
 	if err != nil {
@@ -46,7 +46,7 @@ func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isA
 	if notebook == nil {
 		return apperrors.NewNotFoundError("notebook not found")
 	}
-	if !isAdmin && notebook.TeacherID != requesterID {
+	if !isSuperAdmin && notebook.TeacherID != requesterID {
 		return apperrors.NewForbiddenError()
 	}
 

@@ -11,7 +11,7 @@ import (
 
 type (
 	ListForStudentUsecase interface {
-		Execute(ctx context.Context, requesterID, studentID string, isAdmin bool) (*ListForStudentOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID, studentID string, isSuperAdmin bool) (*ListForStudentOutput, apperrors.ApplicationError)
 	}
 
 	listForStudentUsecase struct {
@@ -27,10 +27,10 @@ func NewListForStudentUsecase(contextFactory appcontext.Factory) ListForStudentU
 	return &listForStudentUsecase{contextFactory: contextFactory}
 }
 
-func (u *listForStudentUsecase) Execute(ctx context.Context, requesterID, studentID string, isAdmin bool) (*ListForStudentOutput, apperrors.ApplicationError) {
+func (u *listForStudentUsecase) Execute(ctx context.Context, requesterID, studentID string, isSuperAdmin bool) (*ListForStudentOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
@@ -45,7 +45,7 @@ func (u *listForStudentUsecase) Execute(ctx context.Context, requesterID, studen
 		return nil, apperrors.NewApplicationError(mappings.CourseProgressListError, err)
 	}
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		teacherCourses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{TeacherID: requesterID})
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.CourseListError, err)

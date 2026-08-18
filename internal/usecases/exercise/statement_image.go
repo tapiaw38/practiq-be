@@ -25,7 +25,7 @@ type (
 	// drawing to change it, and the practice screen composing the page it sends
 	// for grading — export that canvas afterwards.
 	StatementImageUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, exerciseID string) (*StatementImageOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, exerciseID string) (*StatementImageOutput, apperrors.ApplicationError)
 	}
 
 	statementImageUsecase struct {
@@ -44,7 +44,7 @@ func NewStatementImageUsecase(contextFactory appcontext.Factory) StatementImageU
 	return &statementImageUsecase{contextFactory: contextFactory}
 }
 
-func (u *statementImageUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, exerciseID string) (*StatementImageOutput, apperrors.ApplicationError) {
+func (u *statementImageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, exerciseID string) (*StatementImageOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	ex, err := app.Repositories.Exercise.Get(ctx, exerciseID)
@@ -58,7 +58,7 @@ func (u *statementImageUsecase) Execute(ctx context.Context, requesterID string,
 	// Seeing the statement is seeing the course it belongs to: the same rule the
 	// exercise listing applies, so this opens nothing the requester could not
 	// already read.
-	if appErr := requesterCanReadExercise(ctx, app, requesterID, isAdmin, ex.TopicID); appErr != nil {
+	if appErr := requesterCanReadExercise(ctx, app, requesterID, isSuperAdmin, ex.TopicID); appErr != nil {
 		return nil, appErr
 	}
 

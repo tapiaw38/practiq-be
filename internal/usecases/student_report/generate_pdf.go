@@ -14,7 +14,7 @@ import (
 
 type (
 	GeneratePDFUsecase interface {
-		Execute(ctx context.Context, teacherID string, isAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
+		Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
 	}
 
 	generatePDFUsecase struct {
@@ -26,10 +26,10 @@ func NewGeneratePDFUsecase(contextFactory appcontext.Factory) GeneratePDFUsecase
 	return &generatePDFUsecase{contextFactory: contextFactory}
 }
 
-func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
+func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, teacherID, filter.StudentID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
@@ -61,7 +61,7 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isAd
 	// belong to other teachers. Without a course filter, restrict it to the
 	// requester's own courses.
 	var ownCourseIDs map[string]bool
-	if !isAdmin && filter.CourseID == "" {
+	if !isSuperAdmin && filter.CourseID == "" {
 		ownCourses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{TeacherID: teacherID})
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.CourseListError, err)

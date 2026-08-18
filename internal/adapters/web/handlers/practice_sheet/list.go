@@ -14,7 +14,7 @@ func NewListHandler(uc ucPS.ListUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		courseID := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
 		input := ucPS.ListInput{
 			CourseID: courseID,
@@ -32,7 +32,7 @@ func NewListHandler(uc ucPS.ListUsecase) gin.HandlerFunc {
 			}
 		}
 
-		output, appErr := uc.Execute(c, requesterID, isAdmin, input)
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

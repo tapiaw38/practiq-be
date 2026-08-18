@@ -13,7 +13,7 @@ func NewGetAssistantMediaHandler(uc ucPS.GetAssistantMediaUsecase) gin.HandlerFu
 		output, appErr := uc.Execute(
 			c,
 			middlewares.GetUserID(c),
-			middlewares.HasRole(c, "admin", "superadmin"),
+			middlewares.IsSuperAdmin(c),
 			c.Param("id"),
 			c.Param("exerciseId"),
 		)

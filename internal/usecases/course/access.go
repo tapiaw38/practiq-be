@@ -9,8 +9,8 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) apperrors.ApplicationError {
-	if isAdmin {
+func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) apperrors.ApplicationError {
+	if isSuperAdmin {
 		return nil
 	}
 

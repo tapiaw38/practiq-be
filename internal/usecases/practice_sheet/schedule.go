@@ -17,8 +17,8 @@ const sheetTypeLevelTest = "level_test"
 
 // isCourseTeacher reports whether the requester owns the course. Teachers and
 // admins bypass the schedule so they can review a test before its date.
-func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) bool {
-	if isAdmin {
+func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) bool {
+	if isSuperAdmin {
 		return true
 	}
 	course, err := app.Repositories.Course.Get(ctx, courseID)
@@ -38,8 +38,8 @@ func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID s
 // This used to return "expired" for everything from ScheduledAt onwards, with
 // no window ever defined — so a scheduled test was blocked before the date and
 // expired from the date on, and could never be taken at all.
-func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.PracticeSheet, requesterID string, isAdmin bool) apperrors.ApplicationError {
-	if isCourseTeacher(ctx, app, requesterID, isAdmin, ps.CourseID) {
+func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.PracticeSheet, requesterID string, isSuperAdmin bool) apperrors.ApplicationError {
+	if isCourseTeacher(ctx, app, requesterID, isSuperAdmin, ps.CourseID) {
 		return nil
 	}
 	if ps.ScheduledAt == nil {

@@ -10,7 +10,7 @@ import (
 
 type (
 	ListUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, courseID string) (*ListOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string) (*ListOutput, apperrors.ApplicationError)
 	}
 
 	ListOutput struct {
@@ -24,9 +24,9 @@ func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
 	return &listUsecase{contextFactory: contextFactory}
 }
 
-func (u *listUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, courseID string) (*ListOutput, apperrors.ApplicationError) {
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string) (*ListOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
-	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, courseID); appErr != nil {
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, courseID); appErr != nil {
 		return nil, appErr
 	}
 

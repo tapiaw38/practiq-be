@@ -26,7 +26,7 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		courseID := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		var input createInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
@@ -66,7 +66,7 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, requesterID, isAdmin, ucPS.CreateInput{
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, ucPS.CreateInput{
 			CourseID:       courseID,
 			SheetType:      input.SheetType,
 			TestStyle:      input.TestStyle,

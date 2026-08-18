@@ -18,7 +18,7 @@ type (
 	// hundred KB, and inlining one per row would turn the review queue into a
 	// multi-megabyte response for a list the teacher only skims.
 	StatementImageUsecase interface {
-		Execute(ctx context.Context, attemptID, teacherID string, isAdmin bool) (*StatementImageOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, attemptID, teacherID string, isSuperAdmin bool) (*StatementImageOutput, apperrors.ApplicationError)
 	}
 
 	statementImageUsecase struct {
@@ -40,7 +40,7 @@ func NewStatementImageUsecase(contextFactory appcontext.Factory) StatementImageU
 	return &statementImageUsecase{contextFactory: contextFactory}
 }
 
-func (u *statementImageUsecase) Execute(ctx context.Context, attemptID, teacherID string, isAdmin bool) (*StatementImageOutput, apperrors.ApplicationError) {
+func (u *statementImageUsecase) Execute(ctx context.Context, attemptID, teacherID string, isSuperAdmin bool) (*StatementImageOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	// Same ownership rule as reviewing: whoever may grade the attempt may see
@@ -52,7 +52,7 @@ func (u *statementImageUsecase) Execute(ctx context.Context, attemptID, teacherI
 	if owner == "" {
 		return nil, apperrors.NewNotFoundError("attempt not found")
 	}
-	if !isAdmin && owner != teacherID {
+	if !isSuperAdmin && owner != teacherID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

@@ -12,7 +12,7 @@ import (
 func NewGetByIDHandler(uc ucProfile.GetUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		profileID := c.Param("id")
 
 		if profileID == "" {
@@ -21,7 +21,7 @@ func NewGetByIDHandler(uc ucProfile.GetUsecase) gin.HandlerFunc {
 		}
 
 		// Authorization check: only admins or the profile owner can view profiles
-		if !isAdmin && requesterID != profileID {
+		if !isSuperAdmin && requesterID != profileID {
 			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user profiles"})
 			return
 		}

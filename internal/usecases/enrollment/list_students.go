@@ -19,9 +19,11 @@ type (
 	}
 
 	ListStudentsInput struct {
-		CourseID string
-		Limit    int
-		Offset   int
+		CourseID     string
+		RequesterID  string
+		IsSuperAdmin bool
+		Limit        int
+		Offset       int
 	}
 
 	ListStudentsOutput struct {
@@ -35,6 +37,20 @@ func NewListStudentsUsecase(contextFactory appcontext.Factory) ListStudentsUseca
 
 func (u *listStudentsUsecase) Execute(ctx context.Context, input ListStudentsInput) (*ListStudentsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// El padrón de un curso es dato de terceros: lo ve quien dicta ese curso.
+	if !input.IsSuperAdmin {
+		course, err := app.Repositories.Course.Get(ctx, input.CourseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil {
+			return nil, apperrors.NewNotFoundError("course not found")
+		}
+		if course.TeacherID != input.RequesterID {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	filter := enrollmentRepo.ListFilter{
 		CourseID: input.CourseID,

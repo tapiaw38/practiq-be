@@ -6,7 +6,7 @@ import (
 )
 
 func teacherIDForReview(c *gin.Context) string {
-	if middlewares.HasRole(c, "admin", "superadmin") {
+	if middlewares.IsSuperAdmin(c) {
 		return ""
 	}
 	return middlewares.GetUserID(c)

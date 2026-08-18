@@ -12,11 +12,11 @@ import (
 func NewGetStudentCourseProgressHandler(uc ucProgress.GetStudentCourseProgressUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		studentID := c.Param("studentId")
 		courseID := c.Param("courseId")
 
-		output, appErr := uc.Execute(c, requesterID, isAdmin, studentID, courseID)
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, studentID, courseID)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

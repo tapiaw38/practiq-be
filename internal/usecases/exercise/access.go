@@ -12,8 +12,8 @@ import (
 
 // requesterCanReadExercise allows the course's teacher and anyone taking the
 // course, which is the same audience the exercise listing already serves.
-func requesterCanReadExercise(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, topicID string) apperrors.ApplicationError {
-	if isAdmin {
+func requesterCanReadExercise(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, topicID string) apperrors.ApplicationError {
+	if isSuperAdmin {
 		return nil
 	}
 	topic, err := app.Repositories.Topic.Get(ctx, topicID)
@@ -45,7 +45,7 @@ func requesterCanReadExercise(ctx context.Context, app *appcontext.Context, requ
 	return apperrors.NewForbiddenError()
 }
 
-func requesterCanWriteTopic(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, topicID string) apperrors.ApplicationError {
+func requesterCanWriteTopic(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, topicID string) apperrors.ApplicationError {
 	topic, err := app.Repositories.Topic.Get(ctx, topicID)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.TopicGetError, err)
@@ -53,11 +53,11 @@ func requesterCanWriteTopic(ctx context.Context, app *appcontext.Context, reques
 	if topic == nil {
 		return apperrors.NewNotFoundError("topic not found")
 	}
-	return requesterCanWriteCourse(ctx, app, requesterID, isAdmin, topic.CourseID)
+	return requesterCanWriteCourse(ctx, app, requesterID, isSuperAdmin, topic.CourseID)
 }
 
-func requesterCanWriteCourse(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) apperrors.ApplicationError {
-	if isAdmin {
+func requesterCanWriteCourse(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) apperrors.ApplicationError {
+	if isSuperAdmin {
 		return nil
 	}
 	course, err := app.Repositories.Course.Get(ctx, courseID)

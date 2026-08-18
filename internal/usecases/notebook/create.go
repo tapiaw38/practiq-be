@@ -11,7 +11,7 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	CreateInput struct {
@@ -32,7 +32,7 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 	course, err := app.Repositories.Course.Get(ctx, input.CourseID)
 	if err != nil {
@@ -41,7 +41,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 	if course == nil {
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
-	if !isAdmin && course.TeacherID != requesterID {
+	if !isSuperAdmin && course.TeacherID != requesterID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

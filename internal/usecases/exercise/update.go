@@ -11,7 +11,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -36,7 +36,7 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	// Verify exercise exists and check ownership
@@ -48,7 +48,7 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return nil, apperrors.NewNotFoundError("exercise not found")
 	}
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		topic, err := app.Repositories.Topic.Get(ctx, exercise.TopicID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.TopicGetError, err)

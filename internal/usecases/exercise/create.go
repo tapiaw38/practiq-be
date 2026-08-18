@@ -37,10 +37,10 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isAdmin, input.TopicID); appErr != nil {
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, input.TopicID); appErr != nil {
 		return nil, appErr
 	}
 

@@ -22,7 +22,7 @@ func NewUpdateHandler(uc ucExercise.UpdateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
 		var input updateInput
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -30,7 +30,7 @@ func NewUpdateHandler(uc ucExercise.UpdateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, requesterID, isAdmin, id, ucExercise.UpdateInput{
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, ucExercise.UpdateInput{
 			Type:          input.Type,
 			Question:      input.Question,
 			CorrectAnswer: input.CorrectAnswer,

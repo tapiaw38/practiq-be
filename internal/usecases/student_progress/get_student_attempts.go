@@ -10,7 +10,7 @@ import (
 
 type (
 	GetStudentAttemptsUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError)
 	}
 
 	getStudentAttemptsUsecase struct {
@@ -26,10 +26,10 @@ func NewGetStudentAttemptsUsecase(contextFactory appcontext.Factory) GetStudentA
 	return &getStudentAttemptsUsecase{contextFactory: contextFactory}
 }
 
-func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError) {
+func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
@@ -43,7 +43,7 @@ func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID str
 	// says nothing about the sheet. Without tying the sheet back to a course
 	// the requester owns, a teacher of one course could read the same student's
 	// answers and scores for a sheet in another course, or in a deleted one.
-	if !isAdmin {
+	if !isSuperAdmin {
 		sheet, err := app.Repositories.PracticeSheet.Get(ctx, sheetID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)

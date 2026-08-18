@@ -26,7 +26,7 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	course, err := app.Repositories.Course.Get(ctx, id)
@@ -36,7 +36,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 	if course == nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseNotFoundError, nil)
 	}
-	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, id); appErr != nil {
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, id); appErr != nil {
 		return nil, appErr
 	}
 

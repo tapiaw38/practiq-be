@@ -10,7 +10,7 @@ import (
 
 type (
 	GetForStudentUsecase interface {
-		Execute(ctx context.Context, requesterID, studentID, courseID string, isAdmin bool) (*GetForStudentOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID, studentID, courseID string, isSuperAdmin bool) (*GetForStudentOutput, apperrors.ApplicationError)
 	}
 
 	getForStudentUsecase struct {
@@ -26,10 +26,10 @@ func NewGetForStudentUsecase(contextFactory appcontext.Factory) GetForStudentUse
 	return &getForStudentUsecase{contextFactory: contextFactory}
 }
 
-func (u *getForStudentUsecase) Execute(ctx context.Context, requesterID, studentID, courseID string, isAdmin bool) (*GetForStudentOutput, apperrors.ApplicationError) {
+func (u *getForStudentUsecase) Execute(ctx context.Context, requesterID, studentID, courseID string, isSuperAdmin bool) (*GetForStudentOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)

@@ -12,7 +12,7 @@ import (
 
 type (
 	AssignToCourseUsecase interface {
-		Execute(ctx context.Context, requesterID, courseID string, isAdmin bool, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID, courseID string, isSuperAdmin bool, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError)
 	}
 
 	assignToCourseUsecase struct {
@@ -34,7 +34,7 @@ func NewAssignToCourseUsecase(contextFactory appcontext.Factory) AssignToCourseU
 	return &assignToCourseUsecase{contextFactory: contextFactory}
 }
 
-func (u *assignToCourseUsecase) Execute(ctx context.Context, requesterID, courseID string, isAdmin bool, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError) {
+func (u *assignToCourseUsecase) Execute(ctx context.Context, requesterID, courseID string, isSuperAdmin bool, input AssignToCourseInput) (*AssignToCourseOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if strings.TrimSpace(input.StrategyID) == "" {
@@ -59,7 +59,7 @@ func (u *assignToCourseUsecase) Execute(ctx context.Context, requesterID, course
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
 
-	if !isAdmin && course.TeacherID != requesterID {
+	if !isSuperAdmin && course.TeacherID != requesterID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

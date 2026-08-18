@@ -13,7 +13,7 @@ func NewUpdateHandler(uc ucNB.UpdateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
 		var input struct {
 			Title       string `json:"title" binding:"required"`
@@ -24,7 +24,7 @@ func NewUpdateHandler(uc ucNB.UpdateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		out, appErr := uc.Execute(c, requesterID, isAdmin, id, ucNB.UpdateInput{
+		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, ucNB.UpdateInput{
 			Title:       input.Title,
 			Description: input.Description,
 		})

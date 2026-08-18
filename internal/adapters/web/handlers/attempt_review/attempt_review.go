@@ -48,7 +48,7 @@ func NewStatementImageHandler(uc ucReview.StatementImageUsecase) gin.HandlerFunc
 			c,
 			c.Param("id"),
 			middlewares.GetUserID(c),
-			middlewares.HasRole(c, "admin", "superadmin"),
+			middlewares.IsSuperAdmin(c),
 		)
 		if appErr != nil {
 			appErr.Log(c)
@@ -77,7 +77,7 @@ func NewReviewHandler(uc ucReview.ReviewUsecase) gin.HandlerFunc {
 			c,
 			c.Param("id"),
 			middlewares.GetUserID(c),
-			middlewares.HasRole(c, "admin", "superadmin"),
+			middlewares.IsSuperAdmin(c),
 			ucReview.ReviewInput{IsCorrect: *input.IsCorrect, Feedback: input.Feedback},
 		)
 		if appErr != nil {

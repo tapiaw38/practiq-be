@@ -13,7 +13,7 @@ func NewUpdatePageHandler(uc ucNB.UpdatePageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		pageID := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		var input struct {
 			Title        string `json:"title"`
 			ContentType  string `json:"content_type"`
@@ -24,7 +24,7 @@ func NewUpdatePageHandler(uc ucNB.UpdatePageUsecase) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
-		if appErr := uc.Execute(c, requesterID, isAdmin, ucNB.UpdatePageInput{
+		if appErr := uc.Execute(c, requesterID, isSuperAdmin, ucNB.UpdatePageInput{
 			PageID:       pageID,
 			Title:        input.Title,
 			ContentType:  input.ContentType,

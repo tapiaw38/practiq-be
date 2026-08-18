@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	ucEnrollment "github.com/tapiaw38/practiq-be/internal/usecases/enrollment"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,9 @@ func NewListStudentsHandler(uc ucEnrollment.ListStudentsUsecase) gin.HandlerFunc
 		courseID := c.Param("id")
 
 		input := ucEnrollment.ListStudentsInput{
-			CourseID: courseID,
+			CourseID:     courseID,
+			RequesterID:  middlewares.GetUserID(c),
+			IsSuperAdmin: middlewares.IsSuperAdmin(c),
 		}
 
 		if limitStr := c.Query("limit"); limitStr != "" {

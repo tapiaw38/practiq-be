@@ -9,9 +9,8 @@ import (
 )
 
 type syncInput struct {
-	Name        string `json:"name" binding:"required"`
-	Email       string `json:"email" binding:"required"`
-	ProfileType string `json:"profile_type"`
+	Name  string `json:"name" binding:"required"`
+	Email string `json:"email" binding:"required"`
 	// Timezone is the IANA zone the browser reports. Empty leaves whatever is
 	// stored: the streak is measured with it and most clients do not send one.
 	Timezone         string `json:"timezone"`
@@ -35,11 +34,20 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 		}
 
 		userID := middlewares.GetUserID(c)
+
+		// El tipo de perfil sale del rol del token, no del cuerpo: cuando lo
+		// elegía el cliente, un alumno se declaraba profesor y el frontend le
+		// abría el panel docente.
+		profileType := "student"
+		if middlewares.IsTeacher(c) {
+			profileType = "teacher"
+		}
+
 		output, appErr := uc.Execute(c, ucProfile.SyncInput{
 			ID:               userID,
 			Name:             input.Name,
 			Email:            input.Email,
-			ProfileType:      input.ProfileType,
+			ProfileType:      profileType,
 			Timezone:         input.Timezone,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,

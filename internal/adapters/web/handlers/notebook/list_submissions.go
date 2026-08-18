@@ -23,7 +23,7 @@ func NewListSubmissionsHandler(uc ucNB.ListSubmissionsUsecase) gin.HandlerFunc {
 			}
 		}
 		teacherID := ""
-		if !middlewares.HasRole(c, "admin", "superadmin") {
+		if !middlewares.IsSuperAdmin(c) {
 			teacherID = middlewares.GetUserID(c)
 		}
 

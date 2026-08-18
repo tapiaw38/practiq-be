@@ -15,7 +15,7 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		teacherID := middlewares.GetUserID(c)
 		studentID := c.Param("studentId")
-		isAdmin := middlewares.HasRole(c, "admin") || middlewares.HasRole(c, "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
 		if studentID == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "studentId is required"})
@@ -48,7 +48,7 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 			filter.To = &t
 		}
 
-		pdfBytes, appErr := uc.Execute(c, teacherID, isAdmin, filter)
+		pdfBytes, appErr := uc.Execute(c, teacherID, isSuperAdmin, filter)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

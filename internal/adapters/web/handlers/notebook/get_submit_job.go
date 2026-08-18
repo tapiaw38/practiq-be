@@ -13,7 +13,7 @@ import (
 func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		jobID := c.Param("jobId")
 		job, err := repo.GetByID(c.Request.Context(), jobID)
 		if err != nil {
@@ -25,7 +25,7 @@ func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submit-job-not-found", "message": "submit job not found"})
 			return
 		}
-		if !isAdmin && job.StudentID != requesterID {
+		if !isSuperAdmin && job.StudentID != requesterID {
 			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user's submit job results"})
 			return
 		}

@@ -26,7 +26,7 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
@@ -36,13 +36,13 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 	if ps == nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
-	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, ps.CourseID); appErr != nil {
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, ps.CourseID); appErr != nil {
 		return nil, appErr
 	}
-	if appErr := ensureSheetIsOpen(ctx, app, ps, requesterID, isAdmin); appErr != nil {
+	if appErr := ensureSheetIsOpen(ctx, app, ps, requesterID, isSuperAdmin); appErr != nil {
 		return nil, appErr
 	}
-	includeTeacherData, appErr := requesterCanViewTeacherData(ctx, app, requesterID, isAdmin, ps.CourseID)
+	includeTeacherData, appErr := requesterCanViewTeacherData(ctx, app, requesterID, isSuperAdmin, ps.CourseID)
 	if appErr != nil {
 		return nil, appErr
 	}

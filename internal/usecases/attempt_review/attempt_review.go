@@ -29,7 +29,7 @@ type (
 	}
 
 	ReviewUsecase interface {
-		Execute(ctx context.Context, attemptID, teacherID string, isAdmin bool, input ReviewInput) (*ReviewOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, attemptID, teacherID string, isSuperAdmin bool, input ReviewInput) (*ReviewOutput, apperrors.ApplicationError)
 	}
 
 	listUsecase struct {
@@ -163,7 +163,7 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, input ListI
 	return &ListOutput{Data: data, HasMore: hasMore}, nil
 }
 
-func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string, isAdmin bool, input ReviewInput) (*ReviewOutput, apperrors.ApplicationError) {
+func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string, isSuperAdmin bool, input ReviewInput) (*ReviewOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	owner, err := app.Repositories.StudentAttempt.GetTeacherForAttempt(ctx, attemptID)
@@ -173,7 +173,7 @@ func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string
 	if owner == "" {
 		return nil, apperrors.NewNotFoundError("attempt not found")
 	}
-	if !isAdmin && owner != teacherID {
+	if !isSuperAdmin && owner != teacherID {
 		return nil, apperrors.NewForbiddenError()
 	}
 

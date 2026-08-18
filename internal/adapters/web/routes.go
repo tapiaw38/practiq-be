@@ -36,35 +36,41 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/profile", userprofile.NewGetHandler(uc.Profile.Get))
 	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
 	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
+	// admin es el rol del profesor y superadmin el del administrador; "teacher"
+	// no existe como rol en auth-api-be, así que exigirlo nunca coincidía y el
+	// grupo quedaba abierto a cualquiera de los otros dos.
 	adminOnly := api.Group("/")
-	adminOnly.Use(middlewares.RequireRoles("admin", "superadmin"))
+	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
 	teacherOnly := api.Group("/")
-	teacherOnly.Use(middlewares.RequireRoles("teacher", "admin", "superadmin"))
+	teacherOnly.Use(middlewares.RequireRoles(middlewares.RoleTeacher, middlewares.RoleSuperAdmin))
 	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 
-	// Courses
-	api.POST("/courses", handlerCourse.NewCreateHandler(uc.Course.Create))
+	// Courses. Los use cases validan que el curso sea del profesor; el grupo
+	// evita además que un alumno llegue siquiera a intentarlo.
+	teacherOnly.POST("/courses", handlerCourse.NewCreateHandler(uc.Course.Create))
 	api.GET("/courses", handlerCourse.NewListHandler(uc.Course.List))
 	api.GET("/courses/:id", handlerCourse.NewGetHandler(uc.Course.Get))
-	api.PUT("/courses/:id", handlerCourse.NewUpdateHandler(uc.Course.Update))
-	api.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
+	teacherOnly.PUT("/courses/:id", handlerCourse.NewUpdateHandler(uc.Course.Update))
+	teacherOnly.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
 
-	// Grades
-	api.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
+	// Grades. La estructura académica es institucional: la escribe el
+	// administrador. El listado queda abierto porque el alumno arma con él su
+	// propia navegación.
+	adminOnly.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
 	api.GET("/grades", handlerGrade.NewListHandler(uc.Grade.List))
-	api.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
-	api.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
+	adminOnly.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
+	adminOnly.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
 	adminOnly.POST("/grades/:id/members", handlerGrade.NewAssignMemberHandler(uc.Grade.AssignMember))
-	api.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
+	teacherOnly.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
 	adminOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
 	api.GET("/users/:userId/grades", handlerGrade.NewListUserGradesHandler(uc.Grade.ListUserGrades))
 
-	// Subjects
-	api.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
+	// Subjects. Mismo criterio que grades.
+	adminOnly.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
 	api.GET("/subjects", handlerSubject.NewListHandler(uc.Subject.List))
-	api.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
-	api.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
+	adminOnly.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
+	adminOnly.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
 
 	// Teacher/student assignments
 	adminOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
@@ -78,32 +84,32 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/courses/:id/students", enrollment.NewListStudentsHandler(uc.Enrollment.ListStudents))
 
 	// Materials
-	api.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
+	teacherOnly.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
 	api.GET("/courses/:id/materials", material.NewListHandler(uc.Material.List))
 	api.GET("/materials/:id", material.NewGetHandler(uc.Material.Get))
-	api.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
-	api.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
+	teacherOnly.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
+	teacherOnly.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
 
 	// Topics
-	api.POST("/courses/:id/topics", handlerTopic.NewCreateHandler(uc.Topic.Create))
+	teacherOnly.POST("/courses/:id/topics", handlerTopic.NewCreateHandler(uc.Topic.Create))
 	api.GET("/courses/:id/topics", handlerTopic.NewListHandler(uc.Topic.List))
-	api.PUT("/topics/:id", handlerTopic.NewUpdateHandler(uc.Topic.Update))
-	api.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
+	teacherOnly.PUT("/topics/:id", handlerTopic.NewUpdateHandler(uc.Topic.Update))
+	teacherOnly.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
 
 	// Exercises
-	api.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
+	teacherOnly.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
 	api.GET("/topics/:id/exercises", exercise.NewListHandler(uc.Exercise.List))
 	api.GET("/exercises/:id/statement-image", exercise.NewStatementImageHandler(uc.Exercise.StatementImage))
-	api.PUT("/exercises/:id", exercise.NewUpdateHandler(uc.Exercise.Update))
-	api.DELETE("/exercises/:id", exercise.NewDeleteHandler(uc.Exercise.Delete))
+	teacherOnly.PUT("/exercises/:id", exercise.NewUpdateHandler(uc.Exercise.Update))
+	teacherOnly.DELETE("/exercises/:id", exercise.NewDeleteHandler(uc.Exercise.Delete))
 
 	// Practice Sheets
-	api.POST("/courses/:id/practice-sheets", practicesheet.NewCreateHandler(uc.PracticeSheet.Create))
+	teacherOnly.POST("/courses/:id/practice-sheets", practicesheet.NewCreateHandler(uc.PracticeSheet.Create))
 	api.GET("/courses/:id/practice-sheets", practicesheet.NewListHandler(uc.PracticeSheet.List))
 	api.GET("/practice-sheets/:id", practicesheet.NewGetHandler(uc.PracticeSheet.Get))
 	api.GET("/practice-sheets/:id/exercises/:exerciseId/assistant-media", practicesheet.NewGetAssistantMediaHandler(uc.PracticeSheet.GetAssistantMedia))
-	api.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
-	api.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
+	teacherOnly.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
+	teacherOnly.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
 	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit, submitJobRepo))
 	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler(submitJobRepo))
@@ -136,13 +142,13 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/courses/:id/levels", courselevel.NewGetHandler(uc.CourseLevel.Get))
 
 	// Notebooks
-	api.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))
+	teacherOnly.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))
 	api.GET("/courses/:id/notebooks", handlerNB.NewListHandler(uc.Notebook.List))
 	api.GET("/notebooks/:id", handlerNB.NewGetHandler(uc.Notebook.Get))
-	api.PUT("/notebooks/:id", handlerNB.NewUpdateHandler(uc.Notebook.Update))
-	api.DELETE("/notebooks/:id", handlerNB.NewDeleteHandler(uc.Notebook.Delete))
-	api.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
-	api.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
+	teacherOnly.PUT("/notebooks/:id", handlerNB.NewUpdateHandler(uc.Notebook.Update))
+	teacherOnly.DELETE("/notebooks/:id", handlerNB.NewDeleteHandler(uc.Notebook.Delete))
+	teacherOnly.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
+	teacherOnly.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
 	api.POST("/notebook-pages/:id/submit", handlerNB.NewSaveSubmissionHandler(uc.Notebook.SaveSubmission))
 	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission, submitJobRepo))
 	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler(submitJobRepo))

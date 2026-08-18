@@ -8,8 +8,8 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) apperrors.ApplicationError {
-	if isAdmin {
+func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) apperrors.ApplicationError {
+	if isSuperAdmin {
 		return nil
 	}
 	course, err := app.Repositories.Course.Get(ctx, courseID)
@@ -35,8 +35,8 @@ func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, reques
 // requesterCanViewTeacherData distinguishes a course teacher from a student
 // who is allowed to solve the same sheet. It controls answers and canonical
 // storage URLs in output, not authorization to read the sheet itself.
-func requesterCanViewTeacherData(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) (bool, apperrors.ApplicationError) {
-	if isAdmin {
+func requesterCanViewTeacherData(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) (bool, apperrors.ApplicationError) {
+	if isSuperAdmin {
 		return true, nil
 	}
 	course, err := app.Repositories.Course.Get(ctx, courseID)

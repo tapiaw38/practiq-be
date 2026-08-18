@@ -29,7 +29,7 @@ func NewGetAssistantMediaUsecase(contextFactory appcontext.Factory) GetAssistant
 
 // Execute serves only media belonging to a sheet the requester can open. This
 // avoids browser-to-bucket CORS requirements and never accepts an arbitrary URL.
-func (u *getAssistantMediaUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, sheetID, exerciseID string) (*AssistantMediaOutput, apperrors.ApplicationError) {
+func (u *getAssistantMediaUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, sheetID, exerciseID string) (*AssistantMediaOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, sheetID)
 	if err != nil {
@@ -38,10 +38,10 @@ func (u *getAssistantMediaUsecase) Execute(ctx context.Context, requesterID stri
 	if ps == nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetNotFoundError, nil)
 	}
-	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, ps.CourseID); appErr != nil {
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, ps.CourseID); appErr != nil {
 		return nil, appErr
 	}
-	if appErr := ensureSheetIsOpen(ctx, app, ps, requesterID, isAdmin); appErr != nil {
+	if appErr := ensureSheetIsOpen(ctx, app, ps, requesterID, isSuperAdmin); appErr != nil {
 		return nil, appErr
 	}
 

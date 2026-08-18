@@ -10,7 +10,7 @@ import (
 
 type (
 	DeleteUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError
 	}
 
 	deleteUsecase struct {
@@ -22,7 +22,7 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError {
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
 	course, err := app.Repositories.Course.Get(ctx, id)
@@ -33,7 +33,7 @@ func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return apperrors.NewNotFoundError("course not found")
 	}
 
-	if !isAdmin && course.TeacherID != requesterID {
+	if !isSuperAdmin && course.TeacherID != requesterID {
 		return apperrors.NewForbiddenError()
 	}
 

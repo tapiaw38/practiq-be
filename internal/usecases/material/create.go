@@ -48,10 +48,10 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isAdmin, input.CourseID); appErr != nil {
+	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID); appErr != nil {
 		return nil, appErr
 	}
 

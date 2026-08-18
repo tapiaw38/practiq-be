@@ -18,7 +18,7 @@ func NewAssignToCourseHandler(uc ucLS.AssignToCourseUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
 		courseID := c.Param("id")
-		isAdmin := middlewares.HasRole(c, "admin") || middlewares.HasRole(c, "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
 		var input assignToCourseInput
 		if err := c.ShouldBindJSON(&input); err != nil {
@@ -26,7 +26,7 @@ func NewAssignToCourseHandler(uc ucLS.AssignToCourseUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, requesterID, courseID, isAdmin, ucLS.AssignToCourseInput{
+		output, appErr := uc.Execute(c, requesterID, courseID, isSuperAdmin, ucLS.AssignToCourseInput{
 			StrategyID: input.StrategyID,
 			IsDefault:  input.IsDefault,
 			Config:     input.Config,

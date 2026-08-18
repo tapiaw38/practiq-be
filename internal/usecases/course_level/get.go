@@ -12,7 +12,7 @@ import (
 
 type (
 	GetUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, courseID string) (*GetOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	getUsecase struct {
@@ -29,9 +29,9 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, courseID string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
-	if appErr := requesterCanReadCourse(ctx, app, requesterID, isAdmin, courseID); appErr != nil {
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, courseID); appErr != nil {
 		return nil, appErr
 	}
 
@@ -125,8 +125,8 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isAdmin bo
 	}, nil
 }
 
-func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isAdmin bool, courseID string) apperrors.ApplicationError {
-	if isAdmin {
+func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) apperrors.ApplicationError {
+	if isSuperAdmin {
 		return nil
 	}
 	course, err := app.Repositories.Course.Get(ctx, courseID)

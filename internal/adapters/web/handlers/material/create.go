@@ -26,8 +26,8 @@ func NewCreateHandler(uc ucMaterial.CreateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
-		output, appErr := uc.Execute(c, userID, isAdmin, ucMaterial.CreateInput{
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
+		output, appErr := uc.Execute(c, userID, isSuperAdmin, ucMaterial.CreateInput{
 			CourseID:      courseID,
 			TeacherID:     userID,
 			Title:         input.Title,

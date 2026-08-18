@@ -12,7 +12,7 @@ import (
 func NewGetStudentAttemptsHandler(uc ucProgress.GetStudentAttemptsUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		studentID := c.Param("studentId")
 		sheetID := c.Query("sheet_id")
 
@@ -21,7 +21,7 @@ func NewGetStudentAttemptsHandler(uc ucProgress.GetStudentAttemptsUsecase) gin.H
 			return
 		}
 
-		output, appErr := uc.Execute(c, requesterID, isAdmin, studentID, sheetID)
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, studentID, sheetID)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

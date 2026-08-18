@@ -14,7 +14,7 @@ func NewReviewSubmissionHandler(uc ucNB.ReviewSubmissionUsecase) gin.HandlerFunc
 	return func(c *gin.Context) {
 		submissionID := c.Param("id")
 		teacherID := ""
-		if !middlewares.HasRole(c, "admin", "superadmin") {
+		if !middlewares.IsSuperAdmin(c) {
 			teacherID = middlewares.GetUserID(c)
 		}
 		output, err := uc.Execute(c, submissionID, teacherID)

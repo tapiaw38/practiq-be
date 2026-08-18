@@ -14,8 +14,8 @@ func NewGetHandler(uc ucNB.GetUsecase) gin.HandlerFunc {
 		id := c.Param("id")
 		studentID := c.Query("student_id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
-		out, appErr := uc.Execute(c, requesterID, isAdmin, id, studentID)
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
+		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, studentID)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

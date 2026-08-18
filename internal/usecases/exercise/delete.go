@@ -10,7 +10,7 @@ import (
 
 type (
 	DeleteUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError
 	}
 
 	deleteUsecase struct {
@@ -22,7 +22,7 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError {
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
 	// Verify exercise exists and check ownership
@@ -34,7 +34,7 @@ func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return apperrors.NewNotFoundError("exercise not found")
 	}
 
-	if !isAdmin {
+	if !isSuperAdmin {
 		topic, err := app.Repositories.Topic.Get(ctx, exercise.TopicID)
 		if err != nil {
 			return apperrors.NewApplicationError(mappings.TopicGetError, err)

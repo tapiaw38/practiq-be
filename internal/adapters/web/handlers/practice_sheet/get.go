@@ -13,8 +13,8 @@ func NewGetHandler(uc ucPS.GetUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
-		isAdmin := middlewares.HasRole(c, "admin", "superadmin")
-		output, appErr := uc.Execute(c, requesterID, isAdmin, id)
+		isSuperAdmin := middlewares.IsSuperAdmin(c)
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, id)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

@@ -10,7 +10,7 @@ import (
 
 type (
 	DeleteUsecase interface {
-		Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError
 	}
 
 	deleteUsecase struct{ contextFactory appcontext.Factory }
@@ -20,7 +20,7 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin bool, id string) apperrors.ApplicationError {
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
 	// Verify notebook exists and check ownership
@@ -32,7 +32,7 @@ func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isAdmin
 		return apperrors.NewNotFoundError("notebook not found")
 	}
 
-	if !isAdmin && nb.TeacherID != requesterID {
+	if !isSuperAdmin && nb.TeacherID != requesterID {
 		return apperrors.NewForbiddenError()
 	}
 
