@@ -16,6 +16,7 @@ import (
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	handlerNotification "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
+	handlerInvitation "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_invitation"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
 	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
 	handlerSubject "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subject"
@@ -78,6 +79,13 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	adminOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
 	adminOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
 	api.GET("/teachers/me/students", handlerAssignment.NewListMyStudentsHandler(uc.Assignment.ListStudents))
+
+	// Invitaciones: el docente genera y revoca el código; el alumno lo canjea y
+	// queda vinculado sin que intervenga el administrador.
+	teacherOnly.POST("/invitations", handlerInvitation.NewCreateHandler(uc.Invitation.Create))
+	teacherOnly.GET("/invitations/active", handlerInvitation.NewGetActiveHandler(uc.Invitation.GetActive))
+	teacherOnly.DELETE("/invitations/:id", handlerInvitation.NewRevokeHandler(uc.Invitation.Revoke))
+	api.POST("/invitations/redeem", handlerInvitation.NewRedeemHandler(uc.Invitation.Redeem))
 
 	// Enrollments
 	api.POST("/courses/:id/enroll", enrollment.NewEnrollHandler(uc.Enrollment.Enroll))

@@ -15,6 +15,7 @@ import (
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 	ucNotification "github.com/tapiaw38/practiq-be/internal/usecases/notification"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
+	ucInvitation "github.com/tapiaw38/practiq-be/internal/usecases/student_invitation"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
 	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
 	ucSubject "github.com/tapiaw38/practiq-be/internal/usecases/subject"
@@ -55,6 +56,13 @@ type AssignmentUsecases struct {
 	Unassign     ucAssignment.UnassignUsecase
 	ListStudents ucAssignment.ListStudentsUsecase
 	ListTeachers ucAssignment.ListTeachersUsecase
+}
+
+type InvitationUsecases struct {
+	Create    ucInvitation.CreateUsecase
+	GetActive ucInvitation.GetActiveUsecase
+	Revoke    ucInvitation.RevokeUsecase
+	Redeem    ucInvitation.RedeemUsecase
 }
 
 type TopicUsecases struct {
@@ -179,6 +187,7 @@ type Usecases struct {
 	Grade            GradeUsecases
 	Subject          SubjectUsecases
 	Assignment       AssignmentUsecases
+	Invitation       InvitationUsecases
 	Topic            TopicUsecases
 	Exercise         ExerciseUsecases
 	Material         MaterialUsecases
@@ -241,6 +250,12 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Unassign:     ucAssignment.NewUnassignUsecase(contextFactory),
 			ListStudents: ucAssignment.NewListStudentsUsecase(contextFactory),
 			ListTeachers: ucAssignment.NewListTeachersUsecase(contextFactory),
+		},
+		Invitation: InvitationUsecases{
+			Create:    ucInvitation.NewCreateUsecase(contextFactory),
+			GetActive: ucInvitation.NewGetActiveUsecase(contextFactory),
+			Revoke:    ucInvitation.NewRevokeUsecase(contextFactory),
+			Redeem:    ucInvitation.NewRedeemUsecase(contextFactory),
 		},
 		Topic: TopicUsecases{
 			Create: ucTopic.NewCreateUsecase(contextFactory),

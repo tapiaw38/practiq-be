@@ -403,4 +403,43 @@ var (
 		StatusCode:   http.StatusNotFound,
 		Message:      "notebook not found",
 	}
+
+	// Student invitation errors
+	InvitationCreateError = ErrorDetails{
+		InternalCode: "invitation:create:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to create invitation",
+	}
+	InvitationGetError = ErrorDetails{
+		InternalCode: "invitation:get:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to get invitation",
+	}
+	InvitationRevokeError = ErrorDetails{
+		InternalCode: "invitation:revoke:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to revoke invitation",
+	}
+	InvitationRedeemError = ErrorDetails{
+		InternalCode: "invitation:redeem:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to redeem invitation",
+	}
+	// Un solo mensaje para código inexistente, vencido o revocado: distinguirlos
+	// le diría a quien prueba códigos al azar cuáles existen.
+	InvitationInvalidCodeError = ErrorDetails{
+		InternalCode: "invitation:redeem:invalid-code",
+		StatusCode:   http.StatusNotFound,
+		Message:      "invalid or expired invitation code",
+	}
+	InvitationTooManyAttemptsError = ErrorDetails{
+		InternalCode: "invitation:redeem:too-many-attempts",
+		StatusCode:   http.StatusTooManyRequests,
+		Message:      "too many attempts, try again later",
+	}
+	InvitationTeacherRedeemError = ErrorDetails{
+		InternalCode: "invitation:redeem:not-a-student",
+		StatusCode:   http.StatusBadRequest,
+		Message:      "only students can redeem an invitation code",
+	}
 )
