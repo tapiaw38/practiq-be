@@ -34,14 +34,15 @@ type CourseUsecases struct {
 }
 
 type GradeUsecases struct {
-	Create         ucGrade.CreateUsecase
-	List           ucGrade.ListUsecase
-	Update         ucGrade.UpdateUsecase
-	Delete         ucGrade.DeleteUsecase
-	AssignMember   ucGrade.AssignMemberUsecase
-	ListMembers    ucGrade.ListMembersUsecase
-	RemoveMember   ucGrade.RemoveMemberUsecase
-	ListUserGrades ucGrade.ListUserGradesUsecase
+	Create            ucGrade.CreateUsecase
+	List              ucGrade.ListUsecase
+	Update            ucGrade.UpdateUsecase
+	Delete            ucGrade.DeleteUsecase
+	AssignMember      ucGrade.AssignMemberUsecase
+	ListMembers       ucGrade.ListMembersUsecase
+	RemoveMember      ucGrade.RemoveMemberUsecase
+	ListUserGrades    ucGrade.ListUserGradesUsecase
+	ListGradesByUsers ucGrade.ListGradesByUsersUsecase
 }
 
 type SubjectUsecases struct {
@@ -230,14 +231,15 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Delete:      ucNotification.NewDeleteUsecase(contextFactory),
 		},
 		Grade: GradeUsecases{
-			Create:         ucGrade.NewCreateUsecase(contextFactory),
-			List:           ucGrade.NewListUsecase(contextFactory),
-			Update:         ucGrade.NewUpdateUsecase(contextFactory),
-			Delete:         ucGrade.NewDeleteUsecase(contextFactory),
-			AssignMember:   ucGrade.NewAssignMemberUsecase(contextFactory),
-			ListMembers:    ucGrade.NewListMembersUsecase(contextFactory),
-			RemoveMember:   ucGrade.NewRemoveMemberUsecase(contextFactory),
-			ListUserGrades: ucGrade.NewListUserGradesUsecase(contextFactory),
+			Create:            ucGrade.NewCreateUsecase(contextFactory),
+			List:              ucGrade.NewListUsecase(contextFactory),
+			Update:            ucGrade.NewUpdateUsecase(contextFactory),
+			Delete:            ucGrade.NewDeleteUsecase(contextFactory),
+			AssignMember:      ucGrade.NewAssignMemberUsecase(contextFactory),
+			ListMembers:       ucGrade.NewListMembersUsecase(contextFactory),
+			RemoveMember:      ucGrade.NewRemoveMemberUsecase(contextFactory),
+			ListUserGrades:    ucGrade.NewListUserGradesUsecase(contextFactory),
+			ListGradesByUsers: ucGrade.NewListGradesByUsersUsecase(contextFactory),
 		},
 		Subject: SubjectUsecases{
 			Create: ucSubject.NewCreateUsecase(contextFactory),

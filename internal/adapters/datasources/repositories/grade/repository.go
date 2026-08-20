@@ -17,6 +17,10 @@ type Repository interface {
 	RemoveMember(context.Context, string, string) error
 	ListMembers(context.Context, string) ([]domain.UserProfile, error)
 	ListUserGrades(context.Context, string) ([]domain.Grade, error)
+	// ListGradesByUsers batches ListUserGrades: one query for many users
+	// instead of one round trip per user. Missing users simply have no key
+	// in the map, same as an empty slice would mean for ListUserGrades.
+	ListGradesByUsers(context.Context, []string) (map[string][]domain.Grade, error)
 }
 type repository struct {
 	db *sql.DB

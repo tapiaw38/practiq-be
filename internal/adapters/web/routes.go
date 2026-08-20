@@ -66,6 +66,9 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
 	adminOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
 	api.GET("/users/:userId/grades", handlerGrade.NewListUserGradesHandler(uc.Grade.ListUserGrades))
+	// Batches the call above: dashboards were firing one request per student
+	// to build the "which grade is this student in" list.
+	api.POST("/grades/batch-by-users", handlerGrade.NewListGradesByUsersHandler(uc.Grade.ListGradesByUsers))
 
 	// Subjects. Mismo criterio que grades.
 	adminOnly.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
