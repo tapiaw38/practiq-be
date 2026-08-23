@@ -54,6 +54,7 @@ func (g *gateway) analyzeCanvas(
 	log.Printf("[assistant] analyze_canvas prompt=%q", truncateForLog(prompt, 700))
 
 	var lastErr error
+	sawUnreadable := false
 	for attempt := 1; attempt <= canvasAnalyzeAttempts; attempt++ {
 		log.Printf("[assistant] analyze_canvas attempt=%d/%d host=%s", attempt, canvasAnalyzeAttempts, baseURL)
 		conversationID, err := g.createConversation(ctx, baseURL, apiKey)
@@ -76,8 +77,18 @@ func (g *gateway) analyzeCanvas(
 			continue
 		}
 		normalized := normalizeCanvasResponse(response)
+		if strings.EqualFold(normalized, unreadableResponse) {
+			sawUnreadable = true
+			log.Printf("[assistant] analyze_canvas unreadable attempt=%d/%d conversation_id=%s retrying", attempt, canvasAnalyzeAttempts, conversationID)
+			continue
+		}
 		log.Printf("[assistant] analyze_canvas success attempt=%d conversation_id=%s response=%q normalized=%q", attempt, conversationID, response, normalized)
 		return normalized, nil
+	}
+
+	if sawUnreadable {
+		log.Printf("[assistant] analyze_canvas unreadable after %d attempts", canvasAnalyzeAttempts)
+		return unreadableResponse, nil
 	}
 
 	if lastErr == nil {

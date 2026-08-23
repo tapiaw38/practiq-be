@@ -85,3 +85,15 @@ func TestNotebookPromptCarriesContextNotAURL(t *testing.T) {
 		t.Fatal("a blank context must degrade to a placeholder")
 	}
 }
+
+func TestUnreadableIsAcceptedButRetryable(t *testing.T) {
+	if !isExpectedNotebookResponse(unreadableResponse) {
+		t.Fatal("UNREADABLE must remain a well-formed response")
+	}
+	if !isExpectedCanvasResponse(unreadableResponse) {
+		t.Fatal("UNREADABLE must remain well-formed for the single-answer check too")
+	}
+	if !strings.EqualFold(normalizeCanvasResponse("  unreadable  "), unreadableResponse) {
+		t.Fatal("the retry branch compares against the normalized value, so it must fold case and spacing")
+	}
+}
