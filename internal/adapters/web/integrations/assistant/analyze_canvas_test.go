@@ -97,3 +97,32 @@ func TestUnreadableIsAcceptedButRetryable(t *testing.T) {
 		t.Fatal("the retry branch compares against the normalized value, so it must fold case and spacing")
 	}
 }
+
+func TestCanvasResponseRejectsAVerdictSentence(t *testing.T) {
+	fromProduction := `Correcta. La imagen muestra un numeral dibujado a mano que se asemeja a un "4", coincidiendo con la respuesta esperada.`
+	if len(fromProduction) > 120 {
+		t.Fatalf("fixture must sit under the length limit to exercise the verdict guard, got %d", len(fromProduction))
+	}
+	if isExpectedCanvasResponse(fromProduction) {
+		t.Fatal("a verdict sentence was accepted as the student's answer")
+	}
+
+	for _, response := range []string{
+		"Correcto, el alumno resolvio bien",
+		"Incorrecta: el resultado no coincide",
+		"La imagen muestra un 7",
+		"El estudiante escribio 42",
+	} {
+		if isExpectedCanvasResponse(response) {
+			t.Fatalf("expected %q to be rejected", response)
+		}
+	}
+}
+
+func TestCanvasResponseStillAcceptsRealAnswers(t *testing.T) {
+	for _, response := range []string{"4", "10", "x = 5", "3/4", "-7", "1,5", "UNREADABLE"} {
+		if !isExpectedCanvasResponse(response) {
+			t.Fatalf("expected %q to be accepted as an answer", response)
+		}
+	}
+}

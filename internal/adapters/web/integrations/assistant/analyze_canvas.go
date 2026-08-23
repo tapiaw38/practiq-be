@@ -282,12 +282,40 @@ func isExpectedCanvasResponse(raw string) bool {
 func isCanvasVerdict(value string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	normalized = strings.Trim(normalized, ".,!¡!¿?;: \t\n\r")
-	switch normalized {
-	case "correcta", "correcto", "incorrecta", "incorrecto", "es correcta", "es correcto", "es incorrecta", "es incorrecto":
-		return true
-	default:
-		return false
+
+	for _, verdict := range canvasVerdictPrefixes {
+		if normalized == verdict {
+			return true
+		}
+		if rest, found := strings.CutPrefix(normalized, verdict); found {
+			if rest == "" || strings.ContainsAny(rest[:1], ".,;:!? ") {
+				return true
+			}
+		}
 	}
+
+	for _, phrase := range canvasDescriptionPhrases {
+		if strings.Contains(normalized, phrase) {
+			return true
+		}
+	}
+
+	return false
+}
+
+var canvasVerdictPrefixes = []string{
+	"es correcta", "es correcto", "es incorrecta", "es incorrecto",
+	"correcta", "correcto", "incorrecta", "incorrecto",
+}
+
+var canvasDescriptionPhrases = []string{
+	"la imagen muestra",
+	"la imagen contiene",
+	"en la imagen se",
+	"se asemeja a",
+	"respuesta esperada",
+	"el estudiante escribio",
+	"el estudiante escribió",
 }
 
 func normalizeCanvasResponse(raw string) string {
