@@ -1,27 +1,6 @@
 package notebook
 
-import (
-	"testing"
-
-	"github.com/tapiaw38/practiq-be/internal/domain"
-)
-
-func TestStatementNeedsTeacherReview(t *testing.T) {
-	imageURL := "https://bucket.s3.amazonaws.com/image/notebook/x/y.png"
-
-	if !statementNeedsTeacherReview(&domain.NotebookPage{ContentData: imageURL}) {
-		t.Fatal("an unverified transcription must keep the verdict a suggestion")
-	}
-	if statementNeedsTeacherReview(&domain.NotebookPage{ContentData: imageURL, StatementVerified: true}) {
-		t.Fatal("once the teacher verified the statement the verdict stands on its own")
-	}
-	if statementNeedsTeacherReview(&domain.NotebookPage{ContentData: "Resolve las sumas"}) {
-		t.Fatal("a text statement was never guessed at, so it needs no review")
-	}
-	if statementNeedsTeacherReview(nil) {
-		t.Fatal("a missing page must not flag review")
-	}
-}
+import "testing"
 
 func TestPageHasImageStatement(t *testing.T) {
 	for _, value := range []string{
@@ -39,49 +18,39 @@ func TestPageHasImageStatement(t *testing.T) {
 	}
 }
 
-func TestReviewFlagSurvivesEveryFailurePath(t *testing.T) {
-	page := &domain.NotebookPage{
-		ContentData:   "https://bucket.s3.amazonaws.com/image/notebook/x/y.png",
-		StatementText: "3+2=",
-	}
+// The teacher is called in only where the assistant fell short: it never read
+// the answer, or it read it and could not decide.
+func TestSubmissionNeedsTeacherReview(t *testing.T) {
+	correct := true
+	incorrect := false
 
-	start := statementNeedsTeacherReview(page)
-	if !start {
-		t.Fatal("an unverified image statement must start out flagged")
-	}
-
-	for _, path := range []struct {
-		name        string
-		failed      bool
-		hasAnswer   bool
-		wantsReview bool
+	for _, test := range []struct {
+		name           string
+		hasStudentWork bool
+		aiIsCorrect    *bool
+		want           bool
 	}{
-		{"ocr failed", true, false, true},
-		{"unreadable", true, false, true},
-		{"evaluation failed", true, true, true},
-		{"evaluated fine", false, true, true},
-		{"nothing submitted", false, false, false},
+		{name: "ocr failed", hasStudentWork: true, want: true},
+		{name: "unreadable", hasStudentWork: true, want: true},
+		{name: "evaluation failed", hasStudentWork: true, want: true},
+		{name: "no assistant configured", hasStudentWork: true, want: true},
+		{name: "graded correct", hasStudentWork: true, aiIsCorrect: &correct},
+		{name: "graded incorrect", hasStudentWork: true, aiIsCorrect: &incorrect},
+		{name: "nothing submitted"},
 	} {
-		needsReview := start
-		if path.failed {
-			needsReview = true
-		}
-		if !path.hasAnswer && !path.failed {
-			needsReview = false
-		}
-		if needsReview != path.wantsReview {
-			t.Fatalf("%s: needsReview=%v, want %v", path.name, needsReview, path.wantsReview)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			if got := submissionNeedsTeacherReview(test.hasStudentWork, test.aiIsCorrect); got != test.want {
+				t.Fatalf("submissionNeedsTeacherReview() = %t, want %t", got, test.want)
+			}
+		})
 	}
 }
 
-func TestVerifiedStatementNeverFlagsOnSuccess(t *testing.T) {
-	page := &domain.NotebookPage{
-		ContentData:       "https://bucket.s3.amazonaws.com/image/notebook/x/y.png",
-		StatementText:     "3+2=",
-		StatementVerified: true,
-	}
-	if statementNeedsTeacherReview(page) {
-		t.Fatal("a teacher-verified statement must not force review on a clean run")
+// An unverified transcription of the teacher's statement used to send every
+// submission on that page to the teacher, even the ones graded cleanly.
+func TestUnverifiedStatementDoesNotForceReview(t *testing.T) {
+	graded := true
+	if submissionNeedsTeacherReview(true, &graded) {
+		t.Fatal("a clean verdict stands on its own, whatever the statement's state")
 	}
 }

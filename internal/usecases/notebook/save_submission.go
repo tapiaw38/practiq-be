@@ -78,12 +78,14 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	}
 
 	ensurePageStatement(ctx, app, notebook.TeacherID, page)
-	submission.NeedsTeacherReview = statementNeedsTeacherReview(page)
+
+	// Whether a teacher is needed is decided at the end, from what the assistant
+	// managed to do. It is read here because the OCR path rewrites canvasForOCR.
+	hasStudentWork := strings.TrimSpace(input.AnswerText) != "" || strings.TrimSpace(input.CanvasData) != ""
 
 	if page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 		if expectedAnswer != "" {
-			needsReview := submission.NeedsTeacherReview
 			studentAnswer := strings.TrimSpace(input.AnswerText)
 			if studentAnswer == "" && strings.TrimSpace(canvasForOCR) != "" {
 				if resolved, err := resolveImageForOCR(ctx, app, canvasForOCR); err == nil {
@@ -98,14 +100,12 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					studentAnswer = recognizedText
 				} else {
 					log.Printf("[notebook] canvas analysis failed page_id=%s err=%v", input.PageID, recognizeErr)
-					needsReview = true
 					submission.AIFeedback = "no se pudo analizar la imagen del cuaderno"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
 			}
 
 			if strings.EqualFold(studentAnswer, "UNREADABLE") {
-				needsReview = true
 				submission.AIFeedback = "respuesta no legible (UNREADABLE)"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			} else if studentAnswer != "" {
@@ -121,19 +121,17 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					}
 				} else {
 					log.Printf("[notebook] evaluation failed page_id=%s err=%v", input.PageID, aiErr)
-					needsReview = true
 					submission.AIFeedback = "no se pudo evaluar la respuesta"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
 			} else {
-				needsReview = false
 				submission.AIFeedback = "no se encontro respuesta para evaluar"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			}
-
-			submission.NeedsTeacherReview = needsReview
 		}
 	}
+
+	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect)
 
 	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil {
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
@@ -162,11 +160,17 @@ func evaluateNotebookSubmission(
 	)
 }
 
-func statementNeedsTeacherReview(page *domain.NotebookPage) bool {
-	if page == nil {
-		return false
-	}
-	return pageHasImageStatement(page.ContentData) && !page.StatementVerified
+// submissionNeedsTeacherReview is the whole rule for when a person has to step
+// in: the student handed in work and the assistant produced no verdict on it —
+// it never read the answer, or it read it and could not decide.
+//
+// A clean verdict stands on its own. An unverified transcription of the
+// teacher's statement used to seed this flag, which sent every submission on
+// such a page to the teacher even when the assistant had graded it without
+// trouble; verifying the statement is still worth doing, but it is not a reason
+// to re-grade by hand. An empty page is nobody's homework either.
+func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool) bool {
+	return hasStudentWork && aiIsCorrect == nil
 }
 
 func buildNotebookPromptContext(page *domain.NotebookPage) string {

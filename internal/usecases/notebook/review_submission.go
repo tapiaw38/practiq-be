@@ -73,7 +73,11 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	var isCorrect *bool
 	var feedback string
 	ensurePageStatement(ctx, app, submission.TeacherID, page)
-	needsTeacherReview := statementNeedsTeacherReview(page)
+
+	// Whether a teacher is needed is decided at the end, from what the assistant
+	// managed to do. See submissionNeedsTeacherReview.
+	hasStudentWork := strings.TrimSpace(submission.AnswerText) != "" ||
+		strings.TrimSpace(submission.CanvasData) != ""
 
 	studentAnswer := strings.TrimSpace(submission.AnswerText)
 
@@ -88,7 +92,6 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		recognized, recognizeErr := app.Integrations.AssistantGateway.AnalyzeNotebookCanvas(ctx, assistantCfg, canvasData, buildNotebookPromptContext(page))
 		if recognizeErr != nil {
 			log.Printf("[notebook] canvas analysis failed submission_id=%s err=%v", submissionID, recognizeErr)
-			needsTeacherReview = true
 			feedback = "no se pudo analizar la imagen del cuaderno"
 		} else {
 			recognizedText = strings.TrimSpace(recognized)
@@ -98,7 +101,6 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 
 	// If the recognized answer is unreadable, report that
 	if strings.EqualFold(studentAnswer, "UNREADABLE") {
-		needsTeacherReview = true
 		feedback = "respuesta no legible (UNREADABLE)"
 		isCorrect = nil
 	} else if studentAnswer != "" {
@@ -107,7 +109,6 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName)
 		if aiErr != nil {
 			log.Printf("[notebook] evaluation failed submission_id=%s err=%v", submissionID, aiErr)
-			needsTeacherReview = true
 			feedback = "no se pudo evaluar la respuesta"
 		} else {
 			isCorrect = &evaluation.IsCorrect
@@ -120,9 +121,10 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 			}
 		}
 	} else {
-		needsTeacherReview = false
 		feedback = "no se encontro respuesta para evaluar"
 	}
+
+	needsTeacherReview := submissionNeedsTeacherReview(hasStudentWork, isCorrect)
 
 	// Update the submission with the AI review results
 	if err := app.Repositories.Notebook.UpdateSubmissionAIReview(ctx, submissionID, recognizedText, isCorrect, feedback, needsTeacherReview); err != nil {
