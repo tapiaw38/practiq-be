@@ -101,9 +101,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 			if strings.EqualFold(studentAnswer, "UNREADABLE") {
 				submission.AIFeedback = "respuesta no legible (UNREADABLE)"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
-			}
-
-			if studentAnswer != "" && studentAnswer != "UNREADABLE" {
+			} else if studentAnswer != "" {
 				if evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName); aiErr == nil {
 					submission.AIIsCorrect = &evaluation.IsCorrect
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
@@ -114,9 +112,13 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					} else {
 						submission.AIFeedback = "respuesta evaluada como incorrecta"
 					}
+				} else {
+					log.Printf("[notebook] evaluation failed page_id=%s err=%v", input.PageID, aiErr)
+					submission.AIFeedback = "no se pudo evaluar la respuesta"
+					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
 			} else {
-				submission.AIFeedback = "no se pudo evaluar la respuesta"
+				submission.AIFeedback = "no se encontro respuesta para evaluar"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			}
 		}

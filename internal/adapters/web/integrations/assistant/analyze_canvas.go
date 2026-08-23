@@ -10,7 +10,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/utils"
 )
@@ -95,6 +98,7 @@ func (g *gateway) sendCanvasMessage(ctx context.Context, baseURL, apiKey, conver
 	if err != nil {
 		return "", err
 	}
+	dumpCanvasForDebug(decoded, contentType)
 
 	partHeader := make(textproto.MIMEHeader)
 	partHeader.Set("Content-Disposition", `form-data; name="image_content"; filename="canvas.png"`)
@@ -159,6 +163,23 @@ func (g *gateway) sendCanvasMessage(ctx context.Context, baseURL, apiKey, conver
 	}
 
 	return "", errors.New("assistant response missing")
+}
+
+func dumpCanvasForDebug(content []byte, contentType string) {
+	dir := strings.TrimSpace(os.Getenv("PRACTIQ_DEBUG_CANVAS_DIR"))
+	if dir == "" {
+		return
+	}
+	ext := ".png"
+	if strings.Contains(contentType, "jpeg") || strings.Contains(contentType, "jpg") {
+		ext = ".jpg"
+	}
+	name := filepath.Join(dir, fmt.Sprintf("canvas-%d%s", time.Now().UnixNano(), ext))
+	if err := os.WriteFile(name, content, 0o600); err != nil {
+		log.Printf("[assistant] canvas debug dump failed err=%v", err)
+		return
+	}
+	log.Printf("[assistant] canvas debug dump path=%s bytes=%d content_type=%s", name, len(content), contentType)
 }
 
 func buildCanvasPrompt(correctAnswer string) string {
