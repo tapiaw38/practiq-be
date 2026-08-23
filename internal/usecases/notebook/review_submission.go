@@ -83,7 +83,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 			canvasData = submission.CanvasData
 		}
 		canvasData = normalizeCanvasDataURI(canvasData)
-		recognized, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, canvasData, expectedAnswer)
+		recognized, recognizeErr := app.Integrations.AssistantGateway.AnalyzeNotebookCanvas(ctx, assistantCfg, canvasData, buildNotebookPromptContext(page))
 		if recognizeErr != nil {
 			feedback = "no se pudo analizar la imagen del cuaderno"
 		} else {

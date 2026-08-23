@@ -88,7 +88,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					log.Printf("[image_storage] notebook submission resolve failed page_id=%s err=%v", input.PageID, err)
 				}
 				canvasForOCR = normalizeCanvasDataURI(canvasForOCR)
-				if recognizedRaw, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, canvasForOCR, expectedAnswer); recognizeErr == nil {
+				if recognizedRaw, recognizeErr := app.Integrations.AssistantGateway.AnalyzeNotebookCanvas(ctx, assistantCfg, canvasForOCR, buildNotebookPromptContext(page)); recognizeErr == nil {
 					recognizedText := strings.TrimSpace(recognizedRaw)
 					submission.AIRecognizedText = recognizedText
 					studentAnswer = recognizedText
@@ -145,10 +145,38 @@ func normalizeNotebookExpectedAnswer(contentData string) string {
 	if value == "" {
 		return ""
 	}
-	if isLikelyImageData(value) {
+	if isLikelyImageData(value) || isImageURL(value) {
 		return "[imagen del docente]"
 	}
 	return value
+}
+
+// AddPage uploads a teacher's page image and stores the resulting URL, so
+// ContentData is routinely an https link rather than the base64 isLikelyImageData
+// looks for — and a URL is not base64-like, so it slipped through and reached the
+// model verbatim as "respuesta correcta esperada: https://….png". Kept separate
+// from isLikelyImageData because AddPage uses that one to decide what to upload,
+// and an already-uploaded URL must not be uploaded again.
+func isImageURL(value string) bool {
+	if !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") {
+		return false
+	}
+	if strings.ContainsAny(value, " \t\n") {
+		return false
+	}
+	path := strings.ToLower(value)
+	if idx := strings.IndexAny(path, "?#"); idx != -1 {
+		path = path[:idx]
+	}
+	switch {
+	case strings.HasSuffix(path, ".png"),
+		strings.HasSuffix(path, ".jpg"),
+		strings.HasSuffix(path, ".jpeg"),
+		strings.HasSuffix(path, ".webp"),
+		strings.HasSuffix(path, ".gif"):
+		return true
+	}
+	return false
 }
 
 func isLikelyImageData(value string) bool {

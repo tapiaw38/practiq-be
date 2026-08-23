@@ -13,6 +13,7 @@ import (
 type Gateway interface {
 	IsConfigured(cfg Config) bool
 	AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, correctAnswer string) (string, error)
+	AnalyzeNotebookCanvas(ctx context.Context, cfg Config, canvasData, pageContext string) (string, error)
 	EvaluatePracticeAnswer(ctx context.Context, cfg Config, question, correctAnswer, studentAnswer, gradeName string) (EvaluationResult, error)
 	EvaluateAttachment(ctx context.Context, cfg Config, input AttachmentEvaluationInput) (EvaluationResult, error)
 	AskHelp(ctx context.Context, cfg Config, prompt string) (string, error)

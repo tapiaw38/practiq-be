@@ -19,6 +19,24 @@ const unreadableResponse = "UNREADABLE"
 const canvasAnalyzeAttempts = 3
 
 func (g *gateway) AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, correctAnswer string) (string, error) {
+	return g.analyzeCanvas(ctx, cfg, canvasData, buildCanvasPrompt(correctAnswer), isExpectedCanvasResponse)
+}
+
+// AnalyzeNotebookCanvas reads a whole notebook page rather than one exercise's
+// final answer. It cannot share AnalyzeCanvas's prompt: that one asks for the
+// final answer only and rejects anything past 120 characters, so a faithful
+// transcription of a page of worked problems was thrown away as malformed and
+// retried until the attempts ran out.
+func (g *gateway) AnalyzeNotebookCanvas(ctx context.Context, cfg Config, canvasData, pageContext string) (string, error) {
+	return g.analyzeCanvas(ctx, cfg, canvasData, buildNotebookCanvasPrompt(pageContext), isExpectedNotebookResponse)
+}
+
+func (g *gateway) analyzeCanvas(
+	ctx context.Context,
+	cfg Config,
+	canvasData, prompt string,
+	accept func(string) bool,
+) (string, error) {
 	if !g.IsConfigured(cfg) {
 		return "", errors.New("assistant service not configured")
 	}
@@ -26,7 +44,6 @@ func (g *gateway) AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, cor
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 	apiKey := strings.TrimSpace(cfg.APIKey)
 
-	prompt := buildCanvasPrompt(correctAnswer)
 	log.Printf("[assistant] analyze_canvas prompt=%q", truncateForLog(prompt, 700))
 
 	var lastErr error
@@ -46,7 +63,7 @@ func (g *gateway) AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, cor
 			lastErr = err
 			continue
 		}
-		if !isExpectedCanvasResponse(response) {
+		if !accept(response) {
 			log.Printf("[assistant] analyze_canvas unexpected_response attempt=%d conversation_id=%s response=%q", attempt, conversationID, response)
 			lastErr = errors.New("assistant canvas response format not expected")
 			continue
@@ -152,6 +169,44 @@ func buildCanvasPrompt(correctAnswer string) string {
 		"Si no puedes leerla con suficiente confianza, responde exactamente: " + unreadableResponse + ". " +
 		"Respuesta correcta esperada: " + cleanAnswer + "."
 }
+
+func buildNotebookCanvasPrompt(pageContext string) string {
+	context := strings.TrimSpace(pageContext)
+	if context == "" {
+		context = "(sin contexto de la pagina)"
+	}
+
+	return "Analiza esta imagen de una pagina de cuaderno resuelta a mano por un estudiante. " +
+		"Transcribi todo lo que el estudiante escribio, respetando el orden y separando cada ejercicio con un salto de linea. " +
+		"No corrijas, no resuelvas y no opines sobre si esta bien o mal: solo transcribi. " +
+		"Si la pagina esta vacia o no podes leer nada con suficiente confianza, responde exactamente: " + unreadableResponse + ". " +
+		"Contexto de la pagina: " + context + "."
+}
+
+// A page of worked problems is legitimately long, so this only guards against
+// the assistant answering with something that is not a transcription at all.
+func isExpectedNotebookResponse(raw string) bool {
+	value := normalizeCanvasResponse(raw)
+	if value == "" {
+		return false
+	}
+	if strings.EqualFold(value, unreadableResponse) {
+		return true
+	}
+	if isCanvasVerdict(value) {
+		return false
+	}
+	// No fence check here, unlike the single-answer version below:
+	// normalizeCanvasResponse strips ``` before this runs, so testing for it
+	// can never fire. A fenced answer arrives already unwrapped and usable.
+	if strings.HasPrefix(value, "{") || strings.HasPrefix(value, "[") {
+		return false
+	}
+	return len(value) <= maxNotebookTranscriptionChars
+}
+
+// Long enough for a full page, short enough that a runaway answer still fails.
+const maxNotebookTranscriptionChars = 4000
 
 func isExpectedCanvasResponse(raw string) bool {
 	value := normalizeCanvasResponse(raw)
