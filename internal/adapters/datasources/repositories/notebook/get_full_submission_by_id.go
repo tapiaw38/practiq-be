@@ -11,7 +11,7 @@ func (r *repository) GetFullSubmissionByID(ctx context.Context, id string) (*dom
 	var s domain.NotebookSubmissionFull
 	err := r.db.QueryRowContext(ctx, `
 		SELECT ns.id, ns.page_id, ns.student_id, ns.canvas_data, ns.answer_text,
-		       COALESCE(ns.ai_recognized_text,''), ns.ai_is_correct, COALESCE(ns.ai_feedback,''), ns.ai_reviewed_at,
+		       COALESCE(ns.ai_recognized_text,''), ns.ai_is_correct, COALESCE(ns.ai_feedback,''), ns.ai_reviewed_at, COALESCE(ns.needs_teacher_review,FALSE),
 		       ns.teacher_is_correct, COALESCE(ns.teacher_feedback,''), ns.teacher_reviewed_at,
 		       ns.submitted_at, ns.updated_at,
 		       COALESCE(up.name,''), COALESCE(up.email,''),
@@ -24,7 +24,7 @@ func (r *repository) GetFullSubmissionByID(ctx context.Context, id string) (*dom
 		WHERE ns.id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
 	`, id).Scan(
 		&s.ID, &s.PageID, &s.StudentID, &s.CanvasData, &s.AnswerText,
-		&s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt,
+		&s.AIRecognizedText, &s.AIIsCorrect, &s.AIFeedback, &s.AIReviewedAt, &s.NeedsTeacherReview,
 		&s.TeacherIsCorrect, &s.TeacherFeedback, &s.TeacherReviewedAt,
 		&s.SubmittedAt, &s.UpdatedAt,
 		&s.StudentName, &s.StudentEmail,

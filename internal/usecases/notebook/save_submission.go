@@ -104,6 +104,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 			} else if studentAnswer != "" {
 				if evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName); aiErr == nil {
 					submission.AIIsCorrect = &evaluation.IsCorrect
+					submission.NeedsTeacherReview = statementNeedsTeacherReview(page)
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 					if strings.TrimSpace(evaluation.Feedback) != "" {
 						submission.AIFeedback = evaluation.Feedback
@@ -142,51 +143,20 @@ func evaluateNotebookSubmission(
 	page *domain.NotebookPage,
 	expectedAnswer, studentAnswer, gradeName string,
 ) (assistant.EvaluationResult, error) {
-	pageContext := buildNotebookPromptContext(page)
-
-	if statement := transcribeNotebookStatement(ctx, app, cfg, page, pageContext); statement != "" {
+	if statement := strings.TrimSpace(page.StatementText); statement != "" {
 		expectedAnswer = statement
 	}
 
 	return app.Integrations.AssistantGateway.EvaluatePracticeAnswer(
-		ctx, cfg, pageContext, expectedAnswer, studentAnswer, gradeName,
+		ctx, cfg, buildNotebookPromptContext(page), expectedAnswer, studentAnswer, gradeName,
 	)
 }
 
-func transcribeNotebookStatement(
-	ctx context.Context,
-	app *appcontext.Context,
-	cfg assistant.Config,
-	page *domain.NotebookPage,
-	pageContext string,
-) string {
+func statementNeedsTeacherReview(page *domain.NotebookPage) bool {
 	if page == nil {
-		return ""
+		return false
 	}
-	teacherPage := strings.TrimSpace(page.ContentData)
-	if teacherPage == "" || !(isLikelyImageData(teacherPage) || isImageURL(teacherPage)) {
-		return ""
-	}
-
-	resolved, err := resolveImageForOCR(ctx, app, teacherPage)
-	if err != nil {
-		log.Printf("[notebook] statement resolve failed page_id=%s err=%v", page.ID, err)
-		return ""
-	}
-
-	transcription, err := app.Integrations.AssistantGateway.AnalyzeNotebookStatement(
-		ctx, cfg, normalizeCanvasDataURI(resolved), pageContext,
-	)
-	if err != nil {
-		log.Printf("[notebook] statement transcription failed page_id=%s err=%v", page.ID, err)
-		return ""
-	}
-
-	transcription = strings.TrimSpace(transcription)
-	if transcription == "" || strings.EqualFold(transcription, "UNREADABLE") {
-		return ""
-	}
-	return transcription
+	return pageHasImageStatement(page.ContentData) && !page.StatementVerified
 }
 
 func buildNotebookPromptContext(page *domain.NotebookPage) string {

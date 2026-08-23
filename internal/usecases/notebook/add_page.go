@@ -57,18 +57,22 @@ func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSupe
 			log.Printf("[image_storage] notebook page upload failed notebook_id=%s err=%v", input.NotebookID, err)
 		}
 	}
-	id, err := app.Repositories.Notebook.CreatePage(ctx, domain.NotebookPage{
+	page := domain.NotebookPage{
 		NotebookID:   input.NotebookID,
 		PageNumber:   input.PageNumber,
 		Title:        input.Title,
 		ContentType:  input.ContentType,
 		ContentData:  contentData,
 		Instructions: input.Instructions,
-	})
+	}
+	page.StatementText = transcribePageStatement(ctx, app, notebook.TeacherID, contentData, page)
+
+	id, err := app.Repositories.Notebook.CreatePage(ctx, page)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookUpdateError, err)
 	}
-	page := toPageData(id, input, contentData)
-	page.ContentData = datauri.Resolve(ctx, app, page.ContentData)
-	return &AddPageOutput{Data: page}, nil
+	data := toPageData(id, input, contentData)
+	data.ContentData = datauri.Resolve(ctx, app, data.ContentData)
+	data.StatementText = page.StatementText
+	return &AddPageOutput{Data: data}, nil
 }

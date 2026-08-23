@@ -72,6 +72,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	var recognizedText string
 	var isCorrect *bool
 	var feedback string
+	needsTeacherReview := false
 
 	studentAnswer := strings.TrimSpace(submission.AnswerText)
 
@@ -104,6 +105,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 			feedback = "no se pudo evaluar la respuesta"
 		} else {
 			isCorrect = &evaluation.IsCorrect
+			needsTeacherReview = statementNeedsTeacherReview(page)
 			if strings.TrimSpace(evaluation.Feedback) != "" {
 				feedback = evaluation.Feedback
 			} else if evaluation.IsCorrect {
@@ -117,7 +119,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	}
 
 	// Update the submission with the AI review results
-	if err := app.Repositories.Notebook.UpdateSubmissionAIReview(ctx, submissionID, recognizedText, isCorrect, feedback); err != nil {
+	if err := app.Repositories.Notebook.UpdateSubmissionAIReview(ctx, submissionID, recognizedText, isCorrect, feedback, needsTeacherReview); err != nil {
 		return nil, err
 	}
 

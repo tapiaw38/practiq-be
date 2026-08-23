@@ -24,7 +24,7 @@ type Repository interface {
 	GetSubmissionByID(ctx context.Context, id string) (*domain.NotebookSubmission, error)
 	GetFullSubmissionByID(ctx context.Context, id string) (*domain.NotebookSubmissionFull, error)
 	ListSubmissions(ctx context.Context, filter SubmissionFilter) ([]domain.NotebookSubmissionFull, error)
-	UpdateSubmissionAIReview(ctx context.Context, id string, recognizedText string, isCorrect *bool, feedback string) error
+	UpdateSubmissionAIReview(ctx context.Context, id string, recognizedText string, isCorrect *bool, feedback string, needsTeacherReview bool) error
 	UpdateSubmissionTeacherReview(ctx context.Context, id string, isCorrect bool, feedback string) error
 }
 type SubmissionFilter struct {

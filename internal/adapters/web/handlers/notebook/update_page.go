@@ -15,21 +15,25 @@ func NewUpdatePageHandler(uc ucNB.UpdatePageUsecase) gin.HandlerFunc {
 		requesterID := middlewares.GetUserID(c)
 		isSuperAdmin := middlewares.IsSuperAdmin(c)
 		var input struct {
-			Title        string `json:"title"`
-			ContentType  string `json:"content_type"`
-			ContentData  string `json:"content_data"`
-			Instructions string `json:"instructions"`
+			Title             string  `json:"title"`
+			ContentType       string  `json:"content_type"`
+			ContentData       string  `json:"content_data"`
+			Instructions      string  `json:"instructions"`
+			StatementText     *string `json:"statement_text"`
+			StatementVerified *bool   `json:"statement_verified"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
 		if appErr := uc.Execute(c, requesterID, isSuperAdmin, ucNB.UpdatePageInput{
-			PageID:       pageID,
-			Title:        input.Title,
-			ContentType:  input.ContentType,
-			ContentData:  input.ContentData,
-			Instructions: input.Instructions,
+			PageID:            pageID,
+			Title:             input.Title,
+			ContentType:       input.ContentType,
+			ContentData:       input.ContentData,
+			Instructions:      input.Instructions,
+			StatementText:     input.StatementText,
+			StatementVerified: input.StatementVerified,
 		}); appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
