@@ -46,69 +46,87 @@ func decode(t *testing.T, raw []byte) image.Image {
 	return img
 }
 
-func TestStackKeepsBothPagesAtNativeSize(t *testing.T) {
-	top := pngOf(100, 40, color.RGBA{R: 0xff, A: 0xff})
-	bottom := pngOf(60, 30, color.RGBA{B: 0xff, A: 0xff})
+func isWhite(img image.Image, x, y int) bool {
+	r, g, b, a := img.At(x, y).RGBA()
+	return r == 0xffff && g == 0xffff && b == 0xffff && a == 0xffff
+}
 
-	out, err := StackVertically(top, bottom)
-	if err != nil {
-		t.Fatalf("stack: %v", err)
-	}
-	got := decode(t, out).Bounds()
+func TestStackStaysWithinThePixelBudget(t *testing.T) {
+	teacher := pngOf(2480, 3508, color.RGBA{R: 0xff, A: 0xff})
+	student := pngOf(1000, 500, color.RGBA{B: 0xff, A: 0xff})
 
-	if got.Dx() != 100 {
-		t.Fatalf("width should be the wider page, got %d", got.Dx())
+	b := decode(t, mustStack(t, teacher, student)).Bounds()
+
+	if got := b.Dx() * b.Dy(); got > maxSheetPixels {
+		t.Fatalf("sheet exceeds the pixel budget: %d", got)
 	}
-	if want := 40 + gapHeight + 30; got.Dy() != want {
-		t.Fatalf("height = %d, want %d", got.Dy(), want)
+	if b.Dx() > maxSheetWidth || b.Dx() < 1 {
+		t.Fatalf("unexpected sheet width %d", b.Dx())
 	}
 }
 
-// The student's canvas arrives transparent where nothing was drawn; without a
-// white sheet underneath it would composite onto black and the near-black ink
-// would vanish.
-func TestStackPaintsTransparencyWhite(t *testing.T) {
-	transparent := pngOf(20, 20, color.RGBA{})
-	opaque := pngOf(20, 20, color.RGBA{R: 0xff, A: 0xff})
+func TestStackKeepsTheStudentHalfLegible(t *testing.T) {
+	teacher := pngOf(2480, 3508, color.White)
+	student := pngOf(1000, 500, color.White)
 
-	out, err := StackVertically(opaque, transparent)
-	if err != nil {
-		t.Fatalf("stack: %v", err)
+	b := decode(t, mustStack(t, teacher, student)).Bounds()
+	studentH := scaledHeight(decode(t, student), b.Dx())
+
+	if share := float64(studentH) / float64(b.Dy()); share < 0.10 {
+		t.Fatalf("student half is %.1f%% of the sheet, too small to survive downscaling", share*100)
 	}
-	img := decode(t, out)
+}
 
-	// Sample inside the bottom page, which was fully transparent.
-	r, g, b, a := img.At(10, 20+gapHeight+10).RGBA()
-	if r != 0xffff || g != 0xffff || b != 0xffff || a != 0xffff {
-		t.Fatalf("transparent area should be white, got rgba(%d,%d,%d,%d)", r, g, b, a)
+func TestStackClampsTinyAndHugeStudentPages(t *testing.T) {
+	if w := sheetWidth(200); w != minSheetWidth {
+		t.Fatalf("a tiny canvas should be lifted to %d, got %d", minSheetWidth, w)
+	}
+	if w := sheetWidth(4000); w != maxSheetWidth {
+		t.Fatalf("a huge canvas should be capped at %d, got %d", maxSheetWidth, w)
+	}
+	if w := sheetWidth(1100); w != 1100 {
+		t.Fatalf("a canvas already in range should be kept, got %d", w)
+	}
+}
+
+func TestStackPaintsTransparencyWhite(t *testing.T) {
+	teacher := pngOf(1000, 400, color.RGBA{R: 0xff, A: 0xff})
+	student := pngOf(1000, 400, color.RGBA{})
+
+	img := decode(t, mustStack(t, teacher, student))
+	b := img.Bounds()
+
+	if !isWhite(img, b.Dx()/2, b.Dy()-3) {
+		r, g, bl, a := img.At(b.Dx()/2, b.Dy()-3).RGBA()
+		t.Fatalf("student area should be white, got rgba(%d,%d,%d,%d)", r, g, bl, a)
 	}
 }
 
 func TestStackSeparatesThePagesWithARule(t *testing.T) {
-	white := pngOf(40, 20, color.White)
-	out, err := StackVertically(white, white)
-	if err != nil {
-		t.Fatalf("stack: %v", err)
-	}
-	img := decode(t, out)
+	white := pngOf(1000, 400, color.White)
 
-	ruleY := 20 + (gapHeight-ruleHeight)/2
-	r, g, b, _ := img.At(20, ruleY).RGBA()
-	if r == 0xffff && g == 0xffff && b == 0xffff {
+	img := decode(t, mustStack(t, white, white))
+	b := img.Bounds()
+
+	found := false
+	for y := b.Min.Y; y < b.Max.Y && !found; y++ {
+		if !isWhite(img, b.Dx()/2, y) {
+			found = true
+		}
+	}
+	if !found {
 		t.Fatal("two white pages must not merge into one sheet: rule missing")
 	}
 }
 
-// The teacher uploads whatever their phone produced, so the two sides are not
-// always the same format.
 func TestStackAcceptsMixedFormats(t *testing.T) {
-	if _, err := StackVertically(jpegOf(50, 20, color.White), pngOf(50, 20, color.White)); err != nil {
+	if _, err := StackVertically(jpegOf(900, 400, color.White), pngOf(900, 400, color.White)); err != nil {
 		t.Fatalf("jpeg over png: %v", err)
 	}
 }
 
 func TestStackDegradesInsteadOfFailing(t *testing.T) {
-	page := pngOf(10, 10, color.White)
+	page := pngOf(100, 100, color.White)
 
 	if out, err := StackVertically(nil, page); err != nil || !bytes.Equal(out, page) {
 		t.Fatal("a missing teacher page should yield the student's page unchanged")
@@ -121,5 +139,41 @@ func TestStackDegradesInsteadOfFailing(t *testing.T) {
 	}
 	if _, err := StackVertically([]byte("not an image"), page); err == nil {
 		t.Fatal("undecodable input should error so the caller can fall back to text")
+	}
+}
+
+func mustStack(t *testing.T, top, bottom []byte) []byte {
+	t.Helper()
+	out, err := StackVertically(top, bottom)
+	if err != nil {
+		t.Fatalf("stack: %v", err)
+	}
+	return out
+}
+
+func TestStudentStrokeSurvivesModelDownscale(t *testing.T) {
+	teacher := pngOf(2480, 3508, color.White)
+	student := pngOf(1000, 500, color.White)
+
+	out, err := StackVertically(teacher, student)
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, _, _ := image.Decode(bytes.NewReader(out))
+	b := img.Bounds()
+
+	longest := b.Dy()
+	if b.Dx() > longest {
+		longest = b.Dx()
+	}
+	factor := 1024.0 / float64(longest)
+	if factor > 1 {
+		factor = 1
+	}
+	strokePx := 3.0 * factor
+
+	t.Logf("sheet=%dx%d  factor=%.3f  trazo 3px -> %.2fpx", b.Dx(), b.Dy(), factor, strokePx)
+	if strokePx < 1.5 {
+		t.Fatalf("stroke collapses to %.2fpx after downscale", strokePx)
 	}
 }
