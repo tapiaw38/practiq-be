@@ -131,7 +131,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		}
 	}
 
-	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect, page)
+	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect)
 
 	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil {
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
@@ -160,32 +160,17 @@ func evaluateNotebookSubmission(
 	)
 }
 
-// submissionNeedsTeacherReview decides when a person has to settle a notebook
-// page. Two things call one in, and an empty page calls nobody.
+// submissionNeedsTeacherReview is the whole rule: the student handed in work
+// and the assistant produced no verdict on it — it never read the answer, or
+// read it and could not decide. A verdict stands on its own, right or wrong,
+// and an empty page is nobody's homework.
 //
-// The assistant produced no verdict: it never read the answer, or read it and
-// could not decide.
-//
-// Or it did decide, but against a statement nobody checked. A notebook page is
-// graded by comparing the student's work to a transcription of the teacher's
-// sheet, and a misread there is invisible at the point of use: one run turned
-// "5+1=" into "5+4=", which grades a correct answer as wrong with full
-// confidence and no signal. A practice cannot wait for a teacher, so it never
-// asks for one; a notebook can, so here it does — until the teacher confirms
-// the transcription once, from the page editor, and every later submission on
-// that page goes through clean.
-func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool, page *domain.NotebookPage) bool {
-	if !hasStudentWork {
-		return false
-	}
-	return aiIsCorrect == nil || statementNeedsTeacherReview(page)
-}
-
-func statementNeedsTeacherReview(page *domain.NotebookPage) bool {
-	if page == nil || page.StatementVerified {
-		return false
-	}
-	return pageHasImageStatement(page.ContentData)
+// An unverified transcription of the teacher's statement does not call anyone
+// in. It can be misread, and the page editor exists so a teacher can check it,
+// but making every submission on such a page wait turned the queue into every
+// submission and left students with no result at all.
+func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool) bool {
+	return hasStudentWork && aiIsCorrect == nil
 }
 
 func buildNotebookPromptContext(page *domain.NotebookPage) string {

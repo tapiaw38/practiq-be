@@ -1,10 +1,6 @@
 package notebook
 
-import (
-	"testing"
-
-	"github.com/tapiaw38/practiq-be/internal/domain"
-)
+import "testing"
 
 func TestPageHasImageStatement(t *testing.T) {
 	for _, value := range []string{
@@ -43,7 +39,7 @@ func TestSubmissionNeedsTeacherReview(t *testing.T) {
 		{name: "nothing submitted"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := submissionNeedsTeacherReview(test.hasStudentWork, test.aiIsCorrect, verifiedPage()); got != test.want {
+			if got := submissionNeedsTeacherReview(test.hasStudentWork, test.aiIsCorrect); got != test.want {
 				t.Fatalf("submissionNeedsTeacherReview() = %t, want %t", got, test.want)
 			}
 		})
@@ -54,36 +50,7 @@ func TestSubmissionNeedsTeacherReview(t *testing.T) {
 // submission on that page to the teacher, even the ones graded cleanly.
 func TestUnverifiedStatementDoesNotForceReview(t *testing.T) {
 	graded := true
-	if submissionNeedsTeacherReview(true, &graded, verifiedPage()) {
+	if submissionNeedsTeacherReview(true, &graded) {
 		t.Fatal("a clean verdict stands on its own, whatever the statement's state")
-	}
-}
-
-func verifiedPage() *domain.NotebookPage {
-	return &domain.NotebookPage{
-		ContentData:       "https://bucket.s3.amazonaws.com/image/notebook/x/y.png",
-		StatementVerified: true,
-	}
-}
-
-func TestUnverifiedStatementStillCallsTheTeacher(t *testing.T) {
-	graded := true
-	unverified := &domain.NotebookPage{
-		ContentData: "https://bucket.s3.amazonaws.com/image/notebook/x/y.png",
-	}
-
-	if !submissionNeedsTeacherReview(true, &graded, unverified) {
-		t.Fatal("a clean verdict against an unchecked transcription must still reach a teacher")
-	}
-	if submissionNeedsTeacherReview(false, &graded, unverified) {
-		t.Fatal("an empty page calls nobody, verified or not")
-	}
-	if submissionNeedsTeacherReview(true, &graded, verifiedPage()) {
-		t.Fatal("once the teacher confirms the statement, a clean verdict stands on its own")
-	}
-
-	text := &domain.NotebookPage{ContentData: "3+2="}
-	if submissionNeedsTeacherReview(true, &graded, text) {
-		t.Fatal("a text statement was never transcribed, so there is nothing to verify")
 	}
 }
