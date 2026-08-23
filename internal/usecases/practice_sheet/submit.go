@@ -102,6 +102,12 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		assistantCfg.APIKey = profile.AssistantAPIKey
 	}
 
+	// Only a level test is corrected by a teacher (the homework notebook has its
+	// own review flow). A practice is graded on the spot with whatever the
+	// assistant could read: it never enters the teacher's queue and never waits
+	// on one.
+	teacherGrades := teacherGradesSheet(ps.SheetType)
+
 	correct := 0
 	total := len(input.Attempts)
 	// Any answer waiting for a teacher blocks promotion on a level test.
@@ -172,13 +178,13 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 
 		// A canvas the OCR cannot transcribe must not lower the student's score.
-		// It is kept for a later review instead of being evaluated as arbitrary text.
-		needsTeacherReview := canvasUnreadable || statementMediaNeedsReview
+		// It is left ungraded instead of being evaluated as arbitrary text.
+		ungraded := canvasUnreadable || statementMediaNeedsReview
 		if canvasUnreadable {
 			answerText = "UNREADABLE"
 			aiFeedback = "No pudimos leer tu respuesta escrita. Intentá escribirla más clara o pedí revisión."
 		} else if statementMediaNeedsReview {
-			aiFeedback = "Tu respuesta quedó pendiente de la revisión del docente porque este ejercicio incluye material visual o de audio."
+			aiFeedback = statementMediaFeedback(teacherGrades)
 		}
 		var aiSuggestion *bool
 
@@ -187,15 +193,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		} else if ok && ex.Type == exerciseTypeAttachment {
 			if !hasAttachment {
 				// Nothing was uploaded: that is simply an unanswered exercise.
-				needsTeacherReview = false
+				ungraded = false
 			} else {
 				outcome := evaluateAttachment(ctx, app, assistantCfg, ex, gradeName,
-					attempt.AttachmentURL, attempt.AttachmentName,
-					ps.SheetType == sheetTypeLevelTest)
+					attempt.AttachmentURL, attempt.AttachmentName, teacherGrades)
 				isCorrect = outcome.IsCorrect
 				aiSuggestion = outcome.AISuggestedCorrect
 				aiFeedback = outcome.Feedback
-				needsTeacherReview = outcome.NeedsReview
+				ungraded = outcome.Ungraded
 				if resultAIFeedback == "" && aiFeedback != "" {
 					resultAIFeedback = aiFeedback
 				}
@@ -233,20 +238,25 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
+		// The teacher's queue only ever holds level test answers.
+		needsTeacherReview := ungraded && teacherGrades
+
 		score := 0.0
 		switch {
-		case needsTeacherReview:
-			// Not graded yet: drop it from the denominator so an unread file
-			// cannot fail the student on its own.
+		case ungraded:
+			// Nobody produced a verdict: drop it from the denominator so an
+			// unread answer cannot fail the student on its own.
 			total--
-			hasPendingReview = true
+			if needsTeacherReview {
+				hasPendingReview = true
+			}
 		case isCorrect:
 			correct++
 			score = 100.0
 		}
 
 		// Track per-topic stats
-		if ok && ex.TopicID != "" && !needsTeacherReview {
+		if ok && ex.TopicID != "" && !ungraded {
 			stats := topicStats[ex.TopicID]
 			stats.total++
 			if isCorrect {
@@ -305,6 +315,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			CorrectAnswer:      correctAnswer,
 			AIFeedback:         aiFeedback,
 			NeedsTeacherReview: needsTeacherReview,
+			NotGraded:          ungraded,
 		})
 	}
 
@@ -335,8 +346,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if total > 0 {
 		sheetScore = float64(correct) / float64(total) * 100
 	}
-	// Every answer is awaiting review: there is no score to act on yet.
-	allPendingReview := total <= 0 && len(input.Attempts) > 0
+	// Nothing came back with a verdict: there is no score to act on yet.
+	allUngraded := total <= 0 && len(input.Attempts) > 0
 
 	kumon := domain.NewKumonStrategy()
 
@@ -374,14 +385,18 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	const levelTestPassThreshold = 75.0
 
 	switch {
-	case allPendingReview:
-		// Nothing gradeable came back yet, so level progression waits for the
-		// teacher rather than acting on a score of zero.
+	case allUngraded:
+		// Nothing gradeable came back, so level progression stays where it is
+		// rather than acting on a score of zero.
 		shouldLevelUp = false
 		shouldRepeat = false
 		nextLevel = currentLevel
 		newMastery = currentScore
-		recommendation = "Tu entrega quedó pendiente de la revisión del docente."
+		if hasPendingReview {
+			recommendation = "Tu entrega quedó pendiente de la revisión del docente."
+		} else {
+			recommendation = "No pudimos corregir tus respuestas automáticamente, así que tu progreso quedó como estaba."
+		}
 	case ps.SheetType == sheetTypeLevelTest && hasPendingReview:
 		// Some answer still needs a teacher, and this test decides promotion.
 		shouldLevelUp = false
@@ -510,6 +525,24 @@ func validateLevelTestAttempts(exercises []domain.PracticeSheetExercise, attempt
 
 func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAnswer, hasAttachment bool) bool {
 	return ex.MediaURL() != "" && (hasTextAnswer || hasCanvasAnswer || hasAttachment)
+}
+
+// teacherGradesSheet says whether a sheet's answers are corrected by a person.
+// Only a level test is: it decides promotion, so a human confirms it. A
+// practice is formative — it must resolve on submit, so it is never queued for
+// a teacher and never left hanging on one.
+func teacherGradesSheet(sheetType string) bool {
+	return sheetType == sheetTypeLevelTest
+}
+
+// statementMediaFeedback explains why an answer to an exercise with image or
+// audio in its statement was not auto-graded, without promising a correction
+// that only a level test actually gets.
+func statementMediaFeedback(teacherGrades bool) string {
+	if teacherGrades {
+		return "Tu respuesta quedó pendiente de la revisión del docente porque este ejercicio incluye material visual o de audio."
+	}
+	return "No pudimos corregir esta respuesta automáticamente porque el ejercicio incluye material visual o de audio, así que no cuenta en tu puntaje."
 }
 
 func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {

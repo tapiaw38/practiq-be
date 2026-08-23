@@ -2,13 +2,13 @@ package practicesheet
 
 import "testing"
 
-// scoreWith mirrors the accounting the submit loop does, so the rule "a file
+// scoreWith mirrors the accounting the submit loop does, so the rule "an answer
 // nobody graded must not count as wrong" is pinned down.
-func scoreWith(results []attachmentOutcome) (correct, total int, score float64, allPending bool) {
+func scoreWith(results []attachmentOutcome) (correct, total int, score float64, allUngraded bool) {
 	total = len(results)
 	for _, outcome := range results {
 		switch {
-		case outcome.NeedsReview:
+		case outcome.Ungraded:
 			total--
 		case outcome.IsCorrect:
 			correct++
@@ -17,7 +17,7 @@ func scoreWith(results []attachmentOutcome) (correct, total int, score float64, 
 	if total > 0 {
 		score = float64(correct) / float64(total) * 100
 	}
-	allPending = total <= 0 && len(results) > 0
+	allUngraded = total <= 0 && len(results) > 0
 	return
 }
 
@@ -29,39 +29,39 @@ func TestAssistantGradedAnswerScoresImmediately(t *testing.T) {
 	outcome := attachmentOutcome{
 		IsCorrect:          true,
 		Feedback:           "Muy buena lectura",
-		NeedsReview:        false,
+		Ungraded:           false,
 		AISuggestedCorrect: &approved,
 	}
 
-	if outcome.NeedsReview {
+	if outcome.Ungraded {
 		t.Error("a graded answer must not hold the student up")
 	}
 	if outcome.AISuggestedCorrect == nil {
 		t.Error("the assistant's verdict must be recorded so the teacher can review it")
 	}
 
-	correct, total, score, allPending := scoreWith([]attachmentOutcome{outcome})
+	correct, total, score, allUngraded := scoreWith([]attachmentOutcome{outcome})
 	if correct != 1 || total != 1 || score != 100 {
 		t.Errorf("expected it to count as correct, got %d/%d at %v", correct, total, score)
 	}
-	if allPending {
-		t.Error("a graded answer is not pending review")
+	if allUngraded {
+		t.Error("a graded answer is not ungraded")
 	}
 }
 
-func TestPendingAttachmentsAreExcludedFromScore(t *testing.T) {
-	t.Run("a pending file does not drag the score down", func(t *testing.T) {
+func TestUngradedAttachmentsAreExcludedFromScore(t *testing.T) {
+	t.Run("an ungraded file does not drag the score down", func(t *testing.T) {
 		// One correct answer plus an ungradeable PDF should read as 100%,
 		// not 50%.
-		_, total, score, allPending := scoreWith([]attachmentOutcome{
+		_, total, score, allUngraded := scoreWith([]attachmentOutcome{
 			{IsCorrect: true},
-			{NeedsReview: true},
+			{Ungraded: true},
 		})
 		if total != 1 || score != 100 {
 			t.Errorf("expected 1 graded answer at 100%%, got total=%d score=%v", total, score)
 		}
-		if allPending {
-			t.Error("some answers were graded, so the sheet is not fully pending")
+		if allUngraded {
+			t.Error("some answers were graded, so the sheet is not fully ungraded")
 		}
 	})
 
@@ -75,22 +75,47 @@ func TestPendingAttachmentsAreExcludedFromScore(t *testing.T) {
 		}
 	})
 
-	t.Run("everything pending yields no score to act on", func(t *testing.T) {
-		_, total, score, allPending := scoreWith([]attachmentOutcome{
-			{NeedsReview: true},
-			{NeedsReview: true},
+	t.Run("nothing graded yields no score to act on", func(t *testing.T) {
+		_, total, score, allUngraded := scoreWith([]attachmentOutcome{
+			{Ungraded: true},
+			{Ungraded: true},
 		})
 		if total != 0 || score != 0 {
 			t.Errorf("expected nothing graded, got total=%d score=%v", total, score)
 		}
-		if !allPending {
-			t.Error("a sheet with only pending answers must be flagged, or the student fails at 0%")
+		if !allUngraded {
+			t.Error("a sheet with no graded answers must be flagged, or the student fails at 0%")
 		}
 	})
 
-	t.Run("an empty submission is not pending review", func(t *testing.T) {
-		if _, _, _, allPending := scoreWith(nil); allPending {
-			t.Error("no answers at all is not the same as awaiting review")
+	t.Run("an empty submission is not ungraded", func(t *testing.T) {
+		if _, _, _, allUngraded := scoreWith(nil); allUngraded {
+			t.Error("no answers at all is not the same as an answer nobody could grade")
 		}
 	})
+}
+
+// The teacher only corrects level tests: the homework notebook has its own
+// queue, and a practice must resolve on submit instead of waiting on anyone.
+func TestOnlyLevelTestsGoToTheTeacher(t *testing.T) {
+	if !teacherGradesSheet(sheetTypeLevelTest) {
+		t.Error("a level test decides promotion, so a teacher confirms it")
+	}
+	if teacherGradesSheet("practice") {
+		t.Error("a practice must never be queued for the teacher")
+	}
+	if teacherGradesSheet("") {
+		t.Error("an unknown sheet type must not reach the teacher's queue")
+	}
+}
+
+// An answer nobody graded is explained differently on each sheet: only a level
+// test can promise a correction.
+func TestUngradedFeedbackOnlyPromisesReviewOnALevelTest(t *testing.T) {
+	if got := ungradedAttachmentFeedback(true); got == ungradedAttachmentFeedback(false) {
+		t.Error("a practice must not be told a teacher will correct it")
+	}
+	if got := statementMediaFeedback(true); got == statementMediaFeedback(false) {
+		t.Error("a practice must not be told a teacher will correct it")
+	}
 }

@@ -64,8 +64,13 @@ type (
 		StudentAnswer string `json:"student_answer"`
 		CorrectAnswer string `json:"correct_answer"`
 		AIFeedback    string `json:"ai_feedback,omitempty"`
-		// NeedsTeacherReview marks an attachment the assistant could not grade.
+		// NeedsTeacherReview marks an answer handed to the teacher. Only a level
+		// test does that; on a practice it is always false.
 		NeedsTeacherReview bool `json:"needs_teacher_review,omitempty"`
+		// NotGraded marks an answer nobody could put a verdict on. It is left
+		// out of the score rather than counted as wrong, so the student must be
+		// told it was skipped instead of shown it as an error.
+		NotGraded bool `json:"not_graded,omitempty"`
 	}
 
 	SubmitResult struct {

@@ -177,6 +177,16 @@ func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string
 		return nil, apperrors.NewForbiddenError()
 	}
 
+	// Practice answers are graded on submit and are not part of this queue.
+	// Overwriting one here would change a score the student already acted on.
+	attemptCtx, err := app.Repositories.StudentAttempt.GetAttemptContext(ctx, attemptID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.AttemptReviewError, err)
+	}
+	if attemptCtx.SheetType != sheetTypeLevelTest {
+		return nil, apperrors.NewBadRequestError("only level test answers are corrected by the teacher")
+	}
+
 	if err := app.Repositories.StudentAttempt.Review(ctx, attemptID, input.IsCorrect, input.Feedback); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewError, err)
 	}

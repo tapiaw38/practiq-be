@@ -14,9 +14,9 @@ type PendingReviewFilter struct {
 	TeacherID string
 	CourseID  string
 	StudentID string
-	// SheetType is "practice" or "level_test". A level test holds the student's
-	// promotion until it is corrected, so it is worth being able to see those
-	// on their own.
+	// SheetType narrows the queue further, but the queue only ever contains
+	// level tests: a practice is graded on submit and never handed to a
+	// teacher, so filtering by "practice" returns nothing.
 	SheetType string
 	// Reviewed is "", "reviewed" or "unreviewed".
 	Reviewed string
@@ -25,8 +25,10 @@ type PendingReviewFilter struct {
 }
 
 // ListPendingReview returns answers requiring a teacher from that teacher's
-// courses. Statement image/audio answers are included because text-only
-// automatic grading cannot assess them safely.
+// courses. Only level test answers qualify: a level test decides promotion, so
+// a human confirms the verdict. Practice answers are graded on submit and are
+// deliberately absent — a practice must never wait on a correction. Homework
+// has its own queue (see the notebook submission repository).
 func (r *repository) ListPendingReview(ctx context.Context, filter PendingReviewFilter) ([]domain.PendingAttemptReview, error) {
 	query := `
 		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
@@ -42,6 +44,7 @@ func (r *repository) ListPendingReview(ctx context.Context, filter PendingReview
 		JOIN courses c ON c.id = t.course_id
 		LEFT JOIN user_profiles up ON up.id = sa.student_id
 		WHERE (COALESCE(sa.attachment_url, '') <> '' OR sa.needs_teacher_review)
+		  AND COALESCE(ps.sheet_type, '') = 'level_test'
 		  AND c.teacher_id = $1
 		  AND c.deleted_at IS NULL
 		  AND ($2 = '' OR c.id::text = $2)

@@ -22,9 +22,10 @@ const attachmentsFolder = "attachments"
 type attachmentOutcome struct {
 	IsCorrect bool
 	Feedback  string
-	// NeedsReview means nobody could grade it: the answer is excluded from the
-	// score instead of counting as wrong, and waits for a teacher.
-	NeedsReview bool
+	// Ungraded means nobody produced a verdict: the answer is excluded from the
+	// score instead of counting as wrong. On a level test it also waits for a
+	// teacher; a practice is never held up for one.
+	Ungraded bool
 	// AISuggestedCorrect is the verdict the assistant gave, nil when it could
 	// not evaluate the file. Kept so the teacher sees who graded what.
 	AISuggestedCorrect *bool
@@ -32,11 +33,11 @@ type attachmentOutcome struct {
 
 // evaluateAttachment grades the uploaded file with the assistant so the student
 // gets an immediate result and can keep practising. What it could not read is
-// left pending for a teacher.
+// left ungraded rather than counted as wrong.
 //
-// requireTeacher forces the pending path even when the assistant succeeded: on
+// requireTeacher forces the ungraded path even when the assistant succeeded: on
 // a level test the verdict decides promotion, so it is not left to the
-// assistant alone.
+// assistant alone. A practice never sets it — see teacherGradesSheet.
 func evaluateAttachment(
 	ctx context.Context,
 	app *appcontext.Context,
@@ -46,7 +47,7 @@ func evaluateAttachment(
 	attachmentURL, filename string,
 	requireTeacher bool,
 ) attachmentOutcome {
-	pending := attachmentOutcome{NeedsReview: true, Feedback: "Tu entrega quedó pendiente de revisión del docente."}
+	pending := attachmentOutcome{Ungraded: true, Feedback: ungradedAttachmentFeedback(requireTeacher)}
 
 	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return pending
@@ -97,7 +98,7 @@ func evaluateAttachment(
 		// The assistant's opinion is kept for the teacher, but it does not
 		// count: promotion waits for a human.
 		return attachmentOutcome{
-			NeedsReview:        true,
+			Ungraded:           true,
 			Feedback:           evaluation.Feedback,
 			AISuggestedCorrect: &verdict,
 		}
@@ -105,11 +106,20 @@ func evaluateAttachment(
 	return attachmentOutcome{
 		IsCorrect: verdict,
 		Feedback:  evaluation.Feedback,
-		// Graded, so the student is not blocked — but the teacher still sees it
-		// in their queue and can change the grade.
-		NeedsReview:        false,
+		// Graded, so the student is not blocked.
+		Ungraded:           false,
 		AISuggestedCorrect: &verdict,
 	}
+}
+
+// ungradedAttachmentFeedback explains an answer that got no verdict. Only a
+// level test hands it to a teacher; a practice says so plainly instead of
+// promising a correction that is never going to arrive.
+func ungradedAttachmentFeedback(requireTeacher bool) string {
+	if requireTeacher {
+		return "Tu entrega quedó pendiente de revisión del docente."
+	}
+	return "No pudimos corregir esta entrega automáticamente, así que no cuenta en tu puntaje."
 }
 
 // attachmentKindAccepted reports whether the delivered file matches what the
