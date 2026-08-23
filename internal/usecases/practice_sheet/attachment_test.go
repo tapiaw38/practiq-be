@@ -24,9 +24,8 @@ func scoreWith(results []attachmentOutcome) (correct, total int, score float64, 
 	return
 }
 
-// A graded file answer must not block the student: it scores right away and
-// records who graded it, so a teacher can review it later without the practice
-// flow waiting on them.
+// A file the assistant resolved counts right away, on a level test too: a
+// verdict it could reach is not a reason to hold the student behind a person.
 func TestAssistantGradedAnswerScoresImmediately(t *testing.T) {
 	approved := true
 	outcome := attachmentOutcome{
@@ -154,5 +153,70 @@ func TestUntranscribedHandwritingIsNotWrong(t *testing.T) {
 				t.Fatalf("transcriptionUnavailable() = %t, want %t", got, test.want)
 			}
 		})
+	}
+}
+
+// Promotion follows what the assistant could resolve: every answer decided ->
+// the score stands; anything it could not -> the test waits for the teacher.
+func TestLevelTestPromotionWaitsOnlyForWhatTheAssistantCouldNotResolve(t *testing.T) {
+	const passThreshold = 75.0
+
+	for _, test := range []struct {
+		name        string
+		results     []attachmentOutcome
+		wantPending bool
+		wantLevelUp bool
+	}{
+		{
+			name:        "all resolved and passing",
+			results:     []attachmentOutcome{{IsCorrect: true}, {IsCorrect: true}, {IsCorrect: true}, {IsCorrect: false}},
+			wantLevelUp: true,
+		},
+		{
+			name:    "all resolved and failing",
+			results: []attachmentOutcome{{IsCorrect: true}, {IsCorrect: false}},
+		},
+		{
+			name:        "one it could not resolve holds the promotion",
+			results:     []attachmentOutcome{{IsCorrect: true}, {IsCorrect: true}, {Ungraded: true}},
+			wantPending: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			correct, total, score, _ := scoreWith(test.results)
+
+			// On a level test every ungraded answer is a pending one.
+			pending := false
+			for _, outcome := range test.results {
+				if outcome.Ungraded {
+					pending = true
+				}
+			}
+			if pending != test.wantPending {
+				t.Fatalf("pending = %t, want %t", pending, test.wantPending)
+			}
+
+			levelUp := !pending && total > 0 && score >= passThreshold
+			if levelUp != test.wantLevelUp {
+				t.Fatalf("levelUp = %t, want %t (%d/%d at %v)", levelUp, test.wantLevelUp, correct, total, score)
+			}
+		})
+	}
+}
+
+// A practice keeps going: what the assistant could not resolve is dropped, and
+// only what it did read is corrected.
+func TestPracticeGradesOnlyWhatTheAssistantCouldRead(t *testing.T) {
+	correct, total, score, allUngraded := scoreWith([]attachmentOutcome{
+		{IsCorrect: true},
+		{Ungraded: true},
+		{IsCorrect: false},
+		{Ungraded: true},
+	})
+	if total != 2 || correct != 1 || score != 50 {
+		t.Fatalf("expected the two readable answers at 1/2, got %d/%d at %v", correct, total, score)
+	}
+	if allUngraded {
+		t.Fatal("two answers were graded, so the practice has a result to show")
 	}
 }

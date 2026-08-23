@@ -35,9 +35,10 @@ type attachmentOutcome struct {
 // gets an immediate result and can keep practising. What it could not read is
 // left ungraded rather than counted as wrong.
 //
-// requireTeacher forces the ungraded path even when the assistant succeeded: on
-// a level test the verdict decides promotion, so it is not left to the
-// assistant alone. A practice never sets it — see teacherGradesSheet.
+// teacherGrades only picks the wording for an answer nobody could grade: a
+// level test hands it to a teacher, a practice does not. It no longer forces
+// the ungraded path — a file the assistant read and decided on counts on either
+// sheet, and only what it could not resolve reaches a person.
 func evaluateAttachment(
 	ctx context.Context,
 	app *appcontext.Context,
@@ -45,9 +46,9 @@ func evaluateAttachment(
 	ex domain.Exercise,
 	gradeName string,
 	attachmentURL, filename string,
-	requireTeacher bool,
+	teacherGrades bool,
 ) attachmentOutcome {
-	pending := attachmentOutcome{Ungraded: true, Feedback: ungradedAttachmentFeedback(requireTeacher)}
+	pending := attachmentOutcome{Ungraded: true, Feedback: ungradedAttachmentFeedback(teacherGrades)}
 
 	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return pending
@@ -94,19 +95,12 @@ func evaluateAttachment(
 	}
 
 	verdict := evaluation.IsCorrect
-	if requireTeacher {
-		// The assistant's opinion is kept for the teacher, but it does not
-		// count: promotion waits for a human.
-		return attachmentOutcome{
-			Ungraded:           true,
-			Feedback:           evaluation.Feedback,
-			AISuggestedCorrect: &verdict,
-		}
-	}
 	return attachmentOutcome{
 		IsCorrect: verdict,
 		Feedback:  evaluation.Feedback,
-		// Graded, so the student is not blocked.
+		// The assistant resolved it, so it counts — on a level test too. A
+		// verdict it could reach is not a reason to hold the student's
+		// promotion behind a person.
 		Ungraded:           false,
 		AISuggestedCorrect: &verdict,
 	}
@@ -115,8 +109,8 @@ func evaluateAttachment(
 // ungradedAttachmentFeedback explains an answer that got no verdict. Only a
 // level test hands it to a teacher; a practice says so plainly instead of
 // promising a correction that is never going to arrive.
-func ungradedAttachmentFeedback(requireTeacher bool) string {
-	if requireTeacher {
+func ungradedAttachmentFeedback(teacherGrades bool) string {
+	if teacherGrades {
 		return "Tu entrega quedó pendiente de revisión del docente."
 	}
 	return "No pudimos corregir esta entrega automáticamente, así que no cuenta en tu puntaje."

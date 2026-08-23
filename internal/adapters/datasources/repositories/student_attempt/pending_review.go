@@ -25,9 +25,10 @@ type PendingReviewFilter struct {
 }
 
 // ListPendingReview returns answers requiring a teacher from that teacher's
-// courses. Only level test answers qualify: a level test decides promotion, so
-// a human confirms the verdict. Practice answers are graded on submit and are
-// deliberately absent — a practice must never wait on a correction. Homework
+// courses: level test answers the assistant could not resolve. It used to admit
+// every answer carrying an attachment, which put files the assistant had
+// already graded in front of the teacher. Practice answers never qualify — a
+// practice is graded on submit and must not wait on a correction — and homework
 // has its own queue (see the notebook submission repository).
 func (r *repository) ListPendingReview(ctx context.Context, filter PendingReviewFilter) ([]domain.PendingAttemptReview, error) {
 	query := `
@@ -43,7 +44,7 @@ func (r *repository) ListPendingReview(ctx context.Context, filter PendingReview
 		JOIN topics t ON t.id = e.topic_id
 		JOIN courses c ON c.id = t.course_id
 		LEFT JOIN user_profiles up ON up.id = sa.student_id
-		WHERE (COALESCE(sa.attachment_url, '') <> '' OR sa.needs_teacher_review)
+		WHERE sa.needs_teacher_review
 		  AND COALESCE(ps.sheet_type, '') = 'level_test'
 		  AND c.teacher_id = $1
 		  AND c.deleted_at IS NULL
