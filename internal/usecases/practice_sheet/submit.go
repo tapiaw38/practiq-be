@@ -182,7 +182,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		ungraded := canvasUnreadable || statementMediaNeedsReview
 		if canvasUnreadable {
 			answerText = "UNREADABLE"
-			aiFeedback = "No pudimos leer tu respuesta escrita. Intentá escribirla más clara o pedí revisión."
+			aiFeedback = unreadableCanvasFeedback(teacherGrades)
 		} else if statementMediaNeedsReview {
 			aiFeedback = statementMediaFeedback(teacherGrades)
 		}
@@ -533,6 +533,17 @@ func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAn
 // a teacher and never left hanging on one.
 func teacherGradesSheet(sheetType string) bool {
 	return sheetType == sheetTypeLevelTest
+}
+
+// unreadableCanvasFeedback explains a handwritten answer the OCR could not
+// transcribe. Only a level test can point the student at a correction: on a
+// practice nobody is going to look at it, so asking them to request one would
+// send them after something the app no longer offers.
+func unreadableCanvasFeedback(teacherGrades bool) string {
+	if teacherGrades {
+		return "No pudimos leer tu respuesta escrita, así que la va a corregir el docente."
+	}
+	return "No pudimos leer tu respuesta escrita, así que no cuenta en tu puntaje. Intentá escribirla más clara la próxima vez."
 }
 
 // statementMediaFeedback explains why an answer to an exercise with image or

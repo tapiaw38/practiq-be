@@ -1,6 +1,9 @@
 package practicesheet
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // scoreWith mirrors the accounting the submit loop does, so the rule "an answer
 // nobody graded must not count as wrong" is pinned down.
@@ -117,5 +120,14 @@ func TestUngradedFeedbackOnlyPromisesReviewOnALevelTest(t *testing.T) {
 	}
 	if got := statementMediaFeedback(true); got == statementMediaFeedback(false) {
 		t.Error("a practice must not be told a teacher will correct it")
+	}
+	// "pedí revisión" pointed the student at a correction a practice no longer
+	// offers.
+	if strings.Contains(unreadableCanvasFeedback(false), "revisión") ||
+		strings.Contains(unreadableCanvasFeedback(false), "docente") {
+		t.Error("a practice must not send the student after a review nobody will do")
+	}
+	if !strings.Contains(unreadableCanvasFeedback(true), "docente") {
+		t.Error("on a level test the unreadable answer does go to the teacher")
 	}
 }
