@@ -6,10 +6,19 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
+	"path/filepath"
 	"strings"
 )
+
+var multipartQuoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
+
+func escapeMultipartQuotes(value string) string {
+	return multipartQuoteEscaper.Replace(value)
+}
 
 // EvaluateAttachment grades a file the student uploaded as their answer. Audio
 // and images use media channels; PDF/DOCX use Gillie's document channel.
@@ -36,7 +45,7 @@ func (g *gateway) EvaluateAttachment(ctx context.Context, cfg Config, input Atta
 	}
 
 	prompt := buildAttachmentEvaluationPrompt(input)
-	response, err := g.sendAttachmentMessage(ctx, baseURL, apiKey, conversationID, prompt, field, input.Filename, input.Content)
+	response, err := g.sendAttachmentMessage(ctx, baseURL, apiKey, conversationID, prompt, field, input.Filename, attachmentContentType(input), input.Content)
 	if err != nil {
 		log.Printf("[assistant] evaluate_attachment send_error conversation_id=%s err=%v", conversationID, err)
 		return EvaluationResult{}, err
@@ -86,14 +95,31 @@ Si el archivo no se entiende o no se puede evaluar, respondé {"is_correct": fal
 	return sb.String()
 }
 
-func (g *gateway) sendAttachmentMessage(ctx context.Context, baseURL, apiKey, conversationID, prompt, field, filename string, content []byte) (string, error) {
+func attachmentContentType(input AttachmentEvaluationInput) string {
+	if declared := strings.TrimSpace(input.ContentType); declared != "" {
+		return declared
+	}
+	if byExt := mime.TypeByExtension(strings.ToLower(filepath.Ext(input.Filename))); byExt != "" {
+		return byExt
+	}
+	return "application/octet-stream"
+}
+
+func (g *gateway) sendAttachmentMessage(ctx context.Context, baseURL, apiKey, conversationID, prompt, field, filename, contentType string, content []byte) (string, error) {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 
 	if err := writer.WriteField("content", prompt); err != nil {
 		return "", err
 	}
-	part, err := writer.CreateFormFile(field, filename)
+	partHeader := make(textproto.MIMEHeader)
+	partHeader.Set("Content-Disposition", fmt.Sprintf(
+		`form-data; name="%s"; filename="%s"`,
+		escapeMultipartQuotes(field),
+		escapeMultipartQuotes(filename),
+	))
+	partHeader.Set("Content-Type", contentType)
+	part, err := writer.CreatePart(partHeader)
 	if err != nil {
 		return "", err
 	}

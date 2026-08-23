@@ -34,6 +34,7 @@ type AttachmentEvaluationInput struct {
 	GradeName     string
 	Kind          string
 	Filename      string
+	ContentType   string
 	Content       []byte
 }
 

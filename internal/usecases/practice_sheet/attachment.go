@@ -78,6 +78,7 @@ func evaluateAttachment(
 		GradeName:     gradeName,
 		Kind:          string(kind),
 		Filename:      filename,
+		ContentType:   storedContentType,
 		Content:       content,
 	})
 	if err != nil {

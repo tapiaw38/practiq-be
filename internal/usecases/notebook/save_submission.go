@@ -155,10 +155,11 @@ func evaluateNotebookSubmission(
 
 	if composed := buildNotebookEvaluationImage(ctx, app, page, studentCanvas); composed != nil {
 		return app.Integrations.AssistantGateway.EvaluateAttachment(ctx, cfg, assistant.AttachmentEvaluationInput{
-			Kind:      assistant.AttachmentKindImage,
-			Filename:  "cuaderno.png",
-			Content:   composed,
-			GradeName: gradeName,
+			Kind:        assistant.AttachmentKindImage,
+			Filename:    "cuaderno.png",
+			ContentType: "image/png",
+			Content:     composed,
+			GradeName:   gradeName,
 			Question: pageContext +
 				" La imagen adjunta tiene dos partes separadas por una linea horizontal:" +
 				" arriba la pagina original del docente, que es la consigna;" +
