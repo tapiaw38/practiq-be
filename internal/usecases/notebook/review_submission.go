@@ -99,7 +99,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	} else if studentAnswer != "" {
 		// Evaluate the answer with AI, against the teacher's page when it is an
 		// image (see evaluateNotebookSubmission).
-		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, submission.CanvasData, expectedAnswer, studentAnswer, gradeName)
+		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName)
 		if aiErr != nil {
 			feedback = "no se pudo evaluar la respuesta"
 		} else {

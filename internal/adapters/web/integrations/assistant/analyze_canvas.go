@@ -31,6 +31,10 @@ func (g *gateway) AnalyzeNotebookCanvas(ctx context.Context, cfg Config, canvasD
 	return g.analyzeCanvas(ctx, cfg, canvasData, buildNotebookCanvasPrompt(pageContext), isExpectedNotebookResponse)
 }
 
+func (g *gateway) AnalyzeNotebookStatement(ctx context.Context, cfg Config, imageData, pageContext string) (string, error) {
+	return g.analyzeCanvas(ctx, cfg, imageData, buildNotebookStatementPrompt(pageContext), isExpectedNotebookResponse)
+}
+
 func (g *gateway) analyzeCanvas(
 	ctx context.Context,
 	cfg Config,
@@ -180,6 +184,19 @@ func buildNotebookCanvasPrompt(pageContext string) string {
 		"Transcribi todo lo que el estudiante escribio, respetando el orden y separando cada ejercicio con un salto de linea. " +
 		"No corrijas, no resuelvas y no opines sobre si esta bien o mal: solo transcribi. " +
 		"Si la pagina esta vacia o no podes leer nada con suficiente confianza, responde exactamente: " + unreadableResponse + ". " +
+		"Contexto de la pagina: " + context + "."
+}
+
+func buildNotebookStatementPrompt(pageContext string) string {
+	context := strings.TrimSpace(pageContext)
+	if context == "" {
+		context = "(sin contexto de la pagina)"
+	}
+
+	return "Analiza esta imagen de una pagina de cuaderno preparada por un docente. " +
+		"Transcribi la consigna tal como esta escrita: los enunciados, los ejercicios y, si estan, las respuestas esperadas. " +
+		"Separa cada ejercicio con un salto de linea. No la resuelvas ni agregues nada que no este en la imagen. " +
+		"Si la pagina esta vacia o no podes leerla con suficiente confianza, responde exactamente: " + unreadableResponse + ". " +
 		"Contexto de la pagina: " + context + "."
 }
 
