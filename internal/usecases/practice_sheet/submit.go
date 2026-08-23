@@ -305,6 +305,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			AttachmentName:        attempt.AttachmentName,
 			AttachmentContentType: attempt.AttachmentContentType,
 			NeedsTeacherReview:    needsTeacherReview,
+			NotGraded:             ungraded,
 			AIIsCorrect:           aiSuggestion,
 		})
 

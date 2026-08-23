@@ -10,10 +10,11 @@
 --
 --   psql "$DATABASE_URL" -f scripts/reset_student_data.sql
 --
--- Reemplaza a la migración que limpiaba `needs_teacher_review` en prácticas:
--- resuelve también las pruebas de nivel que el `requireTeacher` viejo dejó
--- marcadas con score 0 pese a tener veredicto de la IA, y no deja un UPDATE
--- irreversible en el historial de migraciones.
+-- Reemplaza a la migración de datos que limpiaba `needs_teacher_review` en
+-- prácticas: resuelve también las pruebas de nivel que el `requireTeacher`
+-- viejo dejó marcadas con score 0 pese a tener veredicto de la IA, y no deja un
+-- UPDATE irreversible en el historial de migraciones. La migración 000033 es
+-- otra cosa: agrega la columna `not_graded`, y hay que aplicarla igual.
 BEGIN;
 
 -- Los intentos y su canvas (student_work_canvas cae por ON DELETE CASCADE).

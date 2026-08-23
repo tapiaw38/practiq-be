@@ -44,8 +44,12 @@ type StudentAttempt struct {
 	AttachmentURL         string
 	AttachmentName        string
 	AttachmentContentType string
-	// NeedsTeacherReview is set on every attachment answer: the assistant only
-	// suggests, the teacher grades.
+	// NotGraded means nobody put a verdict on this answer, so it is out of the
+	// score rather than counted as wrong. Every reader has to honour it, or the
+	// stored is_correct=false reads as a mistake the student made.
+	NotGraded bool
+	// NeedsTeacherReview says a person still has to settle it. Only a level
+	// test sets it; a practice is never queued for anyone.
 	NeedsTeacherReview bool
 	// AIIsCorrect is the assistant's suggestion, nil when it had none.
 	AIIsCorrect       *bool

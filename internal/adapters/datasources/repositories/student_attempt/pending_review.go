@@ -156,7 +156,8 @@ func (r *repository) Review(ctx context.Context, attemptID string, isCorrect boo
 		    teacher_feedback = $2,
 		    teacher_reviewed_at = NOW(),
 		    is_correct = $1,
-		    score = $3
+		    score = $3,
+		    not_graded = FALSE
 		WHERE id = $4
 	`, isCorrect, feedback, score, attemptID)
 	return err

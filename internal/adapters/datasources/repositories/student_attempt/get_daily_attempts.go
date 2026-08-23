@@ -8,6 +8,8 @@ import (
 )
 
 func (r *repository) GetDailyAttempts(ctx context.Context, studentID, courseID string, from, to *time.Time) ([]domain.DailyAttemptCount, error) {
+	// An answer nobody graded is not an attempt the student got wrong: counting
+	// it dragged the accuracy in their report down for work no one ever read.
 	query := `
 		SELECT
 			DATE(sa.created_at) as date,
@@ -22,11 +24,11 @@ func (r *repository) GetDailyAttempts(ctx context.Context, studentID, courseID s
 		query += `
 		JOIN exercises e ON e.id = sa.exercise_id
 		JOIN topics t ON t.id = e.topic_id
-		WHERE sa.student_id = $1 AND t.course_id = $` + itoa(argIndex)
+		WHERE NOT sa.not_graded AND sa.student_id = $1 AND t.course_id = $` + itoa(argIndex)
 		args = append(args, courseID)
 		argIndex++
 	} else {
-		query += ` WHERE sa.student_id = $1`
+		query += ` WHERE NOT sa.not_graded AND sa.student_id = $1`
 	}
 
 	if from != nil {

@@ -29,9 +29,12 @@ type (
 		AIFeedback      string  `json:"ai_feedback,omitempty"`
 		IsCorrect       bool    `json:"is_correct"`
 		Score           float64 `json:"score"`
-		TimeSpentSecs   int     `json:"time_spent_seconds"`
-		HintsUsed       int     `json:"hints_used"`
-		CreatedAt       string  `json:"created_at"`
+		// NotGraded: nobody put a verdict on it, so is_correct=false here means
+		// "not corrected", not "wrong".
+		NotGraded     bool   `json:"not_graded,omitempty"`
+		TimeSpentSecs int    `json:"time_spent_seconds"`
+		HintsUsed     int    `json:"hints_used"`
+		CreatedAt     string `json:"created_at"`
 	}
 )
 
@@ -64,6 +67,7 @@ func toAttemptData(a domain.StudentAttempt) AttemptData {
 		AIFeedback:      a.AIFeedback,
 		IsCorrect:       a.IsCorrect,
 		Score:           a.Score,
+		NotGraded:       a.NotGraded,
 		TimeSpentSecs:   a.TimeSpentSecs,
 		HintsUsed:       a.HintsUsed,
 		CreatedAt:       a.CreatedAt.Format(time.RFC3339),
