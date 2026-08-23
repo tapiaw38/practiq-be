@@ -97,9 +97,9 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		feedback = "respuesta no legible (UNREADABLE)"
 		isCorrect = nil
 	} else if studentAnswer != "" {
-		// Evaluate the answer with AI
-		promptContext := buildNotebookPromptContext(page)
-		evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, promptContext, expectedAnswer, studentAnswer, gradeName)
+		// Evaluate the answer with AI, against the teacher's page when it is an
+		// image (see evaluateNotebookSubmission).
+		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, submission.CanvasData, expectedAnswer, studentAnswer, gradeName)
 		if aiErr != nil {
 			feedback = "no se pudo evaluar la respuesta"
 		} else {

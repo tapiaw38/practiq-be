@@ -10,6 +10,8 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/imagecompose"
+	"github.com/tapiaw38/practiq-be/internal/platform/utils"
 )
 
 type (
@@ -104,7 +106,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 			}
 
 			if studentAnswer != "" && studentAnswer != "UNREADABLE" {
-				if evaluation, aiErr := app.Integrations.AssistantGateway.EvaluatePracticeAnswer(ctx, assistantCfg, buildNotebookPromptContext(page), expectedAnswer, studentAnswer, gradeName); aiErr == nil {
+				if evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, canvasForOCR, expectedAnswer, studentAnswer, gradeName); aiErr == nil {
 					submission.AIIsCorrect = &evaluation.IsCorrect
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 					if strings.TrimSpace(evaluation.Feedback) != "" {
@@ -131,6 +133,89 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	}
 
 	return app.Repositories.Notebook.UpsertSubmission(ctx, submission)
+}
+
+// evaluateNotebookSubmission grades the student's work against the page it was
+// set on.
+//
+// When the teacher's page is an image, there is no expected answer to compare
+// text against — normalizeNotebookExpectedAnswer can only say "[imagen del
+// docente]", so the grader was judging the transcription with no idea what the
+// exercise asked. Stacking the two pages into one image and grading that gives
+// it the consigna. Falls back to the text comparison whenever the pages cannot
+// be composed, or when the page really is text.
+func evaluateNotebookSubmission(
+	ctx context.Context,
+	app *appcontext.Context,
+	cfg assistant.Config,
+	page *domain.NotebookPage,
+	studentCanvas, expectedAnswer, studentAnswer, gradeName string,
+) (assistant.EvaluationResult, error) {
+	pageContext := buildNotebookPromptContext(page)
+
+	if composed := buildNotebookEvaluationImage(ctx, app, page, studentCanvas); composed != nil {
+		return app.Integrations.AssistantGateway.EvaluateAttachment(ctx, cfg, assistant.AttachmentEvaluationInput{
+			Kind:      assistant.AttachmentKindImage,
+			Filename:  "cuaderno.png",
+			Content:   composed,
+			GradeName: gradeName,
+			Question: pageContext +
+				" La imagen adjunta tiene dos partes separadas por una linea horizontal:" +
+				" arriba la pagina original del docente, que es la consigna;" +
+				" abajo lo que resolvio el alumno." +
+				" Evalua unicamente lo que escribio el alumno, comparandolo con la consigna de arriba.",
+		})
+	}
+
+	return app.Integrations.AssistantGateway.EvaluatePracticeAnswer(
+		ctx, cfg, pageContext, expectedAnswer, studentAnswer, gradeName,
+	)
+}
+
+// buildNotebookEvaluationImage stacks the teacher's page above the student's
+// work, or returns nil when either side is missing or cannot be decoded — in
+// which case the caller grades on text alone rather than on half a picture.
+func buildNotebookEvaluationImage(
+	ctx context.Context,
+	app *appcontext.Context,
+	page *domain.NotebookPage,
+	studentCanvas string,
+) []byte {
+	if page == nil {
+		return nil
+	}
+	teacherPage := strings.TrimSpace(page.ContentData)
+	if teacherPage == "" || !(isLikelyImageData(teacherPage) || isImageURL(teacherPage)) {
+		return nil
+	}
+
+	teacherBytes := decodeNotebookImage(ctx, app, teacherPage)
+	studentBytes := decodeNotebookImage(ctx, app, studentCanvas)
+	if teacherBytes == nil || studentBytes == nil {
+		return nil
+	}
+
+	composed, err := imagecompose.StackVertically(teacherBytes, studentBytes)
+	if err != nil {
+		log.Printf("[notebook] compose evaluation image failed page_id=%s err=%v", page.ID, err)
+		return nil
+	}
+	return composed
+}
+
+func decodeNotebookImage(ctx context.Context, app *appcontext.Context, value string) []byte {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if resolved, err := resolveImageForOCR(ctx, app, value); err == nil {
+		value = resolved
+	}
+	decoded, _, err := utils.DecodeDataURI(normalizeCanvasDataURI(value))
+	if err != nil {
+		return nil
+	}
+	return decoded
 }
 
 func buildNotebookPromptContext(page *domain.NotebookPage) string {
