@@ -38,3 +38,50 @@ func TestPageHasImageStatement(t *testing.T) {
 		}
 	}
 }
+
+func TestReviewFlagSurvivesEveryFailurePath(t *testing.T) {
+	page := &domain.NotebookPage{
+		ContentData:   "https://bucket.s3.amazonaws.com/image/notebook/x/y.png",
+		StatementText: "3+2=",
+	}
+
+	start := statementNeedsTeacherReview(page)
+	if !start {
+		t.Fatal("an unverified image statement must start out flagged")
+	}
+
+	for _, path := range []struct {
+		name        string
+		failed      bool
+		hasAnswer   bool
+		wantsReview bool
+	}{
+		{"ocr failed", true, false, true},
+		{"unreadable", true, false, true},
+		{"evaluation failed", true, true, true},
+		{"evaluated fine", false, true, true},
+		{"nothing submitted", false, false, false},
+	} {
+		needsReview := start
+		if path.failed {
+			needsReview = true
+		}
+		if !path.hasAnswer && !path.failed {
+			needsReview = false
+		}
+		if needsReview != path.wantsReview {
+			t.Fatalf("%s: needsReview=%v, want %v", path.name, needsReview, path.wantsReview)
+		}
+	}
+}
+
+func TestVerifiedStatementNeverFlagsOnSuccess(t *testing.T) {
+	page := &domain.NotebookPage{
+		ContentData:       "https://bucket.s3.amazonaws.com/image/notebook/x/y.png",
+		StatementText:     "3+2=",
+		StatementVerified: true,
+	}
+	if statementNeedsTeacherReview(page) {
+		t.Fatal("a teacher-verified statement must not force review on a clean run")
+	}
+}

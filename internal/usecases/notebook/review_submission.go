@@ -72,7 +72,8 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	var recognizedText string
 	var isCorrect *bool
 	var feedback string
-	needsTeacherReview := false
+	ensurePageStatement(ctx, app, assistantCfg, page)
+	needsTeacherReview := statementNeedsTeacherReview(page)
 
 	studentAnswer := strings.TrimSpace(submission.AnswerText)
 
@@ -86,6 +87,8 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		canvasData = normalizeCanvasDataURI(canvasData)
 		recognized, recognizeErr := app.Integrations.AssistantGateway.AnalyzeNotebookCanvas(ctx, assistantCfg, canvasData, buildNotebookPromptContext(page))
 		if recognizeErr != nil {
+			log.Printf("[notebook] canvas analysis failed submission_id=%s err=%v", submissionID, recognizeErr)
+			needsTeacherReview = true
 			feedback = "no se pudo analizar la imagen del cuaderno"
 		} else {
 			recognizedText = strings.TrimSpace(recognized)
@@ -95,6 +98,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 
 	// If the recognized answer is unreadable, report that
 	if strings.EqualFold(studentAnswer, "UNREADABLE") {
+		needsTeacherReview = true
 		feedback = "respuesta no legible (UNREADABLE)"
 		isCorrect = nil
 	} else if studentAnswer != "" {
@@ -102,10 +106,11 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		// image (see evaluateNotebookSubmission).
 		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName)
 		if aiErr != nil {
+			log.Printf("[notebook] evaluation failed submission_id=%s err=%v", submissionID, aiErr)
+			needsTeacherReview = true
 			feedback = "no se pudo evaluar la respuesta"
 		} else {
 			isCorrect = &evaluation.IsCorrect
-			needsTeacherReview = statementNeedsTeacherReview(page)
 			if strings.TrimSpace(evaluation.Feedback) != "" {
 				feedback = evaluation.Feedback
 			} else if evaluation.IsCorrect {
@@ -115,6 +120,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 			}
 		}
 	} else {
+		needsTeacherReview = false
 		feedback = "no se encontro respuesta para evaluar"
 	}
 

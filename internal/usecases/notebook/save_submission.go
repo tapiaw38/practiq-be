@@ -80,6 +80,9 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	if page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 		if expectedAnswer != "" {
+			ensurePageStatement(ctx, app, assistantCfg, page)
+
+			needsReview := statementNeedsTeacherReview(page)
 			studentAnswer := strings.TrimSpace(input.AnswerText)
 			if studentAnswer == "" && strings.TrimSpace(canvasForOCR) != "" {
 				if resolved, err := resolveImageForOCR(ctx, app, canvasForOCR); err == nil {
@@ -93,18 +96,20 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					submission.AIRecognizedText = recognizedText
 					studentAnswer = recognizedText
 				} else {
+					log.Printf("[notebook] canvas analysis failed page_id=%s err=%v", input.PageID, recognizeErr)
+					needsReview = true
 					submission.AIFeedback = "no se pudo analizar la imagen del cuaderno"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
 			}
 
 			if strings.EqualFold(studentAnswer, "UNREADABLE") {
+				needsReview = true
 				submission.AIFeedback = "respuesta no legible (UNREADABLE)"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			} else if studentAnswer != "" {
 				if evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName); aiErr == nil {
 					submission.AIIsCorrect = &evaluation.IsCorrect
-					submission.NeedsTeacherReview = statementNeedsTeacherReview(page)
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 					if strings.TrimSpace(evaluation.Feedback) != "" {
 						submission.AIFeedback = evaluation.Feedback
@@ -115,13 +120,17 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					}
 				} else {
 					log.Printf("[notebook] evaluation failed page_id=%s err=%v", input.PageID, aiErr)
+					needsReview = true
 					submission.AIFeedback = "no se pudo evaluar la respuesta"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
 			} else {
+				needsReview = false
 				submission.AIFeedback = "no se encontro respuesta para evaluar"
 				submission.AIReviewedAt = ptrTime(time.Now().UTC())
 			}
+
+			submission.NeedsTeacherReview = needsReview
 		}
 	}
 
