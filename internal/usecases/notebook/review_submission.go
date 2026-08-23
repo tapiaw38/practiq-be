@@ -72,7 +72,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	var recognizedText string
 	var isCorrect *bool
 	var feedback string
-	ensurePageStatement(ctx, app, assistantCfg, page)
+	ensurePageStatement(ctx, app, submission.TeacherID, page)
 	needsTeacherReview := statementNeedsTeacherReview(page)
 
 	studentAnswer := strings.TrimSpace(submission.AnswerText)

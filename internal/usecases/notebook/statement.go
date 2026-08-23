@@ -15,14 +15,19 @@ func pageHasImageStatement(contentData string) bool {
 	return value != "" && (isLikelyImageData(value) || isImageURL(value))
 }
 
-func ensurePageStatement(ctx context.Context, app *appcontext.Context, cfg assistant.Config, page *domain.NotebookPage) {
+func ensurePageStatement(ctx context.Context, app *appcontext.Context, teacherID string, page *domain.NotebookPage) {
 	if page == nil || strings.TrimSpace(page.StatementText) != "" {
 		return
 	}
 	if !pageHasImageStatement(page.ContentData) {
 		return
 	}
-	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(cfg) {
+	if app.Integrations.AssistantGateway == nil {
+		return
+	}
+
+	cfg := teacherAssistantConfig(ctx, app, teacherID)
+	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return
 	}
 
@@ -51,6 +56,16 @@ func ensurePageStatement(ctx context.Context, app *appcontext.Context, cfg assis
 	}
 }
 
+func teacherAssistantConfig(ctx context.Context, app *appcontext.Context, teacherID string) assistant.Config {
+	cfg := assistant.Config{}
+	profile, _ := app.Repositories.UserProfile.Get(ctx, teacherID)
+	if profile != nil {
+		cfg.BaseURL = profile.AssistantBaseURL
+		cfg.APIKey = profile.AssistantAPIKey
+	}
+	return cfg
+}
+
 func transcribePageStatement(ctx context.Context, app *appcontext.Context, teacherID, contentData string, page domain.NotebookPage) string {
 	if !pageHasImageStatement(contentData) {
 		return ""
@@ -59,12 +74,7 @@ func transcribePageStatement(ctx context.Context, app *appcontext.Context, teach
 		return ""
 	}
 
-	profile, _ := app.Repositories.UserProfile.Get(ctx, teacherID)
-	cfg := assistant.Config{}
-	if profile != nil {
-		cfg.BaseURL = profile.AssistantBaseURL
-		cfg.APIKey = profile.AssistantAPIKey
-	}
+	cfg := teacherAssistantConfig(ctx, app, teacherID)
 	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return ""
 	}

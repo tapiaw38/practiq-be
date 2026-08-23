@@ -77,12 +77,13 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		assistantCfg.APIKey = profile.AssistantAPIKey
 	}
 
+	ensurePageStatement(ctx, app, notebook.TeacherID, page)
+	submission.NeedsTeacherReview = statementNeedsTeacherReview(page)
+
 	if page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 		if expectedAnswer != "" {
-			ensurePageStatement(ctx, app, assistantCfg, page)
-
-			needsReview := statementNeedsTeacherReview(page)
+			needsReview := submission.NeedsTeacherReview
 			studentAnswer := strings.TrimSpace(input.AnswerText)
 			if studentAnswer == "" && strings.TrimSpace(canvasForOCR) != "" {
 				if resolved, err := resolveImageForOCR(ctx, app, canvasForOCR); err == nil {
