@@ -131,3 +131,28 @@ func TestUngradedFeedbackOnlyPromisesReviewOnALevelTest(t *testing.T) {
 		t.Error("on a level test the unreadable answer does go to the teacher")
 	}
 }
+
+// A handwritten answer nobody transcribed used to fall through to the string
+// comparison and score as wrong against an empty answer. On a level test that
+// cost the student the promotion for a transcription that never ran.
+func TestUntranscribedHandwritingIsNotWrong(t *testing.T) {
+	for _, test := range []struct {
+		name                                     string
+		canvasAwaitsOCR, hasText, assistantReady bool
+		want                                     bool
+	}{
+		{name: "no assistant configured", canvasAwaitsOCR: true, want: true},
+		{name: "assistant read it", canvasAwaitsOCR: true, hasText: true, assistantReady: true},
+		{name: "assistant available, still blank", canvasAwaitsOCR: true, assistantReady: true},
+		{name: "typed answer needs no transcription", hasText: true},
+		{name: "statement media keeps OCR out of it", hasText: true, assistantReady: true},
+		{name: "nothing was answered"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got := transcriptionUnavailable(test.canvasAwaitsOCR, test.hasText, test.assistantReady)
+			if got != test.want {
+				t.Fatalf("transcriptionUnavailable() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}

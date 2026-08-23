@@ -101,6 +101,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		assistantCfg.BaseURL = profile.AssistantBaseURL
 		assistantCfg.APIKey = profile.AssistantAPIKey
 	}
+	// The assistant reads this answer on the course's behalf, not the student's.
+	// A student with no credentials of their own left every handwritten answer
+	// untranscribed, which on a level test cost them the exercise. The notebook
+	// flow closed the same hole by resolving the teacher's config.
+	if course != nil && app.Integrations.AssistantGateway != nil &&
+		!app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+		assistantCfg = teacherAssistantConfig(ctx, app, course.TeacherID)
+	}
 
 	// Only a level test is corrected by a teacher (the homework notebook has its
 	// own review flow). A practice is graded on the spot with whatever the
@@ -161,7 +169,13 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		statementMediaNeedsReview := needsReviewForStatementMedia(ex, hasTextAnswer, hasCanvasAnswer, hasAttachment)
 		canvasUnreadable := false
 
-		if hasCanvasAnswer && !hasStatementMedia && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+		// Handwriting is only an image until the assistant reads it, so this is
+		// the one path that can turn it into something comparable.
+		canvasAwaitsOCR := hasCanvasAnswer && !hasStatementMedia
+		assistantReady := app.Integrations.AssistantGateway != nil &&
+			app.Integrations.AssistantGateway.IsConfigured(assistantCfg)
+
+		if canvasAwaitsOCR && assistantReady {
 			normalizedCanvas := normalizeCanvasDataURI(attempt.CanvasData)
 			if recognizedText, recognizeErr := app.Integrations.AssistantGateway.AnalyzeCanvas(ctx, assistantCfg, normalizedCanvas, ex.CorrectAnswer); recognizeErr == nil {
 				normalizedRecognized := normalizeCanvasAnswer(recognizedText)
@@ -175,6 +189,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				// Do not turn an OCR failure into a fabricated wrong answer.
 				canvasUnreadable = true
 			}
+		}
+		// Nothing ever read the handwriting: no assistant at all, or none
+		// configured for the student or their teacher. Without this the empty
+		// answerText fell through to the comparison below and scored as wrong —
+		// the student lost the exercise for a transcription that never ran, and
+		// on a level test that is the promotion.
+		if transcriptionUnavailable(canvasAwaitsOCR, hasTextAnswer, assistantReady) {
+			canvasUnreadable = true
 		}
 
 		// A canvas the OCR cannot transcribe must not lower the student's score.
@@ -525,6 +547,30 @@ func validateLevelTestAttempts(exercises []domain.PracticeSheetExercise, attempt
 
 func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAnswer, hasAttachment bool) bool {
 	return ex.MediaURL() != "" && (hasTextAnswer || hasCanvasAnswer || hasAttachment)
+}
+
+// transcriptionUnavailable reports a handwritten answer that never became text.
+// Whether the assistant failed or was never reachable, the outcome is the same:
+// there is nothing to compare, so the answer has to be left ungraded rather
+// than measured against an empty string.
+func transcriptionUnavailable(canvasAwaitsOCR, hasTextAnswer, assistantReady bool) bool {
+	return canvasAwaitsOCR && !hasTextAnswer && !assistantReady
+}
+
+// teacherAssistantConfig resolves the assistant the course owner configured, so
+// grading still runs for a student who has no credentials of their own.
+func teacherAssistantConfig(ctx context.Context, app *appcontext.Context, teacherID string) assistant.Config {
+	cfg := assistant.Config{}
+	if strings.TrimSpace(teacherID) == "" {
+		return cfg
+	}
+	teacher, err := app.Repositories.UserProfile.Get(ctx, teacherID)
+	if err != nil || teacher == nil {
+		return cfg
+	}
+	cfg.BaseURL = teacher.AssistantBaseURL
+	cfg.APIKey = teacher.AssistantAPIKey
+	return cfg
 }
 
 // teacherGradesSheet says whether a sheet's answers are corrected by a person.
