@@ -131,7 +131,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		}
 	}
 
-	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect)
+	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect, page)
 
 	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil {
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
@@ -160,17 +160,32 @@ func evaluateNotebookSubmission(
 	)
 }
 
-// submissionNeedsTeacherReview is the whole rule for when a person has to step
-// in: the student handed in work and the assistant produced no verdict on it —
-// it never read the answer, or it read it and could not decide.
+// submissionNeedsTeacherReview decides when a person has to settle a notebook
+// page. Two things call one in, and an empty page calls nobody.
 //
-// A clean verdict stands on its own. An unverified transcription of the
-// teacher's statement used to seed this flag, which sent every submission on
-// such a page to the teacher even when the assistant had graded it without
-// trouble; verifying the statement is still worth doing, but it is not a reason
-// to re-grade by hand. An empty page is nobody's homework either.
-func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool) bool {
-	return hasStudentWork && aiIsCorrect == nil
+// The assistant produced no verdict: it never read the answer, or read it and
+// could not decide.
+//
+// Or it did decide, but against a statement nobody checked. A notebook page is
+// graded by comparing the student's work to a transcription of the teacher's
+// sheet, and a misread there is invisible at the point of use: one run turned
+// "5+1=" into "5+4=", which grades a correct answer as wrong with full
+// confidence and no signal. A practice cannot wait for a teacher, so it never
+// asks for one; a notebook can, so here it does — until the teacher confirms
+// the transcription once, from the page editor, and every later submission on
+// that page goes through clean.
+func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool, page *domain.NotebookPage) bool {
+	if !hasStudentWork {
+		return false
+	}
+	return aiIsCorrect == nil || statementNeedsTeacherReview(page)
+}
+
+func statementNeedsTeacherReview(page *domain.NotebookPage) bool {
+	if page == nil || page.StatementVerified {
+		return false
+	}
+	return pageHasImageStatement(page.ContentData)
 }
 
 func buildNotebookPromptContext(page *domain.NotebookPage) string {

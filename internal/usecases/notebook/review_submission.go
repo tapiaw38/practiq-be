@@ -124,7 +124,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		feedback = "no se encontro respuesta para evaluar"
 	}
 
-	needsTeacherReview := submissionNeedsTeacherReview(hasStudentWork, isCorrect)
+	needsTeacherReview := submissionNeedsTeacherReview(hasStudentWork, isCorrect, page)
 
 	// Update the submission with the AI review results
 	if err := app.Repositories.Notebook.UpdateSubmissionAIReview(ctx, submissionID, recognizedText, isCorrect, feedback, needsTeacherReview); err != nil {
