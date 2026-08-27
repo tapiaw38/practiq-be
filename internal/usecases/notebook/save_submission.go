@@ -173,11 +173,27 @@ func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool) bool {
 	return hasStudentWork && aiIsCorrect == nil
 }
 
+// buildNotebookPromptContext describes the page to whichever call is looking at
+// it. The statement goes in when it is known: the model reading a student's
+// handwriting is the one stage that sees the image, and knowing the exercise
+// says "5+1=" is what tells a badly closed 1 from a 4. Without it the strokes
+// are read blind.
 func buildNotebookPromptContext(page *domain.NotebookPage) string {
 	if page == nil {
 		return "Cuaderno"
 	}
-	return fmt.Sprintf("Cuaderno - Pagina %d. Titulo: %s. Instrucciones: %s", page.PageNumber, strings.TrimSpace(page.Title), strings.TrimSpace(page.Instructions))
+
+	context := fmt.Sprintf(
+		"Cuaderno - Pagina %d. Titulo: %s. Instrucciones: %s",
+		page.PageNumber,
+		strings.TrimSpace(page.Title),
+		strings.TrimSpace(page.Instructions),
+	)
+
+	if statement := strings.TrimSpace(page.StatementText); statement != "" {
+		context += " Consigna de la pagina: " + statement
+	}
+	return context
 }
 
 func normalizeNotebookExpectedAnswer(contentData string) string {
