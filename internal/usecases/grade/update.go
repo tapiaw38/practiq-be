@@ -2,6 +2,7 @@ package grade
 
 import (
 	"context"
+	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -21,6 +22,7 @@ type (
 	UpdateInput struct {
 		Name        string
 		Description string
+		VisualTheme string
 	}
 
 	UpdateOutput struct {
@@ -35,9 +37,15 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
+	visualTheme := strings.TrimSpace(input.VisualTheme)
+	if visualTheme != "primary" && visualTheme != "secondary" {
+		return nil, apperrors.NewBadRequestError("visual_theme must be primary or secondary")
+	}
+
 	if err := app.Repositories.Grade.Update(ctx, id, domain.Grade{
 		Name:        input.Name,
 		Description: input.Description,
+		VisualTheme: visualTheme,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeUpdateError, err)
 	}

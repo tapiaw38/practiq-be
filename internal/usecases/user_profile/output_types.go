@@ -11,6 +11,7 @@ type (
 		AcademicStatus   string `json:"academic_status"`
 		AssistantBaseURL string `json:"assistant_base_url"`
 		AssistantAPIKey  string `json:"assistant_api_key"`
+		UITheme          string `json:"ui_theme"`
 		CreatedAt        string `json:"created_at"`
 	}
 )
@@ -24,6 +25,7 @@ func toProfileData(p domain.UserProfile) ProfileData {
 		AcademicStatus:   p.AcademicStatus,
 		AssistantBaseURL: p.AssistantBaseURL,
 		AssistantAPIKey:  p.AssistantAPIKey,
+		UITheme:          p.UITheme,
 		CreatedAt:        p.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 }

@@ -22,6 +22,7 @@ type (
 		ID               string
 		AssistantBaseURL string `json:"assistant_base_url"`
 		AssistantAPIKey  string `json:"assistant_api_key"`
+		UITheme          string `json:"ui_theme"`
 	}
 
 	UpdateAssistantConfigOutput struct {
@@ -38,8 +39,15 @@ func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, input Update
 
 	baseURL := strings.TrimSpace(input.AssistantBaseURL)
 	apiKey := strings.TrimSpace(input.AssistantAPIKey)
+	uiTheme := strings.TrimSpace(input.UITheme)
+	if uiTheme == "" {
+		uiTheme = "primary"
+	}
+	if uiTheme != "primary" && uiTheme != "secondary" {
+		return nil, apperrors.NewBadRequestError("ui_theme must be primary or secondary")
+	}
 
-	if err := app.Repositories.UserProfile.UpdateAssistantConfig(ctx, input.ID, baseURL, apiKey); err != nil {
+	if err := app.Repositories.UserProfile.UpdateAssistantConfig(ctx, input.ID, baseURL, apiKey, uiTheme); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileSyncError, err)
 	}
 

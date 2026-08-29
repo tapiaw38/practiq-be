@@ -11,6 +11,7 @@ import (
 type updateInput struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
+	VisualTheme string `json:"visual_theme" binding:"required"`
 }
 
 func NewUpdateHandler(uc ucGrade.UpdateUsecase) gin.HandlerFunc {
@@ -25,6 +26,7 @@ func NewUpdateHandler(uc ucGrade.UpdateUsecase) gin.HandlerFunc {
 		output, appErr := uc.Execute(c, id, ucGrade.UpdateInput{
 			Name:        input.Name,
 			Description: input.Description,
+			VisualTheme: input.VisualTheme,
 		})
 		if appErr != nil {
 			appErr.Log(c)

@@ -9,7 +9,7 @@ import (
 
 func (r *repository) List(ctx context.Context, opts ListFilterOptions) ([]domain.Course, error) {
 	query := `
-		SELECT c.id, c.teacher_id, COALESCE(c.grade_id::text, ''), COALESCE(g.name, ''), COALESCE(c.subject_id::text, ''), COALESCE(s.name, c.subject, ''), c.title, c.description, c.level, COALESCE(c.subject, ''), c.created_at
+		SELECT c.id, c.teacher_id, COALESCE(c.grade_id::text, ''), COALESCE(g.name, ''), COALESCE(g.visual_theme, 'primary'), COALESCE(c.subject_id::text, ''), COALESCE(s.name, c.subject, ''), c.title, c.description, c.level, COALESCE(c.subject, ''), c.created_at
 		FROM courses c
 		LEFT JOIN grades g ON g.id = c.grade_id
 		LEFT JOIN subjects s ON s.id = c.subject_id
@@ -40,7 +40,7 @@ func (r *repository) List(ctx context.Context, opts ListFilterOptions) ([]domain
 	var courses []domain.Course
 	for rows.Next() {
 		var c domain.Course
-		if err := rows.Scan(&c.ID, &c.TeacherID, &c.GradeID, &c.GradeName, &c.SubjectID, &c.SubjectName, &c.Title, &c.Description, &c.Level, &c.Subject, &c.CreatedAt); err != nil {
+		if err := rows.Scan(&c.ID, &c.TeacherID, &c.GradeID, &c.GradeName, &c.GradeTheme, &c.SubjectID, &c.SubjectName, &c.Title, &c.Description, &c.Level, &c.Subject, &c.CreatedAt); err != nil {
 			return nil, err
 		}
 		courses = append(courses, c)

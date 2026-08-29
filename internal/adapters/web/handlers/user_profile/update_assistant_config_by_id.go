@@ -26,6 +26,7 @@ func NewUpdateAssistantConfigByIDHandler(uc ucProfile.UpdateAssistantConfigUseca
 			ID:               profileID,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,
+			UITheme:          input.UITheme,
 		})
 		if appErr != nil {
 			appErr.Log(c)

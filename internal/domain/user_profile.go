@@ -13,5 +13,6 @@ type UserProfile struct {
 	Timezone         string
 	AssistantBaseURL string
 	AssistantAPIKey  string
+	UITheme          string
 	CreatedAt        time.Time
 }

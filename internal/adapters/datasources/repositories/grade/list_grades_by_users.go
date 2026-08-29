@@ -14,7 +14,7 @@ func (r *repository) ListGradesByUsers(ctx context.Context, userIDs []string) (m
 	}
 
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT gm.user_id, g.id, g.name, COALESCE(g.description, ''), g.created_by, g.created_at
+		SELECT gm.user_id, g.id, g.name, COALESCE(g.description, ''), g.visual_theme, g.created_by, g.created_at
 		FROM grades g
 		JOIN grade_memberships gm ON gm.grade_id = g.id
 		WHERE gm.user_id = ANY($1)
@@ -28,7 +28,7 @@ func (r *repository) ListGradesByUsers(ctx context.Context, userIDs []string) (m
 	for rows.Next() {
 		var userID string
 		var grade domain.Grade
-		if err := rows.Scan(&userID, &grade.ID, &grade.Name, &grade.Description, &grade.CreatedBy, &grade.CreatedAt); err != nil {
+		if err := rows.Scan(&userID, &grade.ID, &grade.Name, &grade.Description, &grade.VisualTheme, &grade.CreatedBy, &grade.CreatedAt); err != nil {
 			return nil, err
 		}
 		result[userID] = append(result[userID], grade)

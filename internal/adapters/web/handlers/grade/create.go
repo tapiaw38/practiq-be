@@ -11,6 +11,7 @@ import (
 type createInput struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
+	VisualTheme string `json:"visual_theme"`
 }
 
 func NewCreateHandler(uc ucGrade.CreateUsecase) gin.HandlerFunc {
@@ -24,6 +25,7 @@ func NewCreateHandler(uc ucGrade.CreateUsecase) gin.HandlerFunc {
 		output, appErr := uc.Execute(c, ucGrade.CreateInput{
 			Name:        input.Name,
 			Description: input.Description,
+			VisualTheme: input.VisualTheme,
 			CreatedBy:   middlewares.GetUserID(c),
 		})
 		if appErr != nil {

@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS grades (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(150) NOT NULL UNIQUE,
     description TEXT,
+    visual_theme VARCHAR(30) NOT NULL DEFAULT 'primary' CHECK (visual_theme IN ('primary', 'secondary')),
     created_by VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW()
 );

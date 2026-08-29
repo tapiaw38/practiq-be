@@ -22,6 +22,7 @@ func NewUpdateAssistantConfigHandler(uc ucProfile.UpdateAssistantConfigUsecase) 
 			ID:               userID,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,
+			UITheme:          input.UITheme,
 		})
 		if appErr != nil {
 			appErr.Log(c)

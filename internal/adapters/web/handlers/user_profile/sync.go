@@ -20,6 +20,7 @@ type syncInput struct {
 type assistantConfigInput struct {
 	AssistantBaseURL string `json:"assistant_base_url"`
 	AssistantAPIKey  string `json:"assistant_api_key"`
+	UITheme          string `json:"ui_theme"`
 }
 type academicStatusInput struct {
 	AcademicStatus string `json:"academic_status" binding:"required"`

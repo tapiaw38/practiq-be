@@ -8,6 +8,7 @@ type (
 		TeacherID   string `json:"teacher_id"`
 		GradeID     string `json:"grade_id"`
 		GradeName   string `json:"grade_name"`
+		GradeTheme  string `json:"grade_theme"`
 		SubjectID   string `json:"subject_id"`
 		SubjectName string `json:"subject_name"`
 		Title       string `json:"title"`
@@ -24,6 +25,7 @@ func toCourseData(c domain.Course) CourseData {
 		TeacherID:   c.TeacherID,
 		GradeID:     c.GradeID,
 		GradeName:   c.GradeName,
+		GradeTheme:  c.GradeTheme,
 		SubjectID:   c.SubjectID,
 		SubjectName: c.SubjectName,
 		Title:       c.Title,

@@ -7,6 +7,7 @@ type Course struct {
 	TeacherID   string
 	GradeID     string
 	GradeName   string
+	GradeTheme  string
 	SubjectID   string
 	SubjectName string
 	Title       string

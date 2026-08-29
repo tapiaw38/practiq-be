@@ -8,7 +8,7 @@ import (
 
 func (r *repository) List(ctx context.Context) ([]domain.Grade, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, name, COALESCE(description, ''), created_by, created_at
+		SELECT id, name, COALESCE(description, ''), visual_theme, created_by, created_at
 		FROM grades
 		ORDER BY created_at DESC
 	`)
@@ -20,7 +20,7 @@ func (r *repository) List(ctx context.Context) ([]domain.Grade, error) {
 	grades := []domain.Grade{}
 	for rows.Next() {
 		var grade domain.Grade
-		if err := rows.Scan(&grade.ID, &grade.Name, &grade.Description, &grade.CreatedBy, &grade.CreatedAt); err != nil {
+		if err := rows.Scan(&grade.ID, &grade.Name, &grade.Description, &grade.VisualTheme, &grade.CreatedBy, &grade.CreatedAt); err != nil {
 			return nil, err
 		}
 		grades = append(grades, grade)

@@ -10,7 +10,7 @@ import (
 type Repository interface {
 	Upsert(context.Context, domain.UserProfile) error
 	Get(context.Context, string) (*domain.UserProfile, error)
-	UpdateAssistantConfig(context.Context, string, string, string) error
+	UpdateAssistantConfig(context.Context, string, string, string, string) error
 	UpdateAcademicStatus(context.Context, string, string) error
 }
 type repository struct {

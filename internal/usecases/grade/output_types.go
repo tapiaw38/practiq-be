@@ -11,6 +11,7 @@ type (
 		ID          string `json:"id"`
 		Name        string `json:"name"`
 		Description string `json:"description"`
+		VisualTheme string `json:"visual_theme"`
 		CreatedBy   string `json:"created_by"`
 		CreatedAt   string `json:"created_at"`
 	}
@@ -28,6 +29,7 @@ func toGradeData(grade domain.Grade) GradeData {
 		ID:          grade.ID,
 		Name:        grade.Name,
 		Description: grade.Description,
+		VisualTheme: grade.VisualTheme,
 		CreatedBy:   grade.CreatedBy,
 		CreatedAt:   grade.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
