@@ -9,25 +9,31 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListUsecase interface {
-	Execute(context.Context, ListInput) (*CourseListOutput, apperrors.ApplicationError)
+type (
+	ListUsecase interface {
+		Execute(context.Context, ListInput) (*ListOutput, apperrors.ApplicationError)
+	}
+
+	listUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListInput struct {
+		TeacherID string
+		StudentID string
+	}
+
+	ListOutput struct {
+		Data []CourseData `json:"data"`
+	}
+)
+
+func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
+	return &listUsecase{contextFactory: contextFactory}
 }
 
-type listUsecase struct {
-	factory appcontext.Factory
-}
-
-type ListInput struct {
-	TeacherID string
-	StudentID string
-}
-
-func NewListUsecase(factory appcontext.Factory) ListUsecase {
-	return &listUsecase{factory: factory}
-}
-
-func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*CourseListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*ListOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	courses, err := app.Repositories.Course.List(ctx, reposCourse.ListFilterOptions{
 		TeacherID: input.TeacherID,
@@ -45,5 +51,5 @@ func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*CourseList
 		data = []CourseData{}
 	}
 
-	return &CourseListOutput{Data: data}, nil
+	return &ListOutput{Data: data}, nil
 }

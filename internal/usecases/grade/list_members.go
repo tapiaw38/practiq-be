@@ -6,22 +6,29 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
-type ListMembersUsecase interface {
-	Execute(context.Context, string) (*GradeMembersOutput, apperrors.ApplicationError)
+type (
+	ListMembersUsecase interface {
+		Execute(ctx context.Context, gradeID, bearerToken string) (*ListMembersOutput, apperrors.ApplicationError)
+	}
+
+	listMembersUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListMembersOutput struct {
+		Data []GradeMemberData `json:"data"`
+	}
+)
+
+func NewListMembersUsecase(contextFactory appcontext.Factory) ListMembersUsecase {
+	return &listMembersUsecase{contextFactory: contextFactory}
 }
 
-type listMembersUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewListMembersUsecase(factory appcontext.Factory) ListMembersUsecase {
-	return &listMembersUsecase{factory: factory}
-}
-
-func (u *listMembersUsecase) Execute(ctx context.Context, gradeID string) (*GradeMembersOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *listMembersUsecase) Execute(ctx context.Context, gradeID, bearerToken string) (*ListMembersOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)
 	if err != nil {
@@ -36,10 +43,20 @@ func (u *listMembersUsecase) Execute(ctx context.Context, gradeID string) (*Grad
 		return nil, apperrors.NewApplicationError(mappings.GradeListMembersError, err)
 	}
 
-	data := make([]GradeMemberData, 0, len(members))
+	ids := make([]string, 0, len(members))
 	for _, member := range members {
-		data = append(data, toGradeMemberData(member))
+		ids = append(ids, member.ID)
+	}
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 
-	return &GradeMembersOutput{Data: data}, nil
+	data := make([]GradeMemberData, 0, len(members))
+	for _, member := range members {
+		info := names[member.ID]
+		data = append(data, toGradeMemberData(member, identity.FullName(info, member.ID), info.Email))
+	}
+
+	return &ListMembersOutput{Data: data}, nil
 }

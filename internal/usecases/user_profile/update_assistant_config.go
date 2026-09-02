@@ -7,33 +7,49 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
-type UpdateAssistantConfigUsecase interface {
-	Execute(context.Context, UpdateAssistantConfigInput) (*ProfileOutput, apperrors.ApplicationError)
+type (
+	UpdateAssistantConfigUsecase interface {
+		Execute(context.Context, UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError)
+	}
+
+	updateAssistantConfigUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateAssistantConfigInput struct {
+		ID               string
+		AssistantBaseURL string `json:"assistant_base_url"`
+		AssistantAPIKey  string `json:"assistant_api_key"`
+		UITheme          string `json:"ui_theme"`
+		BearerToken      string
+	}
+
+	UpdateAssistantConfigOutput struct {
+		Data ProfileData `json:"data"`
+	}
+)
+
+func NewUpdateAssistantConfigUsecase(contextFactory appcontext.Factory) UpdateAssistantConfigUsecase {
+	return &updateAssistantConfigUsecase{contextFactory: contextFactory}
 }
 
-type updateAssistantConfigUsecase struct {
-	factory appcontext.Factory
-}
-
-type UpdateAssistantConfigInput struct {
-	ID               string
-	AssistantBaseURL string `json:"assistant_base_url"`
-	AssistantAPIKey  string `json:"assistant_api_key"`
-}
-
-func NewUpdateAssistantConfigUsecase(factory appcontext.Factory) UpdateAssistantConfigUsecase {
-	return &updateAssistantConfigUsecase{factory: factory}
-}
-
-func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, input UpdateAssistantConfigInput) (*ProfileOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, input UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	baseURL := strings.TrimSpace(input.AssistantBaseURL)
 	apiKey := strings.TrimSpace(input.AssistantAPIKey)
+	uiTheme := strings.TrimSpace(input.UITheme)
+	if uiTheme == "" {
+		uiTheme = "primary"
+	}
+	if uiTheme != "primary" && uiTheme != "secondary" {
+		return nil, apperrors.NewBadRequestError("ui_theme must be primary or secondary")
+	}
 
-	if err := app.Repositories.UserProfile.UpdateAssistantConfig(ctx, input.ID, baseURL, apiKey); err != nil {
+	if err := app.Repositories.UserProfile.UpdateAssistantConfig(ctx, input.ID, baseURL, apiKey, uiTheme); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileSyncError, err)
 	}
 
@@ -45,5 +61,11 @@ func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, input Update
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	return &ProfileOutput{Data: toProfileData(*updated)}, nil
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[input.ID]
+
+	return &UpdateAssistantConfigOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email)}, nil
 }

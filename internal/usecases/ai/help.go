@@ -2,8 +2,12 @@ package ai
 
 import (
 	"context"
+	"log"
 	"math/rand"
+	"strings"
 
+	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -29,41 +33,67 @@ var mockResponses = map[string][]string{
 		"Piensa en esto: si 2 × 3 = 6, entonces 2 × 30 = 60. ¿Ves el patrón?",
 		"Como ejemplo: para resolver 15 ÷ 3, puedes pensar: ¿cuántas veces cabe el 3 en el 15? La respuesta es 5.",
 	},
+	"review_answer": {
+		"Revisa la respuesta comparándola con el ejercicio. Indica primero si está correcta y menciona un único paso para comprobarla.",
+	},
 }
 
-type HelpUsecase interface {
-	Execute(context.Context, HelpInput) (*HelpOutput, apperrors.ApplicationError)
-}
+type (
+	HelpUsecase interface {
+		Execute(context.Context, HelpInput) (*HelpOutput, apperrors.ApplicationError)
+	}
 
-type helpUsecase struct {
-	factory appcontext.Factory
-}
+	helpUsecase struct {
+		contextFactory appcontext.Factory
+	}
 
-type HelpInput struct {
-	StudentID  string
-	ExerciseID string `json:"exercise_id"`
-	Question   string `json:"question"`
-	HelpType   string `json:"help_type"`
-}
+	HelpInput struct {
+		StudentID      string
+		ExerciseID     string `json:"exercise_id"`
+		Question       string `json:"question"`
+		StudentAnswer  string `json:"student_answer"`
+		HelpType       string `json:"help_type"`
+		ConversationID string `json:"conversation_id"`
+	}
 
-func NewHelpUsecase(factory appcontext.Factory) HelpUsecase {
-	return &helpUsecase{factory: factory}
+	HelpOutput struct {
+		Data HelpData `json:"data"`
+	}
+)
+
+func NewHelpUsecase(contextFactory appcontext.Factory) HelpUsecase {
+	return &helpUsecase{contextFactory: contextFactory}
 }
 
 func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
+
+	if input.ExerciseID != "" {
+		exercise, err := app.Repositories.Exercise.Get(ctx, input.ExerciseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
+		}
+		if exercise != nil && exercise.TopicID != "" {
+			topic, _ := app.Repositories.Topic.Get(ctx, exercise.TopicID)
+			if topic == nil {
+				return nil, apperrors.NewForbiddenError()
+			}
+			hasAccess, err := studentHasCourseAccess(ctx, app, input.StudentID, topic.CourseID)
+			if err != nil {
+				return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
+			}
+			if !hasAccess {
+				return nil, apperrors.NewForbiddenError()
+			}
+		}
+	}
 
 	helpType := input.HelpType
 	if helpType == "" {
 		helpType = "hint"
 	}
 
-	responses, ok := mockResponses[helpType]
-	if !ok {
-		responses = mockResponses["hint"]
-	}
-
-	response := responses[rand.Intn(len(responses))]
+	response := u.getAIResponse(ctx, app, input, helpType)
 
 	id, err := app.Repositories.AIConversation.CreateHelpRequest(ctx, domain.AIHelpRequest{
 		StudentID:  input.StudentID,
@@ -76,9 +106,234 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 		return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
 	}
 
-	return &HelpOutput{Data: HelpData{
-		ID:       id,
-		Response: response,
-		HelpType: helpType,
-	}}, nil
+	if input.ConversationID != "" {
+		conversation, err := app.Repositories.AIConversation.Get(ctx, input.ConversationID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AIConversationGetError, err)
+		}
+		if conversation == nil || conversation.StudentID != input.StudentID {
+			return nil, apperrors.NewForbiddenError()
+		}
+		u.persistMessages(ctx, app, input.ConversationID, input.Question, helpType, response)
+	}
+
+	return &HelpOutput{Data: toHelpOutputData(id, response, helpType)}, nil
+}
+
+func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context, input HelpInput, helpType string) string {
+	profile, err := app.Repositories.UserProfile.Get(ctx, input.StudentID)
+	if err != nil {
+		log.Printf("[ai_help] warning: failed to get user profile student_id=%s err=%v", input.StudentID, err)
+		return getMockResponse(helpType)
+	}
+	if profile == nil || profile.AssistantBaseURL == "" {
+		log.Printf("[ai_help] warning: assistant not configured for student_id=%s", input.StudentID)
+		return getMockResponse(helpType)
+	}
+
+	var exercise *domain.Exercise
+	gradeName := ""
+	if input.ExerciseID != "" {
+		exercise, err = app.Repositories.Exercise.Get(ctx, input.ExerciseID)
+		if err != nil {
+			log.Printf("[ai_help] warning: failed to get exercise exercise_id=%s err=%v", input.ExerciseID, err)
+		}
+		// Get grade from exercise → topic → course
+		if exercise != nil && exercise.TopicID != "" {
+			if topic, _ := app.Repositories.Topic.Get(ctx, exercise.TopicID); topic != nil {
+				if course, _ := app.Repositories.Course.Get(ctx, topic.CourseID); course != nil {
+					gradeName = course.GradeName
+				}
+			}
+		}
+	}
+
+	history, historyErr := app.Repositories.AIConversation.ListRecentHelpRequests(ctx, input.StudentID, input.ExerciseID, 3)
+	if historyErr != nil {
+		log.Printf("[ai_help] warning: failed to load exercise memory student_id=%s exercise_id=%s err=%v", input.StudentID, input.ExerciseID, historyErr)
+	}
+	prompt := buildHelpPrompt(helpType, input.Question, input.StudentAnswer, exercise, gradeName, history)
+
+	cfg := assistant.Config{
+		BaseURL: profile.AssistantBaseURL,
+		APIKey:  profile.AssistantAPIKey,
+	}
+
+	aiResponse, err := app.Integrations.AssistantGateway.AskHelp(ctx, cfg, prompt)
+	if err != nil {
+		log.Printf("[ai_help] warning: assistant call failed student_id=%s err=%v, falling back to mock", input.StudentID, err)
+		return getMockResponse(helpType)
+	}
+
+	return strings.TrimSpace(aiResponse)
+}
+
+func buildHelpPrompt(helpType, studentQuestion, studentAnswer string, exercise *domain.Exercise, gradeName string, history []domain.AIHelpRequest) string {
+	var sb strings.Builder
+
+	if gradeName != "" {
+		sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de ")
+		sb.WriteString(gradeName)
+		sb.WriteString(". ")
+		sb.WriteString("Considera los contenidos de los documentos de ")
+		sb.WriteString(gradeName)
+		sb.WriteString(" para responder. ")
+	} else {
+		sb.WriteString("Eres un tutor de matemáticas amigable para estudiantes de primaria y secundaria. ")
+	}
+	sb.WriteString("Responde en español rioplatense. Sin saludo, ánimo, relleno, repetir enunciado ni pregunta final.\n")
+	sb.WriteString("Cumple el límite indicado. Si faltan datos, dilo en una sola frase.\n\n")
+
+	if exercise != nil {
+		sb.WriteString("Contexto del ejercicio:\n")
+		if exercise.Type == "fill_blanks" {
+			sb.WriteString(buildFillBlanksPuzzleContext(exercise))
+		} else {
+			sb.WriteString("- Enunciado: ")
+			sb.WriteString(exercise.Question)
+			sb.WriteString("\n")
+		}
+		if exercise.Difficulty > 0 {
+			sb.WriteString("- Dificultad: ")
+			switch exercise.Difficulty {
+			case 1:
+				sb.WriteString("básica")
+			case 2:
+				sb.WriteString("intermedia")
+			case 3:
+				sb.WriteString("avanzada")
+			default:
+				sb.WriteString("variable")
+			}
+			sb.WriteString("\n")
+		}
+	}
+
+	switch helpType {
+	case "hint":
+		sb.WriteString("\nModo PISTA: da solo siguiente operación o idea. Máximo 20 palabras. No reveles resultado final.\n")
+	case "explanation":
+		sb.WriteString("\nModo EXPLICACIÓN: máximo 3 pasos numerados y resultado final. Sin preguntas al alumno.\n")
+		if exercise != nil && exercise.Explanation != "" {
+			sb.WriteString("Referencia para tu explicación: ")
+			sb.WriteString(exercise.Explanation)
+			sb.WriteString("\n")
+		}
+		if exercise != nil && exercise.Type == "fill_blanks" {
+			sb.WriteString("Completado final esperado: ")
+			sb.WriteString(formatFillBlanksAnswer(exercise.CorrectAnswer))
+			sb.WriteString("\n")
+		} else if exercise != nil && exercise.CorrectAnswer != "" {
+			sb.WriteString("La respuesta correcta es: ")
+			sb.WriteString(exercise.CorrectAnswer)
+			sb.WriteString("\n")
+		}
+	case "similar_example":
+		sb.WriteString("\nModo EJEMPLO: crea un ejercicio con números diferentes; máximo 3 líneas incluyendo resolución.\n")
+		if exercise != nil && exercise.Type == "fill_blanks" {
+			sb.WriteString("Conservá formato de bloques y huecos, usando valores distintos.\n")
+		} else if exercise != nil && exercise.CorrectAnswer != "" {
+			sb.WriteString("Basándote en el ejercicio original (respuesta: ")
+			sb.WriteString(exercise.CorrectAnswer)
+			sb.WriteString("), ")
+		}
+		sb.WriteString("usa números diferentes.\n")
+	case "review_answer":
+		sb.WriteString("\nModo REVISIÓN: comienza exactamente con `Correcta.` o `Incorrecta.`. Luego una comprobación concreta, máximo 2 líneas. No hagas preguntas.\n")
+		if exercise != nil && exercise.Type == "fill_blanks" {
+			sb.WriteString("Bloques colocados por estudiante: ")
+			sb.WriteString(formatFillBlanksAnswer(studentAnswer))
+			sb.WriteString("\nCompletado esperado: ")
+			sb.WriteString(formatFillBlanksAnswer(exercise.CorrectAnswer))
+			sb.WriteString("\nIndicá qué hueco revisar, sin mostrar JSON.\n")
+		} else if studentAnswer != "" {
+			sb.WriteString("Respuesta declarada por estudiante: ")
+			sb.WriteString(studentAnswer)
+			sb.WriteString("\n")
+		}
+	default:
+		sb.WriteString("\nResponde directamente, máximo 2 líneas.\n")
+	}
+
+	if studentQuestion != "" {
+		sb.WriteString("\nPregunta del estudiante: ")
+		sb.WriteString(studentQuestion)
+		sb.WriteString("\n")
+	}
+
+	if len(history) > 0 {
+		last := history[0]
+		sb.WriteString("\nAyuda anterior: ")
+		sb.WriteString(truncatePromptText(last.AIResponse, 180))
+		sb.WriteString("\nNo la repitas.\n")
+	}
+
+	return sb.String()
+}
+
+func truncatePromptText(value string, max int) string {
+	value = strings.TrimSpace(value)
+	if len(value) <= max {
+		return value
+	}
+	return value[:max] + "…"
+}
+
+func getMockResponse(helpType string) string {
+	responses, ok := mockResponses[helpType]
+	if !ok {
+		responses = mockResponses["hint"]
+	}
+	return responses[rand.Intn(len(responses))]
+}
+
+func (u *helpUsecase) persistMessages(ctx context.Context, app *appcontext.Context, conversationID, question, helpType, aiResponse string) {
+	studentContent := question
+	if studentContent == "" {
+		switch helpType {
+		case "hint":
+			studentContent = "Dame una pista"
+		case "explanation":
+			studentContent = "Explícame cómo resolver esto"
+		case "similar_example":
+			studentContent = "Muéstrame un ejemplo similar"
+		case "review_answer":
+			studentContent = "Revisa mi respuesta"
+		default:
+			studentContent = "Necesito ayuda"
+		}
+	}
+
+	_, err := app.Repositories.AIConversation.AddMessage(ctx, domain.AIMessage{
+		ConversationID: conversationID,
+		Sender:         "student",
+		MessageType:    "text",
+		Content:        studentContent,
+	})
+	if err != nil {
+		log.Printf("[ai_help] warning: failed to persist student message conversation_id=%s err=%v", conversationID, err)
+	}
+
+	_, err = app.Repositories.AIConversation.AddMessage(ctx, domain.AIMessage{
+		ConversationID: conversationID,
+		Sender:         "ai",
+		MessageType:    "text",
+		Content:        aiResponse,
+	})
+	if err != nil {
+		log.Printf("[ai_help] warning: failed to persist ai message conversation_id=%s err=%v", conversationID, err)
+	}
+}
+
+func studentHasCourseAccess(ctx context.Context, app *appcontext.Context, studentID, courseID string) (bool, error) {
+	courses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{StudentID: studentID})
+	if err != nil {
+		return false, err
+	}
+	for _, course := range courses {
+		if course.ID == courseID {
+			return true, nil
+		}
+	}
+	return false, nil
 }

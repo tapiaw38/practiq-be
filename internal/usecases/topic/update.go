@@ -9,26 +9,54 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*TopicOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Title       string
+		Description string
+		OrderIndex  int
+	}
+
+	UpdateOutput struct {
+		Data TopicData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-type UpdateInput struct {
-	Title       string
-	Description string
-	OrderIndex  int
-}
+	// Verify topic exists and check ownership
+	topic, err := app.Repositories.Topic.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.TopicGetError, err)
+	}
+	if topic == nil {
+		return nil, apperrors.NewNotFoundError("topic not found")
+	}
 
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*TopicOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	if !isSuperAdmin {
+		course, err := app.Repositories.Course.Get(ctx, topic.CourseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil {
+			return nil, apperrors.NewNotFoundError("course not found")
+		}
+		if course.TeacherID != requesterID {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	if err := app.Repositories.Topic.Update(ctx, id, domain.Topic{
 		Title:       input.Title,
@@ -46,5 +74,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.TopicNotFoundError, nil)
 	}
 
-	return &TopicOutput{Data: toTopicData(*t)}, nil
+	return &UpdateOutput{Data: toTopicData(*t)}, nil
 }

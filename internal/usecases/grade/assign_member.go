@@ -9,20 +9,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type AssignMemberUsecase interface {
-	Execute(context.Context, string, string) (*AssignMemberOutput, apperrors.ApplicationError)
-}
+type (
+	AssignMemberUsecase interface {
+		Execute(context.Context, string, string) (*AssignMemberOutput, apperrors.ApplicationError)
+	}
 
-type assignMemberUsecase struct {
-	factory appcontext.Factory
-}
+	assignMemberUsecase struct {
+		contextFactory appcontext.Factory
+	}
 
-func NewAssignMemberUsecase(factory appcontext.Factory) AssignMemberUsecase {
-	return &assignMemberUsecase{factory: factory}
+	AssignMemberOutput struct {
+		Data OperationResultData `json:"data"`
+	}
+)
+
+func NewAssignMemberUsecase(contextFactory appcontext.Factory) AssignMemberUsecase {
+	return &assignMemberUsecase{contextFactory: contextFactory}
 }
 
 func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
 
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)
 	if err != nil {
@@ -47,5 +53,5 @@ func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID strin
 		return nil, apperrors.NewApplicationError(mappings.GradeAssignMemberError, err)
 	}
 
-	return &AssignMemberOutput{Message: "member assigned successfully"}, nil
+	return &AssignMemberOutput{Data: toOperationResultData(domain.OperationResult{Message: "member assigned successfully"})}, nil
 }

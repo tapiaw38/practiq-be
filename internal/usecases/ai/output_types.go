@@ -2,40 +2,30 @@ package ai
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
-type ConversationData struct {
-	ID              string `json:"id"`
-	StudentID       string `json:"student_id"`
-	CourseID        string `json:"course_id"`
-	PracticeSheetID string `json:"practice_sheet_id"`
-	CreatedAt       string `json:"created_at"`
-}
+type (
+	ConversationData struct {
+		ID              string `json:"id"`
+		StudentID       string `json:"student_id"`
+		CourseID        string `json:"course_id"`
+		PracticeSheetID string `json:"practice_sheet_id"`
+		CreatedAt       string `json:"created_at"`
+	}
 
-type ConversationOutput struct {
-	Data ConversationData `json:"data"`
-}
+	MessageData struct {
+		ID             string `json:"id"`
+		ConversationID string `json:"conversation_id"`
+		Sender         string `json:"sender"`
+		MessageType    string `json:"message_type"`
+		Content        string `json:"content"`
+		CreatedAt      string `json:"created_at"`
+	}
 
-type MessageData struct {
-	ID             string `json:"id"`
-	ConversationID string `json:"conversation_id"`
-	Sender         string `json:"sender"`
-	MessageType    string `json:"message_type"`
-	Content        string `json:"content"`
-	CreatedAt      string `json:"created_at"`
-}
-
-type MessagesListOutput struct {
-	Data []MessageData `json:"data"`
-}
-
-type HelpOutput struct {
-	Data HelpData `json:"data"`
-}
-
-type HelpData struct {
-	ID       string `json:"id"`
-	Response string `json:"response"`
-	HelpType string `json:"help_type"`
-}
+	HelpData struct {
+		ID       string `json:"id"`
+		Response string `json:"response"`
+		HelpType string `json:"help_type"`
+	}
+)
 
 func toConversationData(c domain.AIConversation) ConversationData {
 	return ConversationData{
@@ -47,6 +37,15 @@ func toConversationData(c domain.AIConversation) ConversationData {
 	}
 }
 
+func toConversationOutputData(id string, input CreateConversationInput) ConversationData {
+	return ConversationData{
+		ID:              id,
+		StudentID:       input.StudentID,
+		CourseID:        input.CourseID,
+		PracticeSheetID: input.PracticeSheetID,
+	}
+}
+
 func toMessageData(m domain.AIMessage) MessageData {
 	return MessageData{
 		ID:             m.ID,
@@ -55,5 +54,13 @@ func toMessageData(m domain.AIMessage) MessageData {
 		MessageType:    m.MessageType,
 		Content:        m.Content,
 		CreatedAt:      m.CreatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+func toHelpOutputData(id, response, helpType string) HelpData {
+	return HelpData{
+		ID:       id,
+		Response: response,
+		HelpType: helpType,
 	}
 }

@@ -3,18 +3,25 @@ package usecases
 import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
+	ucAttemptReview "github.com/tapiaw38/practiq-be/internal/usecases/attempt_review"
 	ucCourse "github.com/tapiaw38/practiq-be/internal/usecases/course"
 	ucLevel "github.com/tapiaw38/practiq-be/internal/usecases/course_level"
+	ucCourseProgress "github.com/tapiaw38/practiq-be/internal/usecases/course_progress"
 	ucEnrollment "github.com/tapiaw38/practiq-be/internal/usecases/enrollment"
 	ucExercise "github.com/tapiaw38/practiq-be/internal/usecases/exercise"
 	ucGrade "github.com/tapiaw38/practiq-be/internal/usecases/grade"
+	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
+	ucNotification "github.com/tapiaw38/practiq-be/internal/usecases/notification"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
+	ucInvitation "github.com/tapiaw38/practiq-be/internal/usecases/student_invitation"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
+	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
 	ucSubject "github.com/tapiaw38/practiq-be/internal/usecases/subject"
 	ucAssignment "github.com/tapiaw38/practiq-be/internal/usecases/teacher_student_assignment"
 	ucTopic "github.com/tapiaw38/practiq-be/internal/usecases/topic"
+	ucUpload "github.com/tapiaw38/practiq-be/internal/usecases/upload"
 	ucProfile "github.com/tapiaw38/practiq-be/internal/usecases/user_profile"
 )
 
@@ -27,14 +34,15 @@ type CourseUsecases struct {
 }
 
 type GradeUsecases struct {
-	Create         ucGrade.CreateUsecase
-	List           ucGrade.ListUsecase
-	Update         ucGrade.UpdateUsecase
-	Delete         ucGrade.DeleteUsecase
-	AssignMember   ucGrade.AssignMemberUsecase
-	ListMembers    ucGrade.ListMembersUsecase
-	RemoveMember   ucGrade.RemoveMemberUsecase
-	ListUserGrades ucGrade.ListUserGradesUsecase
+	Create            ucGrade.CreateUsecase
+	List              ucGrade.ListUsecase
+	Update            ucGrade.UpdateUsecase
+	Delete            ucGrade.DeleteUsecase
+	AssignMember      ucGrade.AssignMemberUsecase
+	ListMembers       ucGrade.ListMembersUsecase
+	RemoveMember      ucGrade.RemoveMemberUsecase
+	ListUserGrades    ucGrade.ListUserGradesUsecase
+	ListGradesByUsers ucGrade.ListGradesByUsersUsecase
 }
 
 type SubjectUsecases struct {
@@ -51,6 +59,13 @@ type AssignmentUsecases struct {
 	ListTeachers ucAssignment.ListTeachersUsecase
 }
 
+type InvitationUsecases struct {
+	Create    ucInvitation.CreateUsecase
+	GetActive ucInvitation.GetActiveUsecase
+	Revoke    ucInvitation.RevokeUsecase
+	Redeem    ucInvitation.RedeemUsecase
+}
+
 type TopicUsecases struct {
 	Create ucTopic.CreateUsecase
 	List   ucTopic.ListUsecase
@@ -59,15 +74,17 @@ type TopicUsecases struct {
 }
 
 type ExerciseUsecases struct {
-	Create ucExercise.CreateUsecase
-	List   ucExercise.ListUsecase
-	Update ucExercise.UpdateUsecase
-	Delete ucExercise.DeleteUsecase
+	Create         ucExercise.CreateUsecase
+	List           ucExercise.ListUsecase
+	Update         ucExercise.UpdateUsecase
+	Delete         ucExercise.DeleteUsecase
+	StatementImage ucExercise.StatementImageUsecase
 }
 
 type MaterialUsecases struct {
 	Create ucMaterial.CreateUsecase
 	List   ucMaterial.ListUsecase
+	Get    ucMaterial.GetUsecase
 	Update ucMaterial.UpdateUsecase
 	Delete ucMaterial.DeleteUsecase
 }
@@ -78,12 +95,13 @@ type EnrollmentUsecases struct {
 }
 
 type PracticeSheetUsecases struct {
-	Create ucPracticeSheet.CreateUsecase
-	List   ucPracticeSheet.ListUsecase
-	Get    ucPracticeSheet.GetUsecase
-	Submit ucPracticeSheet.SubmitUsecase
-	Update ucPracticeSheet.UpdateUsecase
-	Delete ucPracticeSheet.DeleteUsecase
+	Create            ucPracticeSheet.CreateUsecase
+	List              ucPracticeSheet.ListUsecase
+	Get               ucPracticeSheet.GetUsecase
+	GetAssistantMedia ucPracticeSheet.GetAssistantMediaUsecase
+	Submit            ucPracticeSheet.SubmitUsecase
+	Update            ucPracticeSheet.UpdateUsecase
+	Delete            ucPracticeSheet.DeleteUsecase
 }
 
 type ProgressUsecases struct {
@@ -92,13 +110,15 @@ type ProgressUsecases struct {
 	GetStudentProgress       ucProgress.GetStudentProgressUsecase
 	GetStudentCourseProgress ucProgress.GetStudentCourseProgressUsecase
 	GetStudentAttempts       ucProgress.GetStudentAttemptsUsecase
+	Dashboard                ucProgress.DashboardUsecase
 }
 
 type AIUsecases struct {
-	CreateConversation ucAI.CreateConversationUsecase
-	GetMessages        ucAI.GetMessagesUsecase
-	Help               ucAI.HelpUsecase
-	Proxy              ucAI.ProxyUsecase
+	CreateConversation  ucAI.CreateConversationUsecase
+	GetMessages         ucAI.GetMessagesUsecase
+	Help                ucAI.HelpUsecase
+	Proxy               ucAI.ProxyUsecase
+	GenerateCuriosities ucAI.GenerateCuriositiesUsecase
 }
 
 type ProfileUsecases struct {
@@ -109,129 +129,222 @@ type ProfileUsecases struct {
 }
 
 type NotebookUsecases struct {
-	Create         ucNB.CreateUsecase
-	List           ucNB.ListUsecase
-	Get            ucNB.GetUsecase
-	Update         ucNB.UpdateUsecase
-	Delete         ucNB.DeleteUsecase
-	AddPage        ucNB.AddPageUsecase
-	UpdatePage     ucNB.UpdatePageUsecase
-	SaveSubmission ucNB.SaveSubmissionUsecase
+	Create           ucNB.CreateUsecase
+	List             ucNB.ListUsecase
+	Get              ucNB.GetUsecase
+	Update           ucNB.UpdateUsecase
+	Delete           ucNB.DeleteUsecase
+	AddPage          ucNB.AddPageUsecase
+	UpdatePage       ucNB.UpdatePageUsecase
+	SaveSubmission   ucNB.SaveSubmissionUsecase
+	ListSubmissions  ucNB.ListSubmissionsUsecase
+	ReviewSubmission ucNB.ReviewSubmissionUsecase
+	TeacherReview    ucNB.TeacherReviewSubmissionUsecase
 }
 
 type CourseLevelUsecases struct {
 	Get ucLevel.GetUsecase
 }
 
-type Usecases struct {
-	Course        CourseUsecases
-	Grade         GradeUsecases
-	Subject       SubjectUsecases
-	Assignment    AssignmentUsecases
-	Topic         TopicUsecases
-	Exercise      ExerciseUsecases
-	Material      MaterialUsecases
-	Enrollment    EnrollmentUsecases
-	PracticeSheet PracticeSheetUsecases
-	Progress      ProgressUsecases
-	AI            AIUsecases
-	Profile       ProfileUsecases
-	Notebook      NotebookUsecases
-	CourseLevel   CourseLevelUsecases
+type LearningStrategyUsecases struct {
+	List               ucLS.ListUsecase
+	Get                ucLS.GetUsecase
+	Create             ucLS.CreateUsecase
+	Update             ucLS.UpdateUsecase
+	Delete             ucLS.DeleteUsecase
+	ListByCourse       ucLS.ListByCourseUsecase
+	AssignToCourse     ucLS.AssignToCourseUsecase
+	UnassignFromCourse ucLS.UnassignFromCourseUsecase
 }
 
-func NewUsecases(factory appcontext.Factory) *Usecases {
+type CourseProgressUsecases struct {
+	GetForStudent  ucCourseProgress.GetForStudentUsecase
+	ListForStudent ucCourseProgress.ListForStudentUsecase
+}
+
+type AttemptReviewUsecases struct {
+	List           ucAttemptReview.ListUsecase
+	Review         ucAttemptReview.ReviewUsecase
+	StatementImage ucAttemptReview.StatementImageUsecase
+}
+
+type UploadUsecases struct {
+	Upload ucUpload.Usecase
+}
+
+type NotificationUsecases struct {
+	List        ucNotification.ListUsecase
+	MarkRead    ucNotification.MarkReadUsecase
+	MarkAllRead ucNotification.MarkAllReadUsecase
+	Delete      ucNotification.DeleteUsecase
+}
+
+type ReportUsecases struct {
+	GeneratePDF ucReport.GeneratePDFUsecase
+}
+
+type Usecases struct {
+	Course           CourseUsecases
+	Grade            GradeUsecases
+	Subject          SubjectUsecases
+	Assignment       AssignmentUsecases
+	Invitation       InvitationUsecases
+	Topic            TopicUsecases
+	Exercise         ExerciseUsecases
+	Material         MaterialUsecases
+	Enrollment       EnrollmentUsecases
+	PracticeSheet    PracticeSheetUsecases
+	Progress         ProgressUsecases
+	AI               AIUsecases
+	Profile          ProfileUsecases
+	Notebook         NotebookUsecases
+	CourseLevel      CourseLevelUsecases
+	LearningStrategy LearningStrategyUsecases
+	CourseProgress   CourseProgressUsecases
+	Report           ReportUsecases
+	Notification     NotificationUsecases
+	Upload           UploadUsecases
+	AttemptReview    AttemptReviewUsecases
+}
+
+func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 	return &Usecases{
 		Course: CourseUsecases{
-			Create: ucCourse.NewCreateUsecase(factory),
-			List:   ucCourse.NewListUsecase(factory),
-			Get:    ucCourse.NewGetUsecase(factory),
-			Update: ucCourse.NewUpdateUsecase(factory),
-			Delete: ucCourse.NewDeleteUsecase(factory),
+			Create: ucCourse.NewCreateUsecase(contextFactory),
+			List:   ucCourse.NewListUsecase(contextFactory),
+			Get:    ucCourse.NewGetUsecase(contextFactory),
+			Update: ucCourse.NewUpdateUsecase(contextFactory),
+			Delete: ucCourse.NewDeleteUsecase(contextFactory),
+		},
+		AttemptReview: AttemptReviewUsecases{
+			List:           ucAttemptReview.NewListUsecase(contextFactory),
+			Review:         ucAttemptReview.NewReviewUsecase(contextFactory),
+			StatementImage: ucAttemptReview.NewStatementImageUsecase(contextFactory),
+		},
+		Upload: UploadUsecases{
+			Upload: ucUpload.NewUsecase(contextFactory),
+		},
+		Notification: NotificationUsecases{
+			List:        ucNotification.NewListUsecase(contextFactory),
+			MarkRead:    ucNotification.NewMarkReadUsecase(contextFactory),
+			MarkAllRead: ucNotification.NewMarkAllReadUsecase(contextFactory),
+			Delete:      ucNotification.NewDeleteUsecase(contextFactory),
 		},
 		Grade: GradeUsecases{
-			Create:         ucGrade.NewCreateUsecase(factory),
-			List:           ucGrade.NewListUsecase(factory),
-			Update:         ucGrade.NewUpdateUsecase(factory),
-			Delete:         ucGrade.NewDeleteUsecase(factory),
-			AssignMember:   ucGrade.NewAssignMemberUsecase(factory),
-			ListMembers:    ucGrade.NewListMembersUsecase(factory),
-			RemoveMember:   ucGrade.NewRemoveMemberUsecase(factory),
-			ListUserGrades: ucGrade.NewListUserGradesUsecase(factory),
+			Create:            ucGrade.NewCreateUsecase(contextFactory),
+			List:              ucGrade.NewListUsecase(contextFactory),
+			Update:            ucGrade.NewUpdateUsecase(contextFactory),
+			Delete:            ucGrade.NewDeleteUsecase(contextFactory),
+			AssignMember:      ucGrade.NewAssignMemberUsecase(contextFactory),
+			ListMembers:       ucGrade.NewListMembersUsecase(contextFactory),
+			RemoveMember:      ucGrade.NewRemoveMemberUsecase(contextFactory),
+			ListUserGrades:    ucGrade.NewListUserGradesUsecase(contextFactory),
+			ListGradesByUsers: ucGrade.NewListGradesByUsersUsecase(contextFactory),
 		},
 		Subject: SubjectUsecases{
-			Create: ucSubject.NewCreateUsecase(factory),
-			List:   ucSubject.NewListUsecase(factory),
-			Update: ucSubject.NewUpdateUsecase(factory),
-			Delete: ucSubject.NewDeleteUsecase(factory),
+			Create: ucSubject.NewCreateUsecase(contextFactory),
+			List:   ucSubject.NewListUsecase(contextFactory),
+			Update: ucSubject.NewUpdateUsecase(contextFactory),
+			Delete: ucSubject.NewDeleteUsecase(contextFactory),
 		},
 		Assignment: AssignmentUsecases{
-			Assign:       ucAssignment.NewAssignUsecase(factory),
-			Unassign:     ucAssignment.NewUnassignUsecase(factory),
-			ListStudents: ucAssignment.NewListStudentsUsecase(factory),
-			ListTeachers: ucAssignment.NewListTeachersUsecase(factory),
+			Assign:       ucAssignment.NewAssignUsecase(contextFactory),
+			Unassign:     ucAssignment.NewUnassignUsecase(contextFactory),
+			ListStudents: ucAssignment.NewListStudentsUsecase(contextFactory),
+			ListTeachers: ucAssignment.NewListTeachersUsecase(contextFactory),
+		},
+		Invitation: InvitationUsecases{
+			Create:    ucInvitation.NewCreateUsecase(contextFactory),
+			GetActive: ucInvitation.NewGetActiveUsecase(contextFactory),
+			Revoke:    ucInvitation.NewRevokeUsecase(contextFactory),
+			Redeem:    ucInvitation.NewRedeemUsecase(contextFactory),
 		},
 		Topic: TopicUsecases{
-			Create: ucTopic.NewCreateUsecase(factory),
-			List:   ucTopic.NewListUsecase(factory),
-			Update: ucTopic.NewUpdateUsecase(factory),
-			Delete: ucTopic.NewDeleteUsecase(factory),
+			Create: ucTopic.NewCreateUsecase(contextFactory),
+			List:   ucTopic.NewListUsecase(contextFactory),
+			Update: ucTopic.NewUpdateUsecase(contextFactory),
+			Delete: ucTopic.NewDeleteUsecase(contextFactory),
 		},
 		Exercise: ExerciseUsecases{
-			Create: ucExercise.NewCreateUsecase(factory),
-			List:   ucExercise.NewListUsecase(factory),
-			Update: ucExercise.NewUpdateUsecase(factory),
-			Delete: ucExercise.NewDeleteUsecase(factory),
+			Create:         ucExercise.NewCreateUsecase(contextFactory),
+			List:           ucExercise.NewListUsecase(contextFactory),
+			Update:         ucExercise.NewUpdateUsecase(contextFactory),
+			Delete:         ucExercise.NewDeleteUsecase(contextFactory),
+			StatementImage: ucExercise.NewStatementImageUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
-			Create: ucMaterial.NewCreateUsecase(factory),
-			List:   ucMaterial.NewListUsecase(factory),
-			Update: ucMaterial.NewUpdateUsecase(factory),
-			Delete: ucMaterial.NewDeleteUsecase(factory),
+			Create: ucMaterial.NewCreateUsecase(contextFactory),
+			List:   ucMaterial.NewListUsecase(contextFactory),
+			Get:    ucMaterial.NewGetUsecase(contextFactory),
+			Update: ucMaterial.NewUpdateUsecase(contextFactory),
+			Delete: ucMaterial.NewDeleteUsecase(contextFactory),
 		},
 		Enrollment: EnrollmentUsecases{
-			Enroll:       ucEnrollment.NewEnrollUsecase(factory),
-			ListStudents: ucEnrollment.NewListStudentsUsecase(factory),
+			Enroll:       ucEnrollment.NewEnrollUsecase(contextFactory),
+			ListStudents: ucEnrollment.NewListStudentsUsecase(contextFactory),
 		},
 		PracticeSheet: PracticeSheetUsecases{
-			Create: ucPracticeSheet.NewCreateUsecase(factory),
-			List:   ucPracticeSheet.NewListUsecase(factory),
-			Get:    ucPracticeSheet.NewGetUsecase(factory),
-			Submit: ucPracticeSheet.NewSubmitUsecase(factory),
-			Update: ucPracticeSheet.NewUpdateUsecase(factory),
-			Delete: ucPracticeSheet.NewDeleteUsecase(factory),
+			Create:            ucPracticeSheet.NewCreateUsecase(contextFactory),
+			List:              ucPracticeSheet.NewListUsecase(contextFactory),
+			Get:               ucPracticeSheet.NewGetUsecase(contextFactory),
+			GetAssistantMedia: ucPracticeSheet.NewGetAssistantMediaUsecase(contextFactory),
+			Submit:            ucPracticeSheet.NewSubmitUsecase(contextFactory),
+			Update:            ucPracticeSheet.NewUpdateUsecase(contextFactory),
+			Delete:            ucPracticeSheet.NewDeleteUsecase(contextFactory),
 		},
 		Progress: ProgressUsecases{
-			GetMy:                    ucProgress.NewGetMyProgressUsecase(factory),
-			GetCourse:                ucProgress.NewGetCourseProgressUsecase(factory),
-			GetStudentProgress:       ucProgress.NewGetStudentProgressUsecase(factory),
-			GetStudentCourseProgress: ucProgress.NewGetStudentCourseProgressUsecase(factory),
-			GetStudentAttempts:       ucProgress.NewGetStudentAttemptsUsecase(factory),
+			GetMy:                    ucProgress.NewGetMyProgressUsecase(contextFactory),
+			GetCourse:                ucProgress.NewGetCourseProgressUsecase(contextFactory),
+			GetStudentProgress:       ucProgress.NewGetStudentProgressUsecase(contextFactory),
+			GetStudentCourseProgress: ucProgress.NewGetStudentCourseProgressUsecase(contextFactory),
+			GetStudentAttempts:       ucProgress.NewGetStudentAttemptsUsecase(contextFactory),
+			Dashboard:                ucProgress.NewDashboardUsecase(contextFactory),
 		},
 		AI: AIUsecases{
-			CreateConversation: ucAI.NewCreateConversationUsecase(factory),
-			GetMessages:        ucAI.NewGetMessagesUsecase(factory),
-			Help:               ucAI.NewHelpUsecase(factory),
-			Proxy:              ucAI.NewProxyUsecase(factory),
+			CreateConversation:  ucAI.NewCreateConversationUsecase(contextFactory),
+			GetMessages:         ucAI.NewGetMessagesUsecase(contextFactory),
+			Help:                ucAI.NewHelpUsecase(contextFactory),
+			Proxy:               ucAI.NewProxyUsecase(contextFactory),
+			GenerateCuriosities: ucAI.NewGenerateCuriositiesUsecase(contextFactory),
 		},
 		Profile: ProfileUsecases{
-			Sync:                  ucProfile.NewSyncUsecase(factory),
-			Get:                   ucProfile.NewGetUsecase(factory),
-			UpdateAssistantConfig: ucProfile.NewUpdateAssistantConfigUsecase(factory),
-			UpdateAcademicStatus:  ucProfile.NewUpdateAcademicStatusUsecase(factory),
+			Sync:                  ucProfile.NewSyncUsecase(contextFactory),
+			Get:                   ucProfile.NewGetUsecase(contextFactory),
+			UpdateAssistantConfig: ucProfile.NewUpdateAssistantConfigUsecase(contextFactory),
+			UpdateAcademicStatus:  ucProfile.NewUpdateAcademicStatusUsecase(contextFactory),
 		},
 		Notebook: NotebookUsecases{
-			Create:         ucNB.NewCreateUsecase(factory),
-			List:           ucNB.NewListUsecase(factory),
-			Get:            ucNB.NewGetUsecase(factory),
-			Update:         ucNB.NewUpdateUsecase(factory),
-			Delete:         ucNB.NewDeleteUsecase(factory),
-			AddPage:        ucNB.NewAddPageUsecase(factory),
-			UpdatePage:     ucNB.NewUpdatePageUsecase(factory),
-			SaveSubmission: ucNB.NewSaveSubmissionUsecase(factory),
+			Create:           ucNB.NewCreateUsecase(contextFactory),
+			List:             ucNB.NewListUsecase(contextFactory),
+			Get:              ucNB.NewGetUsecase(contextFactory),
+			Update:           ucNB.NewUpdateUsecase(contextFactory),
+			Delete:           ucNB.NewDeleteUsecase(contextFactory),
+			AddPage:          ucNB.NewAddPageUsecase(contextFactory),
+			UpdatePage:       ucNB.NewUpdatePageUsecase(contextFactory),
+			SaveSubmission:   ucNB.NewSaveSubmissionUsecase(contextFactory),
+			ListSubmissions:  ucNB.NewListSubmissionsUsecase(contextFactory),
+			ReviewSubmission: ucNB.NewReviewSubmissionUsecase(contextFactory),
+			TeacherReview:    ucNB.NewTeacherReviewSubmissionUsecase(contextFactory),
 		},
 		CourseLevel: CourseLevelUsecases{
-			Get: ucLevel.NewGetUsecase(factory),
+			Get: ucLevel.NewGetUsecase(contextFactory),
+		},
+		LearningStrategy: LearningStrategyUsecases{
+			List:               ucLS.NewListUsecase(contextFactory),
+			Get:                ucLS.NewGetUsecase(contextFactory),
+			Create:             ucLS.NewCreateUsecase(contextFactory),
+			Update:             ucLS.NewUpdateUsecase(contextFactory),
+			Delete:             ucLS.NewDeleteUsecase(contextFactory),
+			ListByCourse:       ucLS.NewListByCourseUsecase(contextFactory),
+			AssignToCourse:     ucLS.NewAssignToCourseUsecase(contextFactory),
+			UnassignFromCourse: ucLS.NewUnassignFromCourseUsecase(contextFactory),
+		},
+		CourseProgress: CourseProgressUsecases{
+			GetForStudent:  ucCourseProgress.NewGetForStudentUsecase(contextFactory),
+			ListForStudent: ucCourseProgress.NewListForStudentUsecase(contextFactory),
+		},
+		Report: ReportUsecases{
+			GeneratePDF: ucReport.NewGeneratePDFUsecase(contextFactory),
 		},
 	}
 }

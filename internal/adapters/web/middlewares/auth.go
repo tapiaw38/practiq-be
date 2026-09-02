@@ -65,6 +65,29 @@ func HasRole(c *gin.Context, expected ...string) bool {
 	return false
 }
 
+// Los roles vienen de auth-api-be, donde solo existen tres: user es el alumno,
+// admin el profesor y superadmin el administrador de la plataforma.
+const (
+	RoleStudent    = "user"
+	RoleTeacher    = "admin"
+	RoleSuperAdmin = "superadmin"
+)
+
+// IsSuperAdmin responde si quien hace el pedido administra la plataforma. Es el
+// único permiso que saltea las reglas de propiedad y de asignación
+// docente-alumno, así que vive acá y no repetido en cada handler: cuando la
+// condición se escribía a mano, "admin" terminó incluido en la lista y todo
+// profesor quedó con el alcance del administrador.
+func IsSuperAdmin(c *gin.Context) bool {
+	return HasRole(c, RoleSuperAdmin)
+}
+
+// IsTeacher responde si puede dictar clase: el profesor y, por encima, el
+// administrador.
+func IsTeacher(c *gin.Context) bool {
+	return HasRole(c, RoleTeacher, RoleSuperAdmin)
+}
+
 func RequireRoles(expected ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !HasRole(c, expected...) {

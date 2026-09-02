@@ -2,6 +2,7 @@ package course
 
 import (
 	"context"
+	"log"
 	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -10,31 +11,40 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateUsecase interface {
-	Execute(context.Context, CreateInput) (*CourseOutput, apperrors.ApplicationError)
+type (
+	CreateUsecase interface {
+		Execute(context.Context, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+	}
+
+	createUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateInput struct {
+		TeacherID   string
+		GradeID     string `json:"grade_id"`
+		SubjectID   string `json:"subject_id"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Level       string `json:"level"`
+		Subject     string `json:"subject"`
+	}
+
+	CreateOutput struct {
+		Data CourseData `json:"data"`
+	}
+)
+
+func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
+	return &createUsecase{contextFactory: contextFactory}
 }
 
-type createUsecase struct {
-	factory appcontext.Factory
-}
+func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-type CreateInput struct {
-	TeacherID   string
-	GradeID     string `json:"grade_id"`
-	SubjectID   string `json:"subject_id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Level       string `json:"level"`
-	Subject     string `json:"subject"`
-}
-
-func NewCreateUsecase(factory appcontext.Factory) CreateUsecase {
-	return &createUsecase{factory: factory}
-}
-
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CourseOutput, apperrors.ApplicationError) {
-	app := u.factory()
-
+	if !canCreate {
+		return nil, apperrors.NewForbiddenError()
+	}
 	if strings.TrimSpace(input.GradeID) == "" {
 		return nil, apperrors.NewBadRequestError("grade_id is required")
 	}
@@ -55,10 +65,37 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Course
 		return nil, apperrors.NewApplicationError(mappings.CourseCreateError, err)
 	}
 
+	// The repositories share a *sql.DB with no transaction plumbing, so failing
+	// after the insert used to leave the course committed: the client retried
+	// the "failed" creation and ended up with duplicates, while the first one
+	// sat there without its default strategy. Undo the insert instead.
+	rollbackCourse := func() {
+		if err := app.Repositories.Course.Delete(ctx, id); err != nil {
+			log.Printf("[course_create] could not roll back course_id=%s err=%v", id, err)
+		}
+	}
+
+	defaultStrategy, err := app.Repositories.LearningStrategy.GetByCode(ctx, "kumon")
+	if err != nil {
+		rollbackCourse()
+		return nil, apperrors.NewApplicationError(mappings.LearningStrategyGetError, err)
+	}
+	if defaultStrategy != nil {
+		if _, err := app.Repositories.LearningStrategy.AssignToCourse(ctx, domain.CourseLearningStrategy{
+			CourseID:   id,
+			StrategyID: defaultStrategy.ID,
+			IsDefault:  true,
+			Config:     "{}",
+		}); err != nil {
+			rollbackCourse()
+			return nil, apperrors.NewApplicationError(mappings.LearningStrategyAssignError, err)
+		}
+	}
+
 	c, err := app.Repositories.Course.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
 
-	return &CourseOutput{Data: toCourseData(*c)}, nil
+	return &CreateOutput{Data: toCourseData(*c)}, nil
 }

@@ -8,20 +8,35 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type DeleteUsecase interface {
-	Execute(context.Context, string) apperrors.ApplicationError
+type (
+	DeleteUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError
+	}
+
+	deleteUsecase struct {
+		contextFactory appcontext.Factory
+	}
+)
+
+func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
+	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-type deleteUsecase struct {
-	factory appcontext.Factory
-}
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
+	app := u.contextFactory()
 
-func NewDeleteUsecase(factory appcontext.Factory) DeleteUsecase {
-	return &deleteUsecase{factory: factory}
-}
+	// Verify material exists and check ownership
+	material, err := app.Repositories.Material.Get(ctx, id)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.MaterialGetError, err)
+	}
+	if material == nil {
+		return apperrors.NewNotFoundError("material not found")
+	}
 
-func (u *deleteUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
-	app := u.factory()
+	if !isSuperAdmin && material.TeacherID != requesterID {
+		return apperrors.NewForbiddenError()
+	}
 
 	if err := app.Repositories.Material.Delete(ctx, id); err != nil {
 		return apperrors.NewApplicationError(mappings.MaterialDeleteError, err)

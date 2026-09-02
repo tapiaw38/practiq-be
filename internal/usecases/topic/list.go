@@ -3,27 +3,50 @@ package topic
 import (
 	"context"
 
+	topicRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/topic"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListUsecase interface {
-	Execute(context.Context, string) (*TopicListOutput, apperrors.ApplicationError)
+type (
+	ListUsecase interface {
+		Execute(context.Context, string, bool, ListInput) (*ListOutput, apperrors.ApplicationError)
+	}
+
+	listUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListInput struct {
+		CourseID string
+		Limit    int
+		Offset   int
+	}
+
+	ListOutput struct {
+		Data []TopicData `json:"data"`
+	}
+)
+
+func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
+	return &listUsecase{contextFactory: contextFactory}
 }
 
-type listUsecase struct {
-	factory appcontext.Factory
-}
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input ListInput) (*ListOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewListUsecase(factory appcontext.Factory) ListUsecase {
-	return &listUsecase{factory: factory}
-}
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID); appErr != nil {
+		return nil, appErr
+	}
 
-func (u *listUsecase) Execute(ctx context.Context, courseID string) (*TopicListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	filter := topicRepo.ListFilter{
+		CourseID: input.CourseID,
+		Limit:    input.Limit,
+		Offset:   input.Offset,
+	}
 
-	topics, err := app.Repositories.Topic.List(ctx, courseID)
+	topics, err := app.Repositories.Topic.List(ctx, filter)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.TopicListError, err)
 	}
@@ -36,5 +59,5 @@ func (u *listUsecase) Execute(ctx context.Context, courseID string) (*TopicListO
 		data = []TopicData{}
 	}
 
-	return &TopicListOutput{Data: data}, nil
+	return &ListOutput{Data: data}, nil
 }

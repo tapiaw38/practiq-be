@@ -5,13 +5,14 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/database"
-	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
+	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
 
@@ -31,16 +32,18 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	repos := repositories.NewRepositories(db)
-	kumon := strategy.NewKumonStrategy()
-	assistantService := assistant.NewService()
-	factory := appcontext.NewFactory(repos, kumon, assistantService)
+	ds := datasources.CreateDatasources(db)
+	reposFactory := repositories.NewFactory(ds)
+	repos := reposFactory()
+	integ := integrations.CreateIntegrations(cfg.ServerConfig.AuthAPIURL)
+	imageStorage := storage.NewS3ImageStorage(cfg.S3Config)
+	factory := appcontext.NewFactory(repos, integ, imageStorage)
 	uc := usecases.NewUsecases(factory)
 
 	app := gin.Default()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.ServerConfig.FrontendURL, "http://localhost:5174", "http://localhost:5173"},
+		AllowOrigins:     []string{cfg.ServerConfig.FrontendURL, "https://practiq.com.ar", "https://www.practiq.com.ar", "http://localhost:5174", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
@@ -50,7 +53,7 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "service": "practiq-be"})
 	})
 
-	web.RegisterRoutes(app, uc)
+	web.RegisterRoutes(app, uc, repos.SubmitJob)
 
 	port := cfg.ServerConfig.Port
 	log.Printf("practiq-be running on port %s", port)

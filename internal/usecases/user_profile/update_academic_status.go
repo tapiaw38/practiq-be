@@ -6,22 +6,29 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
-type UpdateAcademicStatusUsecase interface {
-	Execute(context.Context, string, string) (*ProfileOutput, apperrors.ApplicationError)
+type (
+	UpdateAcademicStatusUsecase interface {
+		Execute(ctx context.Context, id, status, bearerToken string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError)
+	}
+
+	updateAcademicStatusUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateAcademicStatusOutput struct {
+		Data ProfileData `json:"data"`
+	}
+)
+
+func NewUpdateAcademicStatusUsecase(contextFactory appcontext.Factory) UpdateAcademicStatusUsecase {
+	return &updateAcademicStatusUsecase{contextFactory: contextFactory}
 }
 
-type updateAcademicStatusUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewUpdateAcademicStatusUsecase(factory appcontext.Factory) UpdateAcademicStatusUsecase {
-	return &updateAcademicStatusUsecase{factory: factory}
-}
-
-func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status string) (*ProfileOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status, bearerToken string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if status != "active" && status != "blocked" {
 		return nil, apperrors.NewBadRequestError("academic_status must be active or blocked")
@@ -39,5 +46,11 @@ func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status st
 		return nil, apperrors.NewApplicationError(mappings.NotFoundError, nil)
 	}
 
-	return &ProfileOutput{Data: toProfileData(*profile)}, nil
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[id]
+
+	return &UpdateAcademicStatusOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email)}, nil
 }
