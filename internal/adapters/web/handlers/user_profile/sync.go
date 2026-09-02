@@ -9,8 +9,6 @@ import (
 )
 
 type syncInput struct {
-	Name  string `json:"name" binding:"required"`
-	Email string `json:"email" binding:"required"`
 	// Timezone is the IANA zone the browser reports. Empty leaves whatever is
 	// stored: the streak is measured with it and most clients do not send one.
 	Timezone         string `json:"timezone"`
@@ -46,12 +44,11 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 
 		output, appErr := uc.Execute(c, ucProfile.SyncInput{
 			ID:               userID,
-			Name:             input.Name,
-			Email:            input.Email,
 			ProfileType:      profileType,
 			Timezone:         input.Timezone,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,
+			BearerToken:      c.GetHeader("Authorization"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

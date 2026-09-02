@@ -32,7 +32,7 @@ type PendingReviewFilter struct {
 // has its own queue (see the notebook submission repository).
 func (r *repository) ListPendingReview(ctx context.Context, filter PendingReviewFilter) ([]domain.PendingAttemptReview, error) {
 	query := `
-		SELECT sa.id, sa.student_id, COALESCE(up.name, ''), sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
+		SELECT sa.id, sa.student_id, sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
 		       COALESCE(sa.practice_sheet_id::text, ''), COALESCE(ps.title, ''), COALESCE(ps.sheet_type, ''),
 		       c.id, c.title,
 		       COALESCE(sa.image_url, ''), COALESCE(sa.attachment_url, ''), COALESCE(sa.attachment_name, ''), COALESCE(sa.attachment_content_type, ''),
@@ -43,7 +43,6 @@ func (r *repository) ListPendingReview(ctx context.Context, filter PendingReview
 		LEFT JOIN practice_sheets ps ON ps.id = sa.practice_sheet_id
 		JOIN topics t ON t.id = e.topic_id
 		JOIN courses c ON c.id = t.course_id
-		LEFT JOIN user_profiles up ON up.id = sa.student_id
 		WHERE sa.needs_teacher_review
 		  AND COALESCE(ps.sheet_type, '') = 'level_test'
 		  AND c.teacher_id = $1
@@ -79,7 +78,6 @@ func (r *repository) ListPendingReview(ctx context.Context, filter PendingReview
 		if err := rows.Scan(
 			&review.AttemptID,
 			&review.StudentID,
-			&review.StudentName,
 			&review.ExerciseID,
 			&review.Question,
 			&review.ExerciseType,

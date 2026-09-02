@@ -6,11 +6,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
 	UpdateAcademicStatusUsecase interface {
-		Execute(context.Context, string, string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, id, status, bearerToken string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError)
 	}
 
 	updateAcademicStatusUsecase struct {
@@ -26,7 +27,7 @@ func NewUpdateAcademicStatusUsecase(contextFactory appcontext.Factory) UpdateAca
 	return &updateAcademicStatusUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError) {
+func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status, bearerToken string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if status != "active" && status != "blocked" {
@@ -45,5 +46,11 @@ func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status st
 		return nil, apperrors.NewApplicationError(mappings.NotFoundError, nil)
 	}
 
-	return &UpdateAcademicStatusOutput{Data: toProfileData(*profile)}, nil
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[id]
+
+	return &UpdateAcademicStatusOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email)}, nil
 }

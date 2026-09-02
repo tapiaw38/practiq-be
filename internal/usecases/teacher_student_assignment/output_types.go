@@ -16,11 +16,11 @@ type (
 	}
 )
 
-func toUserData(user domain.UserProfile) UserData {
+func toUserData(user domain.UserProfile, name, email string) UserData {
 	return UserData{
 		ID:             user.ID,
-		Name:           user.Name,
-		Email:          user.Email,
+		Name:           name,
+		Email:          email,
 		ProfileType:    user.ProfileType,
 		AcademicStatus: user.AcademicStatus,
 	}

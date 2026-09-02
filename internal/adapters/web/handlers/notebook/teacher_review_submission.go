@@ -21,9 +21,10 @@ func NewTeacherReviewSubmissionHandler(uc ucNB.TeacherReviewSubmissionUsecase) g
 			return
 		}
 		output, err := uc.Execute(c, submissionID, ucNB.TeacherReviewInput{
-			IsCorrect: input.TeacherIsCorrect,
-			Feedback:  input.TeacherFeedback,
-			TeacherID: teacherIDForReview(c),
+			IsCorrect:   input.TeacherIsCorrect,
+			Feedback:    input.TeacherFeedback,
+			TeacherID:   teacherIDForReview(c),
+			BearerToken: c.GetHeader("Authorization"),
 		})
 		if err != nil {
 			if err.Error() == "submission not found" {

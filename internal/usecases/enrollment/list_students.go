@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -24,6 +25,7 @@ type (
 		IsSuperAdmin bool
 		Limit        int
 		Offset       int
+		BearerToken  string
 	}
 
 	ListStudentsOutput struct {
@@ -63,9 +65,19 @@ func (u *listStudentsUsecase) Execute(ctx context.Context, input ListStudentsInp
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentListError, err)
 	}
 
+	ids := make([]string, 0, len(students))
+	for _, s := range students {
+		ids = append(ids, s.ID)
+	}
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+
 	var data []StudentData
 	for _, s := range students {
-		data = append(data, toStudentData(s))
+		info := names[s.ID]
+		data = append(data, toStudentData(s, identity.FullName(info, s.ID), info.Email))
 	}
 	if data == nil {
 		data = []StudentData{}

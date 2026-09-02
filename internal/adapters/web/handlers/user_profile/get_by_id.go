@@ -26,7 +26,7 @@ func NewGetByIDHandler(uc ucProfile.GetUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, profileID)
+		output, appErr := uc.Execute(c, profileID, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

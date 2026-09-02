@@ -22,7 +22,7 @@ func NewUpdateAcademicStatusByIDHandler(uc ucProfile.UpdateAcademicStatusUsecase
 			return
 		}
 
-		output, appErr := uc.Execute(c, profileID, input.AcademicStatus)
+		output, appErr := uc.Execute(c, profileID, input.AcademicStatus, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

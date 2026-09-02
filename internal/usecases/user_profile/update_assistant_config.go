@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -23,6 +24,7 @@ type (
 		AssistantBaseURL string `json:"assistant_base_url"`
 		AssistantAPIKey  string `json:"assistant_api_key"`
 		UITheme          string `json:"ui_theme"`
+		BearerToken      string
 	}
 
 	UpdateAssistantConfigOutput struct {
@@ -59,5 +61,11 @@ func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, input Update
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	return &UpdateAssistantConfigOutput{Data: toProfileData(*updated)}, nil
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[input.ID]
+
+	return &UpdateAssistantConfigOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email)}, nil
 }

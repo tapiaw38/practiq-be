@@ -16,11 +16,11 @@ type (
 	}
 )
 
-func toStudentData(p domain.UserProfile) StudentData {
+func toStudentData(p domain.UserProfile, name, email string) StudentData {
 	return StudentData{
 		ID:          p.ID,
-		Name:        p.Name,
-		Email:       p.Email,
+		Name:        name,
+		Email:       email,
 		ProfileType: p.ProfileType,
 		CreatedAt:   p.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}

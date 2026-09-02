@@ -23,6 +23,7 @@ func NewUpdateAssistantConfigHandler(uc ucProfile.UpdateAssistantConfigUsecase) 
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,
 			UITheme:          input.UITheme,
+			BearerToken:      c.GetHeader("Authorization"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

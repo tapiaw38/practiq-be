@@ -10,7 +10,11 @@ type StudentReportFilter struct {
 }
 
 type StudentReportData struct {
-	Student        UserProfile
+	Student UserProfile
+	// StudentName/StudentEmail are resolved from auth-api-be at report-build
+	// time — UserProfile carries no identity fields.
+	StudentName    string
+	StudentEmail   string
 	GeneratedAt    time.Time
 	Period         ReportPeriod
 	Summary        ReportSummary

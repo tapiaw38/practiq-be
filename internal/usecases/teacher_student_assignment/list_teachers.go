@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -19,9 +20,10 @@ type (
 	}
 
 	ListTeachersInput struct {
-		StudentID string
-		Limit     int
-		Offset    int
+		StudentID   string
+		Limit       int
+		Offset      int
+		BearerToken string
 	}
 
 	ListTeachersOutput struct {
@@ -46,9 +48,20 @@ func (u *listTeachersUsecase) Execute(ctx context.Context, input ListTeachersInp
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
 	}
+
+	ids := make([]string, 0, len(users))
+	for _, user := range users {
+		ids = append(ids, user.ID)
+	}
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+
 	data := make([]UserData, 0, len(users))
 	for _, user := range users {
-		data = append(data, toUserData(user))
+		info := names[user.ID]
+		data = append(data, toUserData(user, identity.FullName(info, user.ID), info.Email))
 	}
 	return &ListTeachersOutput{Data: data}, nil
 }

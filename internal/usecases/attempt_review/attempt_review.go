@@ -10,6 +10,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 const timeFormat = "2006-01-02T15:04:05Z"
@@ -81,12 +82,13 @@ type (
 	}
 
 	ListInput struct {
-		CourseID  string
-		StudentID string
-		SheetType string
-		Reviewed  string
-		Limit     int
-		Offset    int
+		CourseID    string
+		StudentID   string
+		SheetType   string
+		Reviewed    string
+		Limit       int
+		Offset      int
+		BearerToken string
 	}
 
 	ListOutput struct {
@@ -138,6 +140,18 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, input ListI
 	hasMore := len(reviews) > limit
 	if hasMore {
 		reviews = reviews[:limit]
+	}
+
+	ids := make([]string, 0, len(reviews))
+	for _, review := range reviews {
+		ids = append(ids, review.StudentID)
+	}
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.AttemptReviewListError, err)
+	}
+	for i, review := range reviews {
+		reviews[i].StudentName = identity.FullName(names[review.StudentID], review.StudentID)
 	}
 
 	data := make([]ReviewData, 0, len(reviews))

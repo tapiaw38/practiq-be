@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -14,9 +15,10 @@ type (
 	}
 
 	TeacherReviewInput struct {
-		IsCorrect bool
-		Feedback  string
-		TeacherID string
+		IsCorrect   bool
+		Feedback    string
+		TeacherID   string
+		BearerToken string
 	}
 
 	TeacherReviewSubmissionOutput struct {
@@ -49,5 +51,14 @@ func (u *teacherReviewSubmissionUsecase) Execute(ctx context.Context, submission
 	if updated == nil {
 		return nil, fmt.Errorf("submission not found")
 	}
+
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{updated.StudentID})
+	if err != nil {
+		return nil, err
+	}
+	info := names[updated.StudentID]
+	updated.StudentName = identity.FullName(info, updated.StudentID)
+	updated.StudentEmail = info.Email
+
 	return &TeacherReviewSubmissionOutput{Data: toFullSubmissionData(*updated)}, nil
 }

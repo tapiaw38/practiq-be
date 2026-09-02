@@ -8,12 +8,13 @@ import (
 
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 	"github.com/tapiaw38/practiq-be/internal/usecases/datauri"
 )
 
 type (
 	ReviewSubmissionUsecase interface {
-		Execute(ctx context.Context, submissionID string, teacherID string) (*ReviewSubmissionOutput, error)
+		Execute(ctx context.Context, submissionID string, teacherID string, bearerToken string) (*ReviewSubmissionOutput, error)
 	}
 
 	ReviewSubmissionOutput struct {
@@ -27,7 +28,7 @@ func NewReviewSubmissionUsecase(contextFactory appcontext.Factory) ReviewSubmiss
 	return &reviewSubmissionUsecase{contextFactory: contextFactory}
 }
 
-func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID string, teacherID string) (*ReviewSubmissionOutput, error) {
+func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID string, teacherID string, bearerToken string) (*ReviewSubmissionOutput, error) {
 	app := u.contextFactory()
 
 	submission, err := app.Repositories.Notebook.GetFullSubmissionByID(ctx, submissionID)
@@ -139,6 +140,15 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		return nil, fmt.Errorf("submission not found")
 	}
 	updated.CanvasData = datauri.Resolve(ctx, app, updated.CanvasData)
+
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{updated.StudentID})
+	if err != nil {
+		return nil, err
+	}
+	info := names[updated.StudentID]
+	updated.StudentName = identity.FullName(info, updated.StudentID)
+	updated.StudentEmail = info.Email
+
 	return &ReviewSubmissionOutput{Data: toFullSubmissionData(*updated)}, nil
 }
 

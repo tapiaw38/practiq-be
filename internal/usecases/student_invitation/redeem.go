@@ -8,12 +8,13 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 	"github.com/tapiaw38/practiq-be/internal/platform/invitecode"
 )
 
 type (
 	RedeemUsecase interface {
-		Execute(ctx context.Context, studentID, rawCode string) (*RedeemOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, studentID, rawCode, bearerToken string) (*RedeemOutput, apperrors.ApplicationError)
 	}
 
 	redeemUsecase struct {
@@ -37,7 +38,7 @@ func NewRedeemUsecase(contextFactory appcontext.Factory) RedeemUsecase {
 	return &redeemUsecase{contextFactory: contextFactory}
 }
 
-func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode string) (*RedeemOutput, apperrors.ApplicationError) {
+func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerToken string) (*RedeemOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 	now := time.Now()
 
@@ -89,8 +90,8 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode string) 
 	limiter.clear(studentID)
 
 	teacherName := ""
-	if teacher, err := app.Repositories.UserProfile.Get(ctx, invitation.TeacherID); err == nil && teacher != nil {
-		teacherName = teacher.Name
+	if names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{invitation.TeacherID}); err == nil {
+		teacherName = identity.FullName(names[invitation.TeacherID], invitation.TeacherID)
 	}
 
 	return &RedeemOutput{Data: RedeemData{

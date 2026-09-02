@@ -17,7 +17,7 @@ func NewReviewSubmissionHandler(uc ucNB.ReviewSubmissionUsecase) gin.HandlerFunc
 		if !middlewares.IsSuperAdmin(c) {
 			teacherID = middlewares.GetUserID(c)
 		}
-		output, err := uc.Execute(c, submissionID, teacherID)
+		output, err := uc.Execute(c, submissionID, teacherID, c.GetHeader("Authorization"))
 		if err != nil {
 			if err.Error() == "submission not found" {
 				c.JSON(http.StatusNotFound, gin.H{"code": "notebook:submission-not-found", "message": "submission not found"})

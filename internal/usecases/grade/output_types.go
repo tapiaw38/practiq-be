@@ -39,11 +39,11 @@ func toOperationResultData(result domain.OperationResult) OperationResultData {
 	return OperationResultData{Message: result.Message}
 }
 
-func toGradeMemberData(user domain.UserProfile) GradeMemberData {
+func toGradeMemberData(user domain.UserProfile, name, email string) GradeMemberData {
 	return GradeMemberData{
 		ID:          user.ID,
-		Name:        user.Name,
-		Email:       user.Email,
+		Name:        name,
+		Email:       email,
 		ProfileType: user.ProfileType,
 	}
 }

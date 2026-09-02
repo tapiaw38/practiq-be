@@ -16,11 +16,14 @@ type (
 	}
 )
 
-func toProfileData(p domain.UserProfile) ProfileData {
+// toProfileData takes name/email pre-resolved by the caller (from
+// auth-api-be, see internal/platform/identity) since domain.UserProfile no
+// longer carries identity fields.
+func toProfileData(p domain.UserProfile, name, email string) ProfileData {
 	return ProfileData{
 		ID:               p.ID,
-		Name:             p.Name,
-		Email:            p.Email,
+		Name:             name,
+		Email:            email,
 		ProfileType:      p.ProfileType,
 		AcademicStatus:   p.AcademicStatus,
 		AssistantBaseURL: p.AssistantBaseURL,

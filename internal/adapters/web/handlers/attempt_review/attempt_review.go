@@ -25,12 +25,13 @@ func NewListHandler(uc ucReview.ListUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, middlewares.GetUserID(c), ucReview.ListInput{
-			CourseID:  c.Query("course_id"),
-			StudentID: c.Query("student_id"),
-			SheetType: c.Query("sheet_type"),
-			Reviewed:  reviewed,
-			Limit:     limit,
-			Offset:    offset,
+			CourseID:    c.Query("course_id"),
+			StudentID:   c.Query("student_id"),
+			SheetType:   c.Query("sheet_type"),
+			Reviewed:    reviewed,
+			Limit:       limit,
+			Offset:      offset,
+			BearerToken: c.GetHeader("Authorization"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

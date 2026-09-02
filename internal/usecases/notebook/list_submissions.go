@@ -5,6 +5,7 @@ import (
 
 	notebookrepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notebook"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -13,15 +14,16 @@ type (
 	}
 
 	ListSubmissionsInput struct {
-		NotebookID string
-		StudentID  string
-		CourseID   string
-		GradeID    string
-		SubjectID  string
-		Reviewed   string
-		TeacherID  string
-		Limit      int
-		Offset     int
+		NotebookID  string
+		StudentID   string
+		CourseID    string
+		GradeID     string
+		SubjectID   string
+		Reviewed    string
+		TeacherID   string
+		Limit       int
+		Offset      int
+		BearerToken string
 	}
 
 	ListSubmissionsOutput struct {
@@ -52,6 +54,20 @@ func (u *listSubmissionsUsecase) Execute(ctx context.Context, input ListSubmissi
 		return nil, err
 	}
 	resolveNotebookFullSubmissionImages(ctx, app, items)
+
+	ids := make([]string, 0, len(items))
+	for _, item := range items {
+		ids = append(ids, item.StudentID)
+	}
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if err != nil {
+		return nil, err
+	}
+	for i, item := range items {
+		items[i].StudentName = identity.FullName(names[item.StudentID], item.StudentID)
+		items[i].StudentEmail = names[item.StudentID].Email
+	}
+
 	data := make([]NotebookSubmissionFullData, 0, len(items))
 	for _, item := range items {
 		data = append(data, toFullSubmissionData(item))

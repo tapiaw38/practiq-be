@@ -6,11 +6,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
 	GetUsecase interface {
-		Execute(context.Context, string) (*GetOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, id, bearerToken string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	getUsecase struct {
@@ -26,7 +27,7 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, id, bearerToken string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	p, err := app.Repositories.UserProfile.Get(ctx, id)
@@ -37,5 +38,11 @@ func (u *getUsecase) Execute(ctx context.Context, id string) (*GetOutput, apperr
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	return &GetOutput{Data: toProfileData(*p)}, nil
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[id]
+
+	return &GetOutput{Data: toProfileData(*p, identity.FullName(info, id), info.Email)}, nil
 }

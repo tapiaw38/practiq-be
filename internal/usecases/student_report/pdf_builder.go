@@ -99,13 +99,13 @@ func (b *PDFBuilder) renderHeader() {
 	pdf.SetXY(marginLeft+8, cardY+5)
 	pdf.SetFont("Arial", "B", 14)
 	pdf.SetTextColor(colorDark[0], colorDark[1], colorDark[2])
-	pdf.CellFormat(100, 6, b.data.Student.Name, "", 0, "L", false, 0, "")
+	pdf.CellFormat(100, 6, b.data.StudentName, "", 0, "L", false, 0, "")
 
 	// Student email
 	pdf.SetXY(marginLeft+8, cardY+12)
 	pdf.SetFont("Arial", "", 10)
 	pdf.SetTextColor(colorMuted[0], colorMuted[1], colorMuted[2])
-	pdf.CellFormat(100, 5, b.data.Student.Email, "", 0, "L", false, 0, "")
+	pdf.CellFormat(100, 5, b.data.StudentEmail, "", 0, "L", false, 0, "")
 
 	// Period info (right side)
 	periodStr := "Periodo: Todo el historial"

@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -20,12 +21,15 @@ type (
 
 	SyncInput struct {
 		ID               string
-		Name             string
-		Email            string
 		ProfileType      string
 		Timezone         string
 		AssistantBaseURL string
 		AssistantAPIKey  string
+		// BearerToken is the caller's own "Bearer <jwt>" header, forwarded to
+		// auth-api-be to resolve the caller's own display name — never
+		// trusted from the request body, since that would let the client
+		// claim any name it likes.
+		BearerToken string
 	}
 
 	SyncOutput struct {
@@ -50,8 +54,6 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 
 	p := domain.UserProfile{
 		ID:               input.ID,
-		Name:             input.Name,
-		Email:            input.Email,
 		ProfileType:      profileType,
 		Timezone:         input.Timezone,
 		AssistantBaseURL: input.AssistantBaseURL,
@@ -67,5 +69,11 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 
-	return &SyncOutput{Data: toProfileData(*updated)}, nil
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[input.ID]
+
+	return &SyncOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email)}, nil
 }

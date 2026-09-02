@@ -10,11 +10,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
 	GeneratePDFUsecase interface {
-		Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError)
+		Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter, bearerToken string) ([]byte, apperrors.ApplicationError)
 	}
 
 	generatePDFUsecase struct {
@@ -26,7 +27,7 @@ func NewGeneratePDFUsecase(contextFactory appcontext.Factory) GeneratePDFUsecase
 	return &generatePDFUsecase{contextFactory: contextFactory}
 }
 
-func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter) ([]byte, apperrors.ApplicationError) {
+func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter, bearerToken string) ([]byte, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if !isSuperAdmin {
@@ -135,9 +136,17 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSu
 
 	summary := calculateSummary(topicProgress, dailyAttempts, studentLoc)
 
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{filter.StudentID})
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	info := names[filter.StudentID]
+
 	reportData := &domain.StudentReportData{
-		Student:     *student,
-		GeneratedAt: time.Now(),
+		Student:      *student,
+		StudentName:  identity.FullName(info, filter.StudentID),
+		StudentEmail: info.Email,
+		GeneratedAt:  time.Now(),
 		Period: domain.ReportPeriod{
 			From: filter.From,
 			To:   filter.To,

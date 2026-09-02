@@ -9,7 +9,7 @@ import (
 
 func (r *repository) ListStudents(ctx context.Context, filter ListFilter) ([]domain.UserProfile, error) {
 	query := `
-		SELECT DISTINCT up.id, up.name, up.email, up.profile_type, up.created_at
+		SELECT DISTINCT up.id, up.profile_type, up.created_at
 		FROM user_profiles up
 		JOIN courses c ON c.id = $1
 		LEFT JOIN enrollments e ON e.course_id = c.id AND e.student_id = up.id
@@ -17,7 +17,7 @@ func (r *repository) ListStudents(ctx context.Context, filter ListFilter) ([]dom
 		WHERE up.profile_type = 'student'
 		  AND c.deleted_at IS NULL
 		  AND (e.student_id IS NOT NULL OR gm.user_id IS NOT NULL)
-		ORDER BY up.name ASC`
+		ORDER BY up.id ASC`
 
 	args := []interface{}{filter.CourseID}
 	argIndex := 2
@@ -42,7 +42,7 @@ func (r *repository) ListStudents(ctx context.Context, filter ListFilter) ([]dom
 	var students []domain.UserProfile
 	for rows.Next() {
 		var s domain.UserProfile
-		if err := rows.Scan(&s.ID, &s.Name, &s.Email, &s.ProfileType, &s.CreatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.ProfileType, &s.CreatedAt); err != nil {
 			return nil, err
 		}
 		students = append(students, s)

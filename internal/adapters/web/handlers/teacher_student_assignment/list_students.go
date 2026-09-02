@@ -14,7 +14,8 @@ func NewListStudentsHandler(uc ucAssignment.ListStudentsUsecase) gin.HandlerFunc
 		teacherID := c.Param("teacherId")
 
 		input := ucAssignment.ListStudentsInput{
-			TeacherID: teacherID,
+			TeacherID:   teacherID,
+			BearerToken: c.GetHeader("Authorization"),
 		}
 
 		if limitStr := c.Query("limit"); limitStr != "" {

@@ -14,7 +14,8 @@ func NewListMyStudentsHandler(uc ucAssignment.ListStudentsUsecase) gin.HandlerFu
 		teacherID := middlewares.GetUserID(c)
 
 		input := ucAssignment.ListStudentsInput{
-			TeacherID: teacherID,
+			TeacherID:   teacherID,
+			BearerToken: c.GetHeader("Authorization"),
 		}
 
 		output, appErr := uc.Execute(c, input)

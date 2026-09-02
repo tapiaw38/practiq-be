@@ -48,7 +48,7 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 			filter.To = &t
 		}
 
-		pdfBytes, appErr := uc.Execute(c, teacherID, isSuperAdmin, filter)
+		pdfBytes, appErr := uc.Execute(c, teacherID, isSuperAdmin, filter, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

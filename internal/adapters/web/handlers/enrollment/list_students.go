@@ -18,6 +18,7 @@ func NewListStudentsHandler(uc ucEnrollment.ListStudentsUsecase) gin.HandlerFunc
 			CourseID:     courseID,
 			RequesterID:  middlewares.GetUserID(c),
 			IsSuperAdmin: middlewares.IsSuperAdmin(c),
+			BearerToken:  c.GetHeader("Authorization"),
 		}
 
 		if limitStr := c.Query("limit"); limitStr != "" {

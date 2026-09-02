@@ -61,7 +61,7 @@ func NewRedeemHandler(uc ucInvitation.RedeemUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, middlewares.GetUserID(c), input.Code)
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), input.Code, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
