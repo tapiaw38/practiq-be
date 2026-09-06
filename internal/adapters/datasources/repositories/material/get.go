@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.Material, error) {
@@ -12,8 +13,8 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.Material, erro
 		SELECT m.id, m.course_id, m.teacher_id, m.title, m.type, COALESCE(m.file_url,''), COALESCE(m.extracted_text,''), m.status, m.created_at
 		FROM materials m
 		JOIN courses c ON c.id = m.course_id
-		WHERE m.id = $1 AND c.deleted_at IS NULL
-	`, id)
+		WHERE m.id = $1 AND c.deleted_at IS NULL AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
+	`, id, tenant.SchoolID(ctx))
 
 	var m domain.Material
 	if err := row.Scan(&m.ID, &m.CourseID, &m.TeacherID, &m.Title, &m.Type, &m.FileURL, &m.ExtractedText, &m.Status, &m.CreatedAt); err != nil {

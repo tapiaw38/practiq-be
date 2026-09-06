@@ -4,14 +4,16 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) List(ctx context.Context) ([]domain.Grade, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name, COALESCE(description, ''), visual_theme, created_by, created_at
 		FROM grades
+		WHERE ($1 = '' OR school_id = NULLIF($1, '')::uuid)
 		ORDER BY created_at DESC
-	`)
+	`, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

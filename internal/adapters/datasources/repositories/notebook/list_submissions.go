@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilter) ([]domain.NotebookSubmissionFull, error) {
@@ -20,6 +21,7 @@ func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilte
 		JOIN courses c ON c.id = n.course_id
 		WHERE n.deleted_at IS NULL
 		  AND c.deleted_at IS NULL
+		  AND ($8 = '' OR c.school_id = NULLIF($8, '')::uuid)
 		  AND ($1 = '' OR n.id::text = $1)
 		  AND ($2 = '' OR ns.student_id = $2)
 		  AND ($3 = '' OR n.course_id::text = $3)
@@ -29,8 +31,8 @@ func (r *repository) ListSubmissions(ctx context.Context, filter SubmissionFilte
 		  AND ($7 = '' OR n.teacher_id = $7)
 		ORDER BY ns.submitted_at DESC`
 
-	args := []interface{}{filter.NotebookID, filter.StudentID, filter.CourseID, filter.GradeID, filter.SubjectID, filter.Reviewed, filter.TeacherID}
-	argIndex := 8
+	args := []interface{}{filter.NotebookID, filter.StudentID, filter.CourseID, filter.GradeID, filter.SubjectID, filter.Reviewed, filter.TeacherID, tenant.SchoolID(ctx)}
+	argIndex := 9
 
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(` LIMIT $%d`, argIndex)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 // ListRecentHelpRequests keeps exercise memory bounded and scoped to its owner.
@@ -12,11 +13,11 @@ func (r *repository) ListRecentHelpRequests(ctx context.Context, studentID, exer
 		SELECT id, student_id, COALESCE(exercise_id::text, ''), question,
 			COALESCE(ai_response, ''), COALESCE(help_type, ''), created_at
 		FROM ai_help_requests
-		WHERE student_id = $1 AND exercise_id = NULLIF($2, '')::uuid
+		WHERE student_id = $1 AND exercise_id = NULLIF($2, '')::uuid AND ($4 = '' OR school_id = NULLIF($4, '')::uuid)
 		ORDER BY created_at DESC
 		LIMIT $3
 	`
-	rows, err := r.db.QueryContext(ctx, query, studentID, exerciseID, limit)
+	rows, err := r.db.QueryContext(ctx, query, studentID, exerciseID, limit, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

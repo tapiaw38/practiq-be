@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Exercise, error) {
@@ -13,11 +14,11 @@ func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Exer
 		FROM exercises e
 		JOIN topics t ON t.id = e.topic_id
 		JOIN courses c ON c.id = t.course_id
-		WHERE e.topic_id = $1 AND c.deleted_at IS NULL
+		WHERE e.topic_id = $1 AND c.deleted_at IS NULL AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
 		ORDER BY e.created_at ASC`
 
-	args := []interface{}{filter.TopicID}
-	argIndex := 2
+	args := []interface{}{filter.TopicID, tenant.SchoolID(ctx)}
+	argIndex := 3
 
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(` LIMIT $%d`, argIndex)

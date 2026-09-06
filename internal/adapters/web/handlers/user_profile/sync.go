@@ -37,7 +37,7 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 		// El tipo de perfil sale del rol del token, no del cuerpo: cuando lo
 		// elegía el cliente, un alumno se declaraba profesor y el frontend le
 		// abría el panel docente.
-		profileType := "student"
+		profileType := ""
 		if middlewares.IsTeacher(c) {
 			profileType = "teacher"
 		}

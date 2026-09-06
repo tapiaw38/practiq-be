@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) ListTeachers(ctx context.Context, filter ListFilter) ([]domain.UserProfile, error) {
@@ -11,7 +12,7 @@ func (r *repository) ListTeachers(ctx context.Context, filter ListFilter) ([]dom
 		SELECT up.id, up.profile_type, up.academic_status, up.created_at
 		FROM user_profiles up
 		JOIN teacher_student_assignments tsa ON tsa.teacher_id = up.id
-		WHERE tsa.student_id = $1 AND tsa.status = 'active'
+		WHERE tsa.student_id = $1 AND tsa.status = 'active' AND ($2 = '' OR tsa.school_id = NULLIF($2,'')::uuid)
 		ORDER BY up.id ASC
-	`, filter.UserID, filter.Limit, filter.Offset)
+	`, filter.UserID, tenant.SchoolID(ctx), filter.Limit, filter.Offset)
 }

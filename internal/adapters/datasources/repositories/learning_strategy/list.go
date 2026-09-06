@@ -4,11 +4,12 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) List(ctx context.Context) ([]domain.LearningStrategy, error) {
-	query := `SELECT id, name, code, COALESCE(description,''), status, created_at FROM learning_strategies WHERE status='active' ORDER BY created_at ASC`
-	rows, err := r.db.QueryContext(ctx, query)
+	query := `SELECT id, name, code, COALESCE(description,''), status, created_at FROM learning_strategies WHERE status='active' AND ($1 = '' OR school_id = NULLIF($1,'')::uuid) ORDER BY created_at ASC`
+	rows, err := r.db.QueryContext(ctx, query, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

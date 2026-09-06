@@ -45,7 +45,7 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{cfg.ServerConfig.FrontendURL, "https://practiq.com.ar", "https://www.practiq.com.ar", "http://localhost:5174", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-School-ID"},
 		AllowCredentials: true,
 	}))
 
@@ -53,7 +53,7 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "service": "practiq-be"})
 	})
 
-	web.RegisterRoutes(app, uc, repos.SubmitJob)
+	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.School)
 
 	port := cfg.ServerConfig.Port
 	log.Printf("practiq-be running on port %s", port)

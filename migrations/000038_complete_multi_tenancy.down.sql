@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS teacher_student_assignments_school_teacher_student_key;
+DROP INDEX IF EXISTS idx_level_test_submissions_school;
+DROP INDEX IF EXISTS idx_notebook_submissions_school;
+DROP INDEX IF EXISTS idx_notebook_pages_school;
+DROP INDEX IF EXISTS idx_course_learning_strategies_school;
+DROP INDEX IF EXISTS idx_teacher_student_assignments_school;
+ALTER TABLE level_test_submissions DROP COLUMN IF EXISTS school_id;
+ALTER TABLE notebook_submissions DROP COLUMN IF EXISTS school_id;
+ALTER TABLE notebook_pages DROP COLUMN IF EXISTS school_id;
+ALTER TABLE course_learning_strategies DROP COLUMN IF EXISTS school_id;
+ALTER TABLE teacher_student_assignments DROP COLUMN IF EXISTS school_id;

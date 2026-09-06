@@ -7,9 +7,9 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-func (r *repository) listUsers(ctx context.Context, query, id string, limit, offset int) ([]domain.UserProfile, error) {
-	args := []interface{}{id}
-	argIndex := 2
+func (r *repository) listUsers(ctx context.Context, query, id, schoolID string, limit, offset int) ([]domain.UserProfile, error) {
+	args := []interface{}{id, schoolID}
+	argIndex := 3
 
 	if limit > 0 {
 		query += fmt.Sprintf(` LIMIT $%d`, argIndex)

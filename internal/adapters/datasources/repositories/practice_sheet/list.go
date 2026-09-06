@@ -6,6 +6,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.PracticeSheet, error) {
@@ -13,11 +14,11 @@ func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Prac
 		SELECT ps.id, ps.course_id, COALESCE(ps.topic_id::text,''), COALESCE(ps.strategy_id::text,''), ps.title, ps.level, ps.sheet_type, ps.test_style, ps.scheduled_at, ps.available_until, ps.created_by, ps.created_at
 		FROM practice_sheets ps
 		JOIN courses c ON c.id = ps.course_id
-		WHERE ps.course_id = $1 AND c.deleted_at IS NULL
+		WHERE ps.course_id = $1 AND c.deleted_at IS NULL AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
 		ORDER BY ps.created_at DESC`
 
-	args := []interface{}{filter.CourseID}
-	argIndex := 2
+	args := []interface{}{filter.CourseID, tenant.SchoolID(ctx)}
+	argIndex := 3
 
 	if filter.Limit > 0 {
 		query += fmt.Sprintf(` LIMIT $%d`, argIndex)
@@ -54,7 +55,8 @@ func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Prac
 		       COALESCE(e.correct_answer,''), COALESCE(e.explanation,''), e.difficulty, e.metadata::text, e.created_at
 		FROM practice_sheet_exercises pse
 		JOIN exercises e ON e.id = pse.exercise_id
-		WHERE pse.practice_sheet_id = ANY($1)
+		JOIN practice_sheets ps ON ps.id = pse.practice_sheet_id
+		WHERE pse.practice_sheet_id = ANY($1) AND ($2 = '' OR ps.school_id = NULLIF($2, '')::uuid)
 		ORDER BY pse.practice_sheet_id, pse.order_index ASC
 	`
 	ids := make([]string, len(sheets))
@@ -65,7 +67,7 @@ func (r *repository) List(ctx context.Context, filter ListFilter) ([]domain.Prac
 		return sheets, nil
 	}
 
-	exRows, err := r.db.QueryContext(ctx, exQuery, pq.Array(ids))
+	exRows, err := r.db.QueryContext(ctx, exQuery, pq.Array(ids), tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

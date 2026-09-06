@@ -6,6 +6,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 // ListDashboardSummaries returns, for every course a student is enrolled in,
@@ -22,6 +23,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 			SELECT c.id, c.title, COALESCE(c.subject, '') AS subject, c.created_at
 			FROM courses c
 			WHERE c.deleted_at IS NULL
+			  AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
 			  -- A student reaches a course either by enrolling in it directly or
 			  -- by belonging to its grade, and the grade is the usual route.
 			  -- Matching on enrolments alone returned an empty home for those
@@ -69,7 +71,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 		LEFT JOIN levels l ON l.course_id = sc.id
 		LEFT JOIN course_topics ct ON ct.course_id = sc.id
 		ORDER BY sc.created_at DESC
-	`, studentID)
+	`, studentID, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

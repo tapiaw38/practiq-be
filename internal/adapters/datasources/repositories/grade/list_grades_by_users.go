@@ -5,6 +5,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) ListGradesByUsers(ctx context.Context, userIDs []string) (map[string][]domain.Grade, error) {
@@ -18,8 +19,9 @@ func (r *repository) ListGradesByUsers(ctx context.Context, userIDs []string) (m
 		FROM grades g
 		JOIN grade_memberships gm ON gm.grade_id = g.id
 		WHERE gm.user_id = ANY($1)
+		  AND ($2 = '' OR g.school_id = NULLIF($2, '')::uuid)
 		ORDER BY gm.user_id, g.name ASC
-	`, pq.Array(userIDs))
+	`, pq.Array(userIDs), tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

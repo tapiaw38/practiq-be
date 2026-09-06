@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) List(ctx context.Context, opts ListFilterOptions) ([]domain.Course, error) {
@@ -17,6 +18,11 @@ func (r *repository) List(ctx context.Context, opts ListFilterOptions) ([]domain
 	`
 	args := []interface{}{}
 	argIdx := 1
+	if schoolID := tenant.SchoolID(ctx); schoolID != "" {
+		query += fmt.Sprintf(` AND c.school_id = $%d`, argIdx)
+		args = append(args, schoolID)
+		argIdx++
+	}
 
 	if opts.TeacherID != "" {
 		query += fmt.Sprintf(` AND c.teacher_id = $%d`, argIdx)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.Notebook, error) {
@@ -13,8 +14,8 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.Notebook, erro
 		SELECT n.id, n.course_id, n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
 		FROM notebooks n
 		JOIN courses c ON c.id = n.course_id
-		WHERE n.id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
-	`, id).Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt)
+		WHERE n.id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
+	`, id, tenant.SchoolID(ctx)).Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

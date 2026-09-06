@@ -15,6 +15,7 @@ import (
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 	ucNotification "github.com/tapiaw38/practiq-be/internal/usecases/notification"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
+	ucSchool "github.com/tapiaw38/practiq-be/internal/usecases/school"
 	ucInvitation "github.com/tapiaw38/practiq-be/internal/usecases/student_invitation"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
 	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
@@ -205,6 +206,7 @@ type Usecases struct {
 	Notification     NotificationUsecases
 	Upload           UploadUsecases
 	AttemptReview    AttemptReviewUsecases
+	School           ucSchool.Service
 }
 
 func NewUsecases(contextFactory appcontext.Factory) *Usecases {
@@ -221,6 +223,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Review:         ucAttemptReview.NewReviewUsecase(contextFactory),
 			StatementImage: ucAttemptReview.NewStatementImageUsecase(contextFactory),
 		},
+		School: ucSchool.NewService(contextFactory),
 		Upload: UploadUsecases{
 			Upload: ucUpload.NewUsecase(contextFactory),
 		},

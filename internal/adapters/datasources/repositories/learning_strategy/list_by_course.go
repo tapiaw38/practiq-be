@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) ListByCourse(ctx context.Context, courseID string) ([]domain.CourseLearningStrategy, error) {
@@ -12,10 +13,10 @@ func (r *repository) ListByCourse(ctx context.Context, courseID string) ([]domai
 		       ls.name, ls.code, COALESCE(ls.description,'')
 		FROM course_learning_strategies cls
 		JOIN learning_strategies ls ON ls.id = cls.strategy_id
-		WHERE cls.course_id = $1
+		WHERE cls.course_id = $1 AND ($2 = '' OR cls.school_id = NULLIF($2,'')::uuid)
 		ORDER BY cls.created_at ASC
 	`
-	rows, err := r.db.QueryContext(ctx, query, courseID)
+	rows, err := r.db.QueryContext(ctx, query, courseID, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

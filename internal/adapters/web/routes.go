@@ -2,6 +2,7 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/school"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
 	handlerReview "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/attempt_review"
@@ -16,6 +17,7 @@ import (
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	handlerNotification "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
+	schoolhandler "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/school"
 	handlerInvitation "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_invitation"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
 	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
@@ -28,9 +30,16 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, schoolRepo school.Repository) {
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware())
+	api.Use(middlewares.SchoolContextMiddleware(schoolRepo))
+	schools := schoolhandler.NewHandler(uc.School)
+	api.GET("/schools", schools.List)
+	api.POST("/schools", middlewares.RequireRoles(middlewares.RoleSuperAdmin), schools.Create)
+	api.GET("/schools/:id/members", schools.Members)
+	api.POST("/schools/:id/members", middlewares.RequireRoles(middlewares.RoleTeacher, middlewares.RoleSuperAdmin), schools.AddMember)
+	api.DELETE("/schools/:id/members/:userId", middlewares.RequireRoles(middlewares.RoleTeacher, middlewares.RoleSuperAdmin), schools.RemoveMember)
 
 	// Profile
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
@@ -41,11 +50,15 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// no existe como rol en auth-api-be, así que exigirlo nunca coincidía y el
 	// grupo quedaba abierto a cualquiera de los otros dos.
 	adminOnly := api.Group("/")
-	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
+	adminOnly.Use(middlewares.RequireSchool(), middlewares.RequireSchoolAdmin(schoolRepo))
 	teacherOnly := api.Group("/")
-	teacherOnly.Use(middlewares.RequireRoles(middlewares.RoleTeacher, middlewares.RoleSuperAdmin))
+	teacherOnly.Use(middlewares.RequireSchool(), middlewares.RequireRoles(middlewares.RoleTeacher, middlewares.RoleSuperAdmin))
 	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
+
+	// Every business resource is tenant-scoped. School management and profile
+	// bootstrap routes above remain available before school selection.
+	api.Use(middlewares.RequireSchool())
 
 	// Courses. Los use cases validan que el curso sea del profesor; el grupo
 	// evita además que un alumno llegue siquiera a intentarlo.

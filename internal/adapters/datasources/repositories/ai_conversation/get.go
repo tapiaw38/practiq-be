@@ -5,16 +5,17 @@ import (
 	"database/sql"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.AIConversation, error) {
 	query := `
 		SELECT id, student_id, COALESCE(course_id::text, ''), COALESCE(practice_sheet_id::text, ''), created_at
 		FROM ai_conversations
-		WHERE id = $1
+		WHERE id = $1 AND ($2 = '' OR school_id = NULLIF($2, '')::uuid)
 	`
 	var c domain.AIConversation
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
+	err := r.db.QueryRowContext(ctx, query, id, tenant.SchoolID(ctx)).Scan(
 		&c.ID,
 		&c.StudentID,
 		&c.CourseID,

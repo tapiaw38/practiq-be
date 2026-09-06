@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) listByFilter(ctx context.Context, studentID, courseID string) ([]domain.StudentTopicProgress, error) {
@@ -15,10 +16,11 @@ func (r *repository) listByFilter(ctx context.Context, studentID, courseID strin
 		LEFT JOIN topics t ON t.id = stp.topic_id
 		LEFT JOIN courses c ON c.id = t.course_id
 		WHERE stp.student_id = $1 AND (c.id IS NULL OR c.deleted_at IS NULL)
+		  AND ($2 = '' OR stp.school_id = NULLIF($2, '')::uuid)
 	`
-	args := []interface{}{studentID}
+	args := []interface{}{studentID, tenant.SchoolID(ctx)}
 	if courseID != "" {
-		query += ` AND t.course_id = $2::uuid`
+		query += ` AND t.course_id = $3::uuid`
 		args = append(args, courseID)
 	}
 	query += ` ORDER BY stp.updated_at DESC`

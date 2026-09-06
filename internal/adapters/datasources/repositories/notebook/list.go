@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebook, error) {
@@ -11,9 +12,9 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 		SELECT n.id, n.course_id, n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
 		FROM notebooks n
 		JOIN courses c ON c.id = n.course_id
-		WHERE n.course_id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
+		WHERE n.course_id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
 		ORDER BY n.level ASC, n.created_at DESC
-	`, courseID)
+	`, courseID, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -45,9 +46,11 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 	// order of magnitude. Get(id) still returns it for the screens that draw a
 	// page.
 	pRows, err := r.db.QueryContext(ctx, `
-		SELECT id, notebook_id, page_number, title, content_type, instructions, created_at
-		FROM notebook_pages WHERE notebook_id = ANY($1::uuid[]) ORDER BY notebook_id, page_number ASC
-	`, "{"+joinIDs(ids)+"}")
+		SELECT np.id, np.notebook_id, np.page_number, np.title, np.content_type, np.instructions, np.created_at
+		FROM notebook_pages np JOIN notebooks n ON n.id = np.notebook_id JOIN courses c ON c.id = n.course_id
+		WHERE np.notebook_id = ANY($1::uuid[]) AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
+		ORDER BY np.notebook_id, np.page_number ASC
+	`, "{"+joinIDs(ids)+"}", tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

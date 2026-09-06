@@ -47,6 +47,9 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 	profileType := input.ProfileType
 	if profileType == "" {
 		profileType = "student"
+		if existing, err := app.Repositories.UserProfile.Get(ctx, input.ID); err == nil && existing != nil && existing.ProfileType != "" {
+			profileType = existing.ProfileType
+		}
 	}
 	if profileType != "teacher" && profileType != "student" {
 		return nil, apperrors.NewBadRequestError("profile_type must be teacher or student")

@@ -4,16 +4,17 @@ import (
 	"context"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) ListMessages(ctx context.Context, conversationID string) ([]domain.AIMessage, error) {
 	query := `
 		SELECT id, conversation_id, sender, message_type, COALESCE(content,''), created_at
-		FROM ai_messages
-		WHERE conversation_id = $1
+		FROM ai_messages m JOIN ai_conversations c ON c.id = m.conversation_id
+		WHERE m.conversation_id = $1 AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
 		ORDER BY created_at ASC
 	`
-	rows, err := r.db.QueryContext(ctx, query, conversationID)
+	rows, err := r.db.QueryContext(ctx, query, conversationID, tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

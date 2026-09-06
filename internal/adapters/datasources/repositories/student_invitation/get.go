@@ -5,14 +5,15 @@ import (
 	"database/sql"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 const selectColumns = `id, code, teacher_id, uses, expires_at, revoked_at, created_at`
 
 func (r *repository) GetByCode(ctx context.Context, code string) (*domain.StudentInvitation, error) {
-	query := `SELECT ` + selectColumns + ` FROM student_invitations WHERE code = $1`
+	query := `SELECT ` + selectColumns + ` FROM student_invitations WHERE code = $1 AND ($2 = '' OR school_id = NULLIF($2, '')::uuid)`
 
-	return scanInvitation(r.db.QueryRowContext(ctx, query, code))
+	return scanInvitation(r.db.QueryRowContext(ctx, query, code, tenant.SchoolID(ctx)))
 }
 
 func (r *repository) GetActiveByTeacher(ctx context.Context, teacherID string) (*domain.StudentInvitation, error) {
@@ -20,9 +21,10 @@ func (r *repository) GetActiveByTeacher(ctx context.Context, teacherID string) (
 		SELECT ` + selectColumns + `
 		FROM student_invitations
 		WHERE teacher_id = $1 AND revoked_at IS NULL
+		  AND ($2 = '' OR school_id = NULLIF($2, '')::uuid)
 	`
 
-	return scanInvitation(r.db.QueryRowContext(ctx, query, teacherID))
+	return scanInvitation(r.db.QueryRowContext(ctx, query, teacherID, tenant.SchoolID(ctx)))
 }
 
 type scanner interface {

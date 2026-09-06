@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.Topic, error) {
@@ -12,8 +13,8 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.Topic, error) 
 		SELECT t.id, t.course_id, t.title, t.description, t.order_index, t.created_at
 		FROM topics t
 		JOIN courses c ON c.id = t.course_id
-		WHERE t.id = $1 AND c.deleted_at IS NULL
-	`, id)
+		WHERE t.id = $1 AND c.deleted_at IS NULL AND ($2 = '' OR c.school_id = NULLIF($2, '')::uuid)
+	`, id, tenant.SchoolID(ctx))
 
 	var t domain.Topic
 	if err := row.Scan(&t.ID, &t.CourseID, &t.Title, &t.Description, &t.OrderIndex, &t.CreatedAt); err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/lib/pq"
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 func (r *repository) GetByIDs(ctx context.Context, ids []string) ([]domain.Topic, error) {
@@ -15,10 +16,10 @@ func (r *repository) GetByIDs(ctx context.Context, ids []string) ([]domain.Topic
 	query := `
 		SELECT id, course_id, title, description, order_index, created_at
 		FROM topics
-		WHERE id = ANY($1)
+		WHERE id = ANY($1) AND ($2 = '' OR school_id = NULLIF($2, '')::uuid)
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids))
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids), tenant.SchoolID(ctx))
 	if err != nil {
 		return nil, err
 	}

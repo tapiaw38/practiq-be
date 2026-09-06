@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
+	"github.com/tapiaw38/practiq-be/internal/platform/tenant"
 )
 
 const defaultLimit = 50
@@ -20,13 +21,14 @@ func (r *repository) ListByUser(ctx context.Context, filter ListFilter) ([]domai
 		       COALESCE(resource_id::text, ''), scheduled_at, read_at, created_at
 		FROM notifications
 		WHERE user_id = $1
+		  AND ($2 = '' OR school_id = NULLIF($2, '')::uuid)
 	`
 	if filter.UnreadOnly {
 		query += ` AND read_at IS NULL`
 	}
-	query += ` ORDER BY created_at DESC LIMIT $2`
+	query += ` ORDER BY created_at DESC LIMIT $3`
 
-	rows, err := r.db.QueryContext(ctx, query, filter.UserID, limit)
+	rows, err := r.db.QueryContext(ctx, query, filter.UserID, tenant.SchoolID(ctx), limit)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +59,8 @@ func (r *repository) ListByUser(ctx context.Context, filter ListFilter) ([]domai
 func (r *repository) CountUnread(ctx context.Context, userID string) (int, error) {
 	var count int
 	err := r.db.QueryRowContext(ctx, `
-		SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND read_at IS NULL
-	`, userID).Scan(&count)
+		SELECT COUNT(*) FROM notifications WHERE user_id = $1 AND read_at IS NULL AND ($2 = '' OR school_id = NULLIF($2, '')::uuid)
+	`, userID, tenant.SchoolID(ctx)).Scan(&count)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
