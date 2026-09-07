@@ -9,6 +9,9 @@ import (
 )
 
 type syncInput struct {
+	// ProfileType is a product onboarding choice, not an Auth role. The usecase
+	// accepts it only while creating the first Practiq profile.
+	ProfileType string `json:"profile_type"`
 	// Timezone is the IANA zone the browser reports. Empty leaves whatever is
 	// stored: the streak is measured with it and most clients do not send one.
 	Timezone         string `json:"timezone"`
@@ -34,17 +37,9 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 
 		userID := middlewares.GetUserID(c)
 
-		// El tipo de perfil sale del rol del token, no del cuerpo: cuando lo
-		// elegía el cliente, un alumno se declaraba profesor y el frontend le
-		// abría el panel docente.
-		profileType := "student"
-		if middlewares.IsTeacher(c) {
-			profileType = "teacher"
-		}
-
 		output, appErr := uc.Execute(c, ucProfile.SyncInput{
 			ID:               userID,
-			ProfileType:      profileType,
+			ProfileType:      input.ProfileType,
 			Timezone:         input.Timezone,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,

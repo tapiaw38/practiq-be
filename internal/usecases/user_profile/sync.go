@@ -44,8 +44,17 @@ func NewSyncUsecase(contextFactory appcontext.Factory) SyncUsecase {
 func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
+	existing, err := app.Repositories.UserProfile.Get(ctx, input.ID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	// A profile type is selected exactly once during Practiq onboarding. This
+	// stops a student from turning into a teacher by replaying POST /profile,
+	// while keeping Auth roles out of product authorization.
 	profileType := input.ProfileType
-	if profileType == "" {
+	if existing != nil {
+		profileType = existing.ProfileType
+	} else if profileType == "" {
 		profileType = "student"
 	}
 	if profileType != "teacher" && profileType != "student" {

@@ -3,6 +3,7 @@ package web
 import (
 	"github.com/gin-gonic/gin"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
+	userprofileRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
 	handlerReview "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/attempt_review"
 	handlerCourse "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course"
@@ -28,24 +29,23 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository) {
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware())
+	api.Use(middlewares.LoadProfileType(userProfiles))
 
 	// Profile
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
 	api.GET("/profile", userprofile.NewGetHandler(uc.Profile.Get))
 	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
 	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
-	// admin es el rol del profesor y superadmin el del administrador; "teacher"
-	// no existe como rol en auth-api-be, así que exigirlo nunca coincidía y el
-	// grupo quedaba abierto a cualquiera de los otros dos.
 	adminOnly := api.Group("/")
 	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
 	teacherOnly := api.Group("/")
-	teacherOnly.Use(middlewares.RequireRoles(middlewares.RoleTeacher, middlewares.RoleSuperAdmin))
+	teacherOnly.Use(middlewares.RequireTeacher())
 	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
+	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
 
 	// Courses. Los use cases validan que el curso sea del profesor; el grupo
 	// evita además que un alumno llegue siquiera a intentarlo.

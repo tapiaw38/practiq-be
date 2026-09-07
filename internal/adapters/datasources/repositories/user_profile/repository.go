@@ -12,6 +12,7 @@ type Repository interface {
 	Get(context.Context, string) (*domain.UserProfile, error)
 	UpdateAssistantConfig(context.Context, string, string, string, string) error
 	UpdateAcademicStatus(context.Context, string, string) error
+	UpdateProfileType(context.Context, string, string) error
 }
 type repository struct {
 	db *sql.DB

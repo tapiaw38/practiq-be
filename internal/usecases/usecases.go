@@ -126,6 +126,7 @@ type ProfileUsecases struct {
 	Get                   ucProfile.GetUsecase
 	UpdateAssistantConfig ucProfile.UpdateAssistantConfigUsecase
 	UpdateAcademicStatus  ucProfile.UpdateAcademicStatusUsecase
+	UpdateProfileType     ucProfile.UpdateProfileTypeUsecase
 }
 
 type NotebookUsecases struct {
@@ -312,6 +313,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Get:                   ucProfile.NewGetUsecase(contextFactory),
 			UpdateAssistantConfig: ucProfile.NewUpdateAssistantConfigUsecase(contextFactory),
 			UpdateAcademicStatus:  ucProfile.NewUpdateAcademicStatusUsecase(contextFactory),
+			UpdateProfileType:     ucProfile.NewUpdateProfileTypeUsecase(contextFactory),
 		},
 		Notebook: NotebookUsecases{
 			Create:           ucNB.NewCreateUsecase(contextFactory),
