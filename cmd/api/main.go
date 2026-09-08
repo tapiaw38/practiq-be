@@ -57,7 +57,7 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "service": "practiq-be"})
 	})
 
-	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile)
+	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, repos.SiteContact)
 
 	port := cfg.ServerConfig.Port
 	log.Printf("practiq-be running on port %s", port)
