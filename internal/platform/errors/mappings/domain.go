@@ -371,6 +371,13 @@ var (
 		StatusCode:   http.StatusInternalServerError,
 		Message:      "failed to sync profile",
 	}
+	// StudentLimitReachedError is 402: the request is well formed and the
+	// caller is allowed, what is missing is a bigger plan.
+	StudentLimitReachedError = ErrorDetails{
+		InternalCode: "subscription:student_limit:reached",
+		StatusCode:   http.StatusPaymentRequired,
+		Message:      "your plan does not allow more students",
+	}
 	// SubscriptionUnavailableError covers the payments service being
 	// unreachable or refusing a change. It is 502 rather than 500: nothing is
 	// wrong here, the answer came from somewhere else.

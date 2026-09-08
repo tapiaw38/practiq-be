@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
 type (
@@ -36,6 +37,19 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 	}
 	if exists {
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentAlreadyExistsError, nil)
+	}
+
+	// Enrolling in a course makes the student one of that course's teacher's,
+	// so the teacher's plan decides whether there is room.
+	course, err := app.Repositories.Course.Get(ctx, courseID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if course == nil {
+		return nil, apperrors.NewNotFoundError("course not found")
+	}
+	if appErr := subscription.EnsureCanAddStudent(ctx, app, course.TeacherID, studentID); appErr != nil {
+		return nil, appErr
 	}
 
 	if err := app.Repositories.Enrollment.Create(ctx, domain.Enrollment{

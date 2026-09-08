@@ -10,6 +10,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 	"github.com/tapiaw38/practiq-be/internal/platform/invitecode"
+	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
 type (
@@ -70,6 +71,12 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 	if invitation == nil || !invitation.IsUsable(now) {
 		limiter.recordFailure(studentID, now)
 		return nil, apperrors.NewApplicationError(mappings.InvitationInvalidCodeError, nil)
+	}
+
+	// Checked before the code is spent: a redemption refused for a full plan
+	// must leave the invitation usable, or the student burns it for nothing.
+	if appErr := subscription.EnsureCanAddStudent(ctx, app, invitation.TeacherID, studentID); appErr != nil {
+		return nil, appErr
 	}
 
 	firstTime, err := app.Repositories.StudentInvitation.Redeem(ctx, invitation.ID, studentID)
