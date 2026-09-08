@@ -34,11 +34,16 @@ type (
 	}
 
 	SubscriptionData struct {
-		Plan          PlanData `json:"plan"`
-		Active        bool     `json:"active"`
-		StudentsUsed  int      `json:"students_used"`
-		CanAddStudent bool     `json:"can_add_student"`
-		RenewsAt      string   `json:"renews_at,omitempty"`
+		Plan   PlanData `json:"plan"`
+		Active bool     `json:"active"`
+		// Status is the gateway's word for it: authorized, paused, cancelled,
+		// or empty on the free plan. Needed because a paused subscription is
+		// not an entitlement, so "not active" alone cannot tell a teacher who
+		// paused from one who never paid.
+		Status        string `json:"status,omitempty"`
+		StudentsUsed  int    `json:"students_used"`
+		CanAddStudent bool   `json:"can_add_student"`
+		RenewsAt      string `json:"renews_at,omitempty"`
 	}
 
 	GetMineOutput struct {
@@ -88,7 +93,31 @@ func (u *getMineUsecase) Execute(ctx context.Context, teacherID string) (*GetMin
 		}
 	}
 
-	return &GetMineOutput{Data: toData(subscription)}, nil
+	data := toData(subscription)
+	data.Status = subscriptionStatus(ctx, app, teacherID, subscription.Active)
+	return &GetMineOutput{Data: data}, nil
+}
+
+// subscriptionStatus reports the gateway's status for a teacher who is not
+// entitled, which is the only way a paused subscription is visible at all.
+//
+// Without it a teacher who pauses sees the free plan and no way back: pausing
+// removes the entitlement, and the entitlement is all the screen would know.
+func subscriptionStatus(ctx context.Context, app *appcontext.Context, teacherID string, active bool) string {
+	if active {
+		return "authorized"
+	}
+	subscriptions, err := app.Integrations.Payments.ListSubscriptions(ctx, teacherID)
+	if err != nil {
+		log.Printf("[payments] subscription lookup failed teacher_id=%s err=%v", teacherID, err)
+		return ""
+	}
+	for _, subscription := range subscriptions {
+		if subscription.Status == "paused" {
+			return "paused"
+		}
+	}
+	return ""
 }
 
 // planName reads the display name a plan chose to publish, falling back to a
