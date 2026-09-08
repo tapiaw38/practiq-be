@@ -371,6 +371,14 @@ var (
 		StatusCode:   http.StatusInternalServerError,
 		Message:      "failed to sync profile",
 	}
+	// SubscriptionUnavailableError covers the payments service being
+	// unreachable or refusing a change. It is 502 rather than 500: nothing is
+	// wrong here, the answer came from somewhere else.
+	SubscriptionUnavailableError = ErrorDetails{
+		InternalCode: "subscription:payments:unavailable",
+		StatusCode:   http.StatusBadGateway,
+		Message:      "the payments service is unavailable",
+	}
 	ProfileGetError = ErrorDetails{
 		InternalCode: "profile:get:error",
 		StatusCode:   http.StatusInternalServerError,

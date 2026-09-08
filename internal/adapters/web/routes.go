@@ -28,6 +28,7 @@ import (
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
+	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
 func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository) {
@@ -169,7 +170,19 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
 
 	// Attachment answers the assistant could not grade
+	// Reading the catalogue is open to teachers: they have to see what they
+	// could move to. Changing it is not.
+	teacherOnly.GET("/subscription-plans", subscription.NewListPlansHandler(uc.Subscription.Plans))
 	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
+	// No subscription id in these paths: the one being acted on is the
+	// caller's, so there is nothing to swap for somebody else's.
+	teacherOnly.POST("/teachers/me/subscription/pause", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionPause))
+	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
+	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))
+
+	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.Plans))
+	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.Plans))
+	adminOnly.DELETE("/subscription-plans/:id", subscription.NewDeactivatePlanHandler(uc.Subscription.Plans))
 
 	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
 	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))

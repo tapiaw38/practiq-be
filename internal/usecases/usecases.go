@@ -83,7 +83,9 @@ type ExerciseUsecases struct {
 }
 
 type SubscriptionUsecases struct {
-	GetMine ucSubscription.GetMineUsecase
+	GetMine    ucSubscription.GetMineUsecase
+	ManageMine ucSubscription.ManageMineUsecase
+	Plans      ucSubscription.PlansUsecase
 }
 
 type MaterialUsecases struct {
@@ -280,7 +282,9 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			StatementImage: ucExercise.NewStatementImageUsecase(contextFactory),
 		},
 		Subscription: SubscriptionUsecases{
-			GetMine: ucSubscription.NewGetMineUsecase(contextFactory),
+			GetMine:    ucSubscription.NewGetMineUsecase(contextFactory),
+			ManageMine: ucSubscription.NewManageMineUsecase(contextFactory),
+			Plans:      ucSubscription.NewPlansUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
 			Create: ucMaterial.NewCreateUsecase(contextFactory),
