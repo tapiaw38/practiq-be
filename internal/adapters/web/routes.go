@@ -2,6 +2,7 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	sitecontactRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/site_contact"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	userprofileRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
@@ -17,6 +18,7 @@ import (
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	handlerNotification "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
+	sitecontact "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/site_contact"
 	handlerInvitation "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_invitation"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
 	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
@@ -32,12 +34,13 @@ import (
 	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository) {
 	// Landing catalogue. It deliberately exposes only active, sellable plans;
 	// everything that identifies a teacher or manages a subscription remains
 	// behind the authenticated API group below.
 	public := app.Group("/api/public")
 	public.GET("/subscription-plans", subscription.NewPublicListPlansHandler(uc.Subscription.Plans))
+	public.GET("/site-contact", sitecontact.Public(contacts))
 
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware())
@@ -50,6 +53,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly := api.Group("/")
 	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
+	adminOnly.GET("/site-contact", sitecontact.Get(contacts))
+	adminOnly.PUT("/site-contact", sitecontact.Update(contacts))
 	teacherOnly := api.Group("/")
 	teacherOnly.Use(middlewares.RequireTeacher())
 	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
