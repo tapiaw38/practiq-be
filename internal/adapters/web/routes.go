@@ -33,6 +33,12 @@ import (
 )
 
 func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository) {
+	// Landing catalogue. It deliberately exposes only active, sellable plans;
+	// everything that identifies a teacher or manages a subscription remains
+	// behind the authenticated API group below.
+	public := app.Group("/api/public")
+	public.GET("/subscription-plans", subscription.NewPublicListPlansHandler(uc.Subscription.Plans))
+
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware())
 	api.Use(middlewares.LoadProfileType(userProfiles))
