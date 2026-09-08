@@ -8,6 +8,10 @@ type (
 		JWTSecret   string
 		FrontendURL string
 		AuthAPIURL  string
+		// PaymentsURL is reachable only inside the compose network: the
+		// payments service is never published, and this is its only client.
+		PaymentsURL    string
+		PaymentsAPIKey string
 	}
 
 	DatabaseConfig struct {

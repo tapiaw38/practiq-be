@@ -35,7 +35,11 @@ func main() {
 	ds := datasources.CreateDatasources(db)
 	reposFactory := repositories.NewFactory(ds)
 	repos := reposFactory()
-	integ := integrations.CreateIntegrations(cfg.ServerConfig.AuthAPIURL)
+	integ := integrations.CreateIntegrations(
+		cfg.ServerConfig.AuthAPIURL,
+		cfg.ServerConfig.PaymentsURL,
+		cfg.ServerConfig.PaymentsAPIKey,
+	)
 	imageStorage := storage.NewS3ImageStorage(cfg.S3Config)
 	factory := appcontext.NewFactory(repos, integ, imageStorage)
 	uc := usecases.NewUsecases(factory)

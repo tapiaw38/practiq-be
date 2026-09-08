@@ -21,6 +21,7 @@ import (
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
 	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
 	handlerSubject "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subject"
+	subscription "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subscription"
 	handlerAssignment "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/teacher_student_assignment"
 	handlerTopic "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/topic"
 	handlerUpload "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/upload"
@@ -168,6 +169,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
 
 	// Attachment answers the assistant could not grade
+	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
+
 	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
 	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))
 	teacherOnly.GET("/attempt-reviews/:id/statement-image", handlerReview.NewStatementImageHandler(uc.AttemptReview.StatementImage))

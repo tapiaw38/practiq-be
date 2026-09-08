@@ -13,6 +13,9 @@ type Repository interface {
 	ListTeachers(context.Context, ListFilter) ([]domain.UserProfile, error)
 	ListStudents(context.Context, ListFilter) ([]domain.UserProfile, error)
 	HasAccess(context.Context, string, string) (bool, error)
+	// CountStudents counts distinct students across both routes a student can
+	// reach a teacher by, for the plan's student limit.
+	CountStudents(ctx context.Context, teacherID string) (int, error)
 }
 type ListFilter struct {
 	UserID string
