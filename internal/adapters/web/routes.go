@@ -27,6 +27,7 @@ import (
 	handlerUpload "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/upload"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
+	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
@@ -176,6 +177,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
 	// No subscription id in these paths: the one being acted on is the
 	// caller's, so there is nothing to swap for somebody else's.
+	teacherOnly.GET("/teachers/me/subscription/checkout-config", subscription.NewCheckoutConfigHandler(config.GetConfigService().ServerConfig.MercadoPagoPublicKey))
+	teacherOnly.POST("/teachers/me/subscription", subscription.NewSubscribeHandler(uc.Subscription.Subscribe))
 	teacherOnly.POST("/teachers/me/subscription/pause", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionPause))
 	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
 	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))

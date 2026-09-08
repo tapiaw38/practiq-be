@@ -12,6 +12,10 @@ type (
 		// payments service is never published, and this is its only client.
 		PaymentsURL    string
 		PaymentsAPIKey string
+		// MercadoPagoPublicKey is served to the browser so it can turn card
+		// details into a token without them passing through us. It is public
+		// by design; the secret half never leaves the payments service.
+		MercadoPagoPublicKey string
 	}
 
 	DatabaseConfig struct {

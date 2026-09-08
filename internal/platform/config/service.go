@@ -18,14 +18,15 @@ func InitConfigService() {
 
 	configService = &Config{
 		ServerConfig: ServerConfig{
-			AppName:        getEnv("APP_NAME", "practiq-be"),
-			Port:           getEnv("PORT", "8083"),
-			GinMode:        getEnv("GIN_MODE", "debug"),
-			JWTSecret:      jwtSecret,
-			FrontendURL:    getEnv("FRONTEND_URL", "http://localhost:5174"),
-			AuthAPIURL:     getEnv("AUTH_API_URL", "http://localhost:8082"),
-			PaymentsURL:    getEnv("PAYMENTS_URL", ""),
-			PaymentsAPIKey: getEnv("PAYMENTS_API_KEY", ""),
+			AppName:              getEnv("APP_NAME", "practiq-be"),
+			Port:                 getEnv("PORT", "8083"),
+			GinMode:              getEnv("GIN_MODE", "debug"),
+			JWTSecret:            jwtSecret,
+			FrontendURL:          getEnv("FRONTEND_URL", "http://localhost:5174"),
+			AuthAPIURL:           getEnv("AUTH_API_URL", "http://localhost:8082"),
+			PaymentsURL:          getEnv("PAYMENTS_URL", ""),
+			PaymentsAPIKey:       getEnv("PAYMENTS_API_KEY", ""),
+			MercadoPagoPublicKey: getEnv("MP_PUBLIC_KEY", ""),
 		},
 		DatabaseConfig: DatabaseConfig{
 			DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:54323/practiq-db?sslmode=disable"),

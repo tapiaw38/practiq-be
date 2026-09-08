@@ -57,6 +57,13 @@ type (
 		Active      *bool          `json:"active,omitempty"`
 	}
 
+	SubscriptionInput struct {
+		PlanID      int    `json:"plan_id"`
+		UserID      string `json:"user_id"`
+		PayerEmail  string `json:"payer_email"`
+		CardTokenID string `json:"card_token_id"`
+	}
+
 	Subscription struct {
 		ID     int    `json:"id"`
 		PlanID int    `json:"plan_id"`
@@ -76,6 +83,9 @@ type (
 		// its status. GetEntitlement only reports live ones, so a paused
 		// subscription is invisible to it and could never be resumed.
 		ListSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
+		// CreateSubscription hands the gateway a card token the browser
+		// produced. The card itself never reaches us.
+		CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error)
 		CreatePlan(ctx context.Context, in PlanInput) (*Plan, error)
 		UpdatePlan(ctx context.Context, planID int, in PlanInput) (*Plan, error)
 		// DeactivatePlan takes a plan off the shelf. Subscriptions to it keep
@@ -162,6 +172,14 @@ func (c *client) ListSubscriptions(ctx context.Context, userID string) ([]Subscr
 		return nil, err
 	}
 	return subscriptions, nil
+}
+
+func (c *client) CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error) {
+	var subscription Subscription
+	if err := c.send(ctx, http.MethodPost, "/api/v1/subscriptions/subscriptions", in, &subscription); err != nil {
+		return nil, err
+	}
+	return &subscription, nil
 }
 
 func (c *client) CreatePlan(ctx context.Context, in PlanInput) (*Plan, error) {

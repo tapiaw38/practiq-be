@@ -85,6 +85,7 @@ type ExerciseUsecases struct {
 type SubscriptionUsecases struct {
 	GetMine    ucSubscription.GetMineUsecase
 	ManageMine ucSubscription.ManageMineUsecase
+	Subscribe  ucSubscription.SubscribeUsecase
 	Plans      ucSubscription.PlansUsecase
 }
 
@@ -284,6 +285,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 		Subscription: SubscriptionUsecases{
 			GetMine:    ucSubscription.NewGetMineUsecase(contextFactory),
 			ManageMine: ucSubscription.NewManageMineUsecase(contextFactory),
+			Subscribe:  ucSubscription.NewSubscribeUsecase(contextFactory),
 			Plans:      ucSubscription.NewPlansUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
