@@ -71,7 +71,7 @@ func NewUpdateHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 
 func NewListMembersHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		output, appErr := uc.ListMembers(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), c.Param("id"))
+		output, appErr := uc.ListMembers(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), c.Param("id"), c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

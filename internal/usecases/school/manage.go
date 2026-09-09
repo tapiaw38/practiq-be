@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 type (
@@ -28,7 +29,7 @@ type (
 		// that admin adding teachers and students.
 		AddMember(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string, in MemberInput) apperrors.ApplicationError
 		RemoveMember(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID, userID string) apperrors.ApplicationError
-		ListMembers(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string) (*MembersOutput, apperrors.ApplicationError)
+		ListMembers(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID, bearerToken string) (*MembersOutput, apperrors.ApplicationError)
 	}
 
 	manageUsecase struct {
@@ -60,6 +61,8 @@ type (
 
 	MemberData struct {
 		UserID string `json:"user_id"`
+		Name   string `json:"name"`
+		Email  string `json:"email"`
 		Role   string `json:"role"`
 		Active bool   `json:"active"`
 	}
@@ -227,7 +230,7 @@ func (u *manageUsecase) RemoveMember(ctx context.Context, requesterID string, is
 	return nil
 }
 
-func (u *manageUsecase) ListMembers(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string) (*MembersOutput, apperrors.ApplicationError) {
+func (u *manageUsecase) ListMembers(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID, bearerToken string) (*MembersOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if appErr := EnsureAdministers(ctx, app, requesterID, isSuperAdmin, schoolID); appErr != nil {
@@ -239,9 +242,25 @@ func (u *manageUsecase) ListMembers(ctx context.Context, requesterID string, isS
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 
+	ids := make([]string, 0, len(members))
+	for _, member := range members {
+		ids = append(ids, member.UserID)
+	}
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+
 	data := make([]MemberData, 0, len(members))
 	for _, m := range members {
-		data = append(data, MemberData{UserID: m.UserID, Role: m.Role, Active: m.Active})
+		info := names[m.UserID]
+		data = append(data, MemberData{
+			UserID: m.UserID,
+			Name:   identity.FullName(info, m.UserID),
+			Email:  info.Email,
+			Role:   m.Role,
+			Active: m.Active,
+		})
 	}
 	return &MembersOutput{Data: data}, nil
 }
