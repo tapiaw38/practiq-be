@@ -86,7 +86,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 	summaries := []domain.CourseDashboardSummary{}
 	for rows.Next() {
 		var s domain.CourseDashboardSummary
-		if err := rows.Scan(&s.CourseID, &s.Title, &s.Subject,
+		if err := rows.Scan(&s.CourseID, &s.Title, &s.Subject, &s.SchoolID, &s.SchoolName,
 			&s.PracticeSheets, &s.LevelTests, &s.Notebooks, &s.CurrentLevel, pq.Array(&s.TopicIDs)); err != nil {
 			return nil, err
 		}
