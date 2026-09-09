@@ -18,6 +18,7 @@ import (
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
 	handlerNotification "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
+	handlerSchool "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/school"
 	sitecontact "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/site_contact"
 	handlerInvitation "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_invitation"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
@@ -196,6 +197,19 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.POST("/teachers/me/subscription/pause", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionPause))
 	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
 	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))
+
+	// Institutions exist because somebody agreed to invoice one, so an operator
+	// creates them and names their admins. Personal schools are not created
+	// here: they appear when a teacher signs up.
+	adminOnly.GET("/schools", handlerSchool.NewListHandler(uc.School.Manage))
+	adminOnly.POST("/schools", handlerSchool.NewCreateHandler(uc.School.Manage))
+
+	// An institution's admin runs its people; a superadmin passes everywhere.
+	teacherOnly.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))
+	teacherOnly.PUT("/schools/:id", handlerSchool.NewUpdateHandler(uc.School.Manage))
+	teacherOnly.GET("/schools/:id/members", handlerSchool.NewListMembersHandler(uc.School.Manage))
+	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.Manage))
+	teacherOnly.DELETE("/schools/:id/members/:userId", handlerSchool.NewRemoveMemberHandler(uc.School.Manage))
 
 	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.Plans))
 	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.Plans))

@@ -31,6 +31,23 @@ func EnsureCanAddStudent(
 		return nil
 	}
 
+	// The limit belongs to a school, not to a teacher. A teacher with their own
+	// school who also teaches at an institution must not have those students
+	// charged to their personal plan.
+	school, err := app.Repositories.School.GetPersonal(ctx, teacherID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	if school == nil {
+		// Only teachers at institutions have no school of their own, and an
+		// institution's students are not on anybody's subscription.
+		return nil
+	}
+	if school.Billing == domain.SchoolBillingDirect {
+		// Invoiced outside the product: no entitlement to read and no cap.
+		return nil
+	}
+
 	entitlement, err := app.Integrations.Payments.GetEntitlement(ctx, teacherID)
 	if err != nil {
 		// Deliberately allowed. Reading the plan failed, so the plan is
@@ -47,9 +64,9 @@ func EnsureCanAddStudent(
 		plan = domain.PlanFromMetadata(0, "", entitlement.Metadata)
 	}
 
-	used, err := app.Repositories.TeacherStudentAssignment.CountStudents(ctx, teacherID)
+	used, err := app.Repositories.School.CountStudents(ctx, school.ID)
 	if err != nil {
-		return apperrors.NewApplicationError(mappings.AssignmentListError, err)
+		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 
 	if !(domain.TeacherSubscription{Plan: plan, StudentsUsed: used}).CanAddStudent() {

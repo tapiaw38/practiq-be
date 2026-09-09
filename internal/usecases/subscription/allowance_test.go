@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
+	schoolRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/school"
 	teacherstudentassignment "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/teacher_student_assignment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/payments"
@@ -28,6 +29,20 @@ func (f *fakeAssignments) CountStudents(context.Context, string) (int, error) {
 	return f.count, nil
 }
 
+type fakeSchools struct {
+	schoolRepo.Repository
+	school   *domain.School
+	students int
+}
+
+func (f *fakeSchools) GetPersonal(context.Context, string) (*domain.School, error) {
+	return f.school, nil
+}
+
+func (f *fakeSchools) CountStudents(context.Context, string) (int, error) {
+	return f.students, nil
+}
+
 type fakePayments struct {
 	payments.Client
 	entitlement *payments.Entitlement
@@ -38,10 +53,20 @@ func (f *fakePayments) GetEntitlement(context.Context, string) (*payments.Entitl
 	return f.entitlement, f.err
 }
 
-func appWith(assignments *fakeAssignments, pay *fakePayments) *appcontext.Context {
+func appWith(assignments *fakeAssignments, pay *fakePayments, schools *fakeSchools) *appcontext.Context {
 	return &appcontext.Context{
-		Repositories: &repositories.Repositories{TeacherStudentAssignment: assignments},
+		Repositories: &repositories.Repositories{
+			TeacherStudentAssignment: assignments,
+			School:                   schools,
+		},
 		Integrations: &integrations.Integrations{Payments: pay},
+	}
+}
+
+func subscriptionSchool(students int) *fakeSchools {
+	return &fakeSchools{
+		school:   &domain.School{ID: "s1", Billing: domain.SchoolBillingSubscription},
+		students: students,
 	}
 }
 
@@ -57,16 +82,19 @@ func TestEnsureCanAddStudent(t *testing.T) {
 		name        string
 		assignments *fakeAssignments
 		payments    *fakePayments
+		schools     *fakeSchools
 		wantRefused bool
 	}{
 		{
 			name:        "there is room on the plan",
-			assignments: &fakeAssignments{count: 3},
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(3),
 			payments:    &fakePayments{entitlement: paidPlan(5)},
 		},
 		{
 			name:        "the plan is full",
-			assignments: &fakeAssignments{count: 5},
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(5),
 			payments:    &fakePayments{entitlement: paidPlan(5)},
 			wantRefused: true,
 		},
@@ -74,12 +102,14 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			// These paths are idempotent. Re-running one must not start failing
 			// because the plan filled up in between; nothing is being added.
 			name:        "a student the teacher already has is always allowed",
-			assignments: &fakeAssignments{hasAccess: true, count: 99},
+			assignments: &fakeAssignments{hasAccess: true},
+			schools:     subscriptionSchool(99),
 			payments:    &fakePayments{entitlement: paidPlan(5)},
 		},
 		{
 			name:        "no subscription means the free allowance",
-			assignments: &fakeAssignments{count: domain.FreePlan.MaxStudents},
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(domain.FreePlan.MaxStudents),
 			payments:    &fakePayments{entitlement: &payments.Entitlement{Active: false}},
 			wantRefused: true,
 		},
@@ -88,14 +118,34 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			// one would stop every paying teacher from working whenever the
 			// payments service hiccups; one extra student costs far less.
 			name:        "a payments outage does not block the teacher",
-			assignments: &fakeAssignments{count: 500},
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(500),
 			payments:    &fakePayments{err: errors.New("payments is down")},
+		},
+		{
+			// Institutions are invoiced outside the product, so there is no
+			// entitlement to read and nothing to cap.
+			name:        "a school billed directly has no limit",
+			assignments: &fakeAssignments{},
+			schools: &fakeSchools{
+				school:   &domain.School{ID: "s1", Billing: domain.SchoolBillingDirect},
+				students: 5000,
+			},
+			payments: &fakePayments{entitlement: paidPlan(5)},
+		},
+		{
+			// A teacher who only works at institutions owns no school, and an
+			// institution's students are on nobody's subscription.
+			name:        "a teacher with no school of their own is not capped",
+			assignments: &fakeAssignments{},
+			schools:     &fakeSchools{school: nil},
+			payments:    &fakePayments{entitlement: paidPlan(5)},
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			app := appWith(tc.assignments, tc.payments)
+			app := appWith(tc.assignments, tc.payments, tc.schools)
 
 			appErr := EnsureCanAddStudent(context.Background(), app, "teacher-1", "student-1")
 

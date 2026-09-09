@@ -18,6 +18,16 @@ type Repository interface {
 	// ListForUser returns every school a user belongs to with the role they
 	// hold in each. Someone can administer one and teach at another.
 	ListForUser(ctx context.Context, userID string) ([]domain.SchoolMember, error)
+	Get(ctx context.Context, id string) (*domain.School, error)
+	List(ctx context.Context) ([]domain.School, error)
+	Update(ctx context.Context, id string, s domain.School) error
+	RemoveMember(ctx context.Context, schoolID, userID string) error
+	ListMembers(ctx context.Context, schoolID string) ([]domain.SchoolMember, error)
+	// CountStudents counts the active students of one school. The limit is a
+	// school's, not a teacher's: a teacher with their own school who also
+	// teaches at an institution must not have those students charged to their
+	// personal plan.
+	CountStudents(ctx context.Context, schoolID string) (int, error)
 }
 
 type repository struct {

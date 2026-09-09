@@ -15,6 +15,7 @@ import (
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 	ucNotification "github.com/tapiaw38/practiq-be/internal/usecases/notification"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
+	ucSchool "github.com/tapiaw38/practiq-be/internal/usecases/school"
 	ucInvitation "github.com/tapiaw38/practiq-be/internal/usecases/student_invitation"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
 	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
@@ -80,6 +81,10 @@ type ExerciseUsecases struct {
 	Update         ucExercise.UpdateUsecase
 	Delete         ucExercise.DeleteUsecase
 	StatementImage ucExercise.StatementImageUsecase
+}
+
+type SchoolUsecases struct {
+	Manage ucSchool.ManageUsecase
 }
 
 type SubscriptionUsecases struct {
@@ -202,6 +207,7 @@ type Usecases struct {
 	Exercise         ExerciseUsecases
 	Material         MaterialUsecases
 	Subscription     SubscriptionUsecases
+	School           SchoolUsecases
 	Enrollment       EnrollmentUsecases
 	PracticeSheet    PracticeSheetUsecases
 	Progress         ProgressUsecases
@@ -281,6 +287,9 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Update:         ucExercise.NewUpdateUsecase(contextFactory),
 			Delete:         ucExercise.NewDeleteUsecase(contextFactory),
 			StatementImage: ucExercise.NewStatementImageUsecase(contextFactory),
+		},
+		School: SchoolUsecases{
+			Manage: ucSchool.NewManageUsecase(contextFactory),
 		},
 		Subscription: SubscriptionUsecases{
 			GetMine:    ucSubscription.NewGetMineUsecase(contextFactory),
