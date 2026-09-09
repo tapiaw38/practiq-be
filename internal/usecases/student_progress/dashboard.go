@@ -30,7 +30,11 @@ type (
 	}
 
 	CourseSummaryData struct {
-		CourseID       string   `json:"course_id"`
+		CourseID string `json:"course_id"`
+		// SchoolID and SchoolName let a student at two schools filter their
+		// home. Empty when the course predates the split.
+		SchoolID       string   `json:"school_id,omitempty"`
+		SchoolName     string   `json:"school_name,omitempty"`
 		Title          string   `json:"title"`
 		Subject        string   `json:"subject"`
 		PracticeSheets int      `json:"practice_sheets"`
@@ -83,6 +87,8 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 	for _, s := range summaries {
 		courses = append(courses, CourseSummaryData{
 			CourseID:       s.CourseID,
+			SchoolID:       s.SchoolID,
+			SchoolName:     s.SchoolName,
 			Title:          s.Title,
 			Subject:        s.Subject,
 			PracticeSheets: s.PracticeSheets,

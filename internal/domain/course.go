@@ -25,7 +25,12 @@ type CourseCuriosities struct {
 // CourseDashboardSummary is one row of the student home: what the screen needs
 // about a course without fetching the course's sheets, notebooks and levels.
 type CourseDashboardSummary struct {
-	CourseID       string
+	CourseID string
+	// SchoolID and SchoolName let a student who studies at two schools filter
+	// their home. Derived from the course's grade or its teacher: courses carry
+	// no school of their own, and a second source would be the same fact twice.
+	SchoolID       string
+	SchoolName     string
 	Title          string
 	Subject        string
 	PracticeSheets int

@@ -19,8 +19,16 @@ import (
 func (r *repository) ListDashboardSummaries(ctx context.Context, studentID string) ([]domain.CourseDashboardSummary, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		WITH student_courses AS (
-			SELECT c.id, c.title, COALESCE(c.subject, '') AS subject, c.created_at
+			-- A course's school is its grade's, falling back to its teacher's.
+			-- Courses carry no school of their own: they hang off a grade and a
+			-- teacher, and a second source would be the same fact twice.
+			SELECT c.id, c.title, COALESCE(c.subject, '') AS subject, c.created_at,
+			       COALESCE(g.school_id, ts.id)::text AS school_id,
+			       COALESCE(gs.name, ts.name, '') AS school_name
 			FROM courses c
+			LEFT JOIN grades g ON g.id = c.grade_id
+			LEFT JOIN schools gs ON gs.id = g.school_id
+			LEFT JOIN schools ts ON ts.created_by = c.teacher_id AND ts.kind = 'personal'
 			WHERE c.deleted_at IS NULL
 			  -- A student reaches a course either by enrolling in it directly or
 			  -- by belonging to its grade, and the grade is the usual route.
@@ -59,7 +67,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 			FROM student_course_progress cp
 			WHERE cp.student_id = $1
 		)
-		SELECT sc.id, sc.title, sc.subject,
+		SELECT sc.id, sc.title, sc.subject, COALESCE(sc.school_id, ''), sc.school_name,
 		       COALESCE(s.practices, 0), COALESCE(s.level_tests, 0),
 		       COALESCE(nb.notebooks, 0), COALESCE(l.current_level, 1),
 		       COALESCE(ct.topic_ids, ARRAY[]::text[])
