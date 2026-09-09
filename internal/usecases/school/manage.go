@@ -20,11 +20,11 @@ type (
 	// a conversation, not a form a teacher fills in.
 	ManageUsecase interface {
 		// List and Create are the platform superadmin's.
-		List(ctx context.Context) (*SchoolsOutput, apperrors.ApplicationError)
+		List(ctx context.Context, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError)
 		Create(ctx context.Context, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
 		Update(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
 		// Mine is what the asking user belongs to, for the school selector.
-		Mine(ctx context.Context, requesterID string) (*SchoolsOutput, apperrors.ApplicationError)
+		Mine(ctx context.Context, requesterID, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError)
 		// AddMember is the superadmin assigning an institution's admin, and
 		// that admin adding teachers and students.
 		AddMember(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string, in MemberInput) apperrors.ApplicationError
@@ -84,12 +84,17 @@ func NewManageUsecase(contextFactory appcontext.Factory) ManageUsecase {
 	return &manageUsecase{contextFactory: contextFactory}
 }
 
-func (u *manageUsecase) List(ctx context.Context) (*SchoolsOutput, apperrors.ApplicationError) {
+func (u *manageUsecase) List(ctx context.Context, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	schools, err := app.Repositories.School.List(ctx)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+
+	schools, appErr := resolvePersonalSchoolNames(ctx, app, bearerToken, schools)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	data := make([]SchoolData, 0, len(schools))
@@ -99,7 +104,7 @@ func (u *manageUsecase) List(ctx context.Context) (*SchoolsOutput, apperrors.App
 	return &SchoolsOutput{Data: data}, nil
 }
 
-func (u *manageUsecase) Mine(ctx context.Context, requesterID string) (*SchoolsOutput, apperrors.ApplicationError) {
+func (u *manageUsecase) Mine(ctx context.Context, requesterID, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	members, err := app.Repositories.School.ListForUser(ctx, requesterID)
@@ -107,7 +112,8 @@ func (u *manageUsecase) Mine(ctx context.Context, requesterID string) (*SchoolsO
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 
-	data := make([]SchoolData, 0, len(members))
+	schools := make([]domain.School, 0, len(members))
+	roles := make(map[string]string, len(members))
 	for _, member := range members {
 		if !member.Active {
 			continue
@@ -117,8 +123,18 @@ func (u *manageUsecase) Mine(ctx context.Context, requesterID string) (*SchoolsO
 			return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 		}
 		if s != nil {
-			data = append(data, toSchoolData(*s, member.Role))
+			schools = append(schools, *s)
+			roles[s.ID] = member.Role
 		}
+	}
+	schools, appErr := resolvePersonalSchoolNames(ctx, app, bearerToken, schools)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	data := make([]SchoolData, 0, len(schools))
+	for _, school := range schools {
+		data = append(data, toSchoolData(school, roles[school.ID]))
 	}
 	return &SchoolsOutput{Data: data}, nil
 }
@@ -278,4 +294,32 @@ func (u *manageUsecase) read(ctx context.Context, app *appcontext.Context, id, r
 
 func toSchoolData(s domain.School, role string) SchoolData {
 	return SchoolData{ID: s.ID, Name: s.Name, Kind: s.Kind, Billing: s.Billing, Role: role}
+}
+
+// resolvePersonalSchoolNames fixes display names produced by the initial SQL
+// migration. Auth owns legal names, so the database could only use created_by
+// there. Keep an owner-renamed school intact; only replace known legacy names.
+func resolvePersonalSchoolNames(ctx context.Context, app *appcontext.Context, bearerToken string, schools []domain.School) ([]domain.School, apperrors.ApplicationError) {
+	ownerIDs := make([]string, 0, len(schools))
+	for _, school := range schools {
+		if school.Kind == domain.SchoolKindPersonal && legacyPersonalSchoolName(school) {
+			ownerIDs = append(ownerIDs, school.CreatedBy)
+		}
+	}
+
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ownerIDs)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	for i := range schools {
+		if legacyPersonalSchoolName(schools[i]) {
+			schools[i].Name = domain.PersonalSchoolName(identity.FullName(names[schools[i].CreatedBy], schools[i].CreatedBy))
+		}
+	}
+	return schools, nil
+}
+
+func legacyPersonalSchoolName(school domain.School) bool {
+	return school.Kind == domain.SchoolKindPersonal &&
+		(school.Name == domain.PlaceholderSchoolName || school.Name == domain.PersonalSchoolName(school.CreatedBy))
 }

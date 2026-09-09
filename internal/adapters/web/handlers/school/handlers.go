@@ -11,7 +11,7 @@ import (
 
 func NewListHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		output, appErr := uc.List(c)
+		output, appErr := uc.List(c, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
@@ -25,7 +25,7 @@ func NewListHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 // with the role they hold in each.
 func NewMineHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		output, appErr := uc.Mine(c, middlewares.GetUserID(c))
+		output, appErr := uc.Mine(c, middlewares.GetUserID(c), c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
