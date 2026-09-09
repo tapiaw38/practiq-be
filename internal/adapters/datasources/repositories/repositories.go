@@ -14,6 +14,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notebook"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/practice_sheet"
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/school"
 	sitecontact "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/site_contact"
 	studentattempt "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_attempt"
 	studentinvitation "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/student_invitation"
@@ -28,6 +29,7 @@ import (
 type Repositories struct {
 	UserProfile              userprofile.Repository
 	Grade                    grade.Repository
+	School                   school.Repository
 	Subject                  subject.Repository
 	TeacherStudentAssignment teacherstudentassignment.Repository
 	Course                   course.Repository
@@ -56,6 +58,7 @@ func NewFactory(ds *datasources.Datasources) func() *Repositories {
 		return &Repositories{
 			UserProfile:              userprofile.NewRepository(ds.DB),
 			Grade:                    grade.NewRepository(ds.DB),
+			School:                   school.NewRepository(ds.DB),
 			Subject:                  subject.NewRepository(ds.DB),
 			TeacherStudentAssignment: teacherstudentassignment.NewRepository(ds.DB),
 			Course:                   course.NewRepository(ds.DB),

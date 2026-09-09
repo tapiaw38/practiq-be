@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
@@ -59,6 +60,8 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentCreateError, err)
 	}
+
+	school.JoinTeacherSchool(ctx, app, course.TeacherID, studentID)
 
 	return &EnrollOutput{Data: toOperationResultData(domain.OperationResult{Message: "enrolled successfully"})}, nil
 }

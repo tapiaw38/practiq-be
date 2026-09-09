@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
@@ -43,5 +44,7 @@ func (u *assignUsecase) Execute(ctx context.Context, teacherID, studentID string
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AssignmentCreateError, err)
 	}
+	school.JoinTeacherSchool(ctx, app, teacherID, studentID)
+
 	return &AssignOutput{Data: toOperationResultData(domain.OperationResult{Message: "student assigned successfully"})}, nil
 }

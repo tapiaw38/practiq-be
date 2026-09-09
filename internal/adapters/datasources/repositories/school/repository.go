@@ -1,0 +1,29 @@
+package school
+
+import (
+	"context"
+	"database/sql"
+
+	"github.com/tapiaw38/practiq-be/internal/domain"
+)
+
+type Repository interface {
+	Create(context.Context, domain.School) (string, error)
+	// GetPersonal returns the school a teacher owns, or nil. Personal schools
+	// are the only ones with a single owner, so this is the only lookup that
+	// can be answered by user alone.
+	GetPersonal(ctx context.Context, ownerID string) (*domain.School, error)
+	Rename(ctx context.Context, schoolID, name string) error
+	AddMember(context.Context, domain.SchoolMember) error
+	// ListForUser returns every school a user belongs to with the role they
+	// hold in each. Someone can administer one and teach at another.
+	ListForUser(ctx context.Context, userID string) ([]domain.SchoolMember, error)
+}
+
+type repository struct {
+	db *sql.DB
+}
+
+func NewRepository(db *sql.DB) Repository {
+	return &repository{db: db}
+}

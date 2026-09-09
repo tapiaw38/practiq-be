@@ -2,6 +2,7 @@ package userprofile
 
 import (
 	"context"
+	"log"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -83,6 +84,62 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 	info := names[input.ID]
+	displayName := identity.FullName(info, input.ID)
 
-	return &SyncOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email)}, nil
+	ensurePersonalSchool(ctx, app, *updated, displayName)
+
+	return &SyncOutput{Data: toProfileData(*updated, displayName, info.Email)}, nil
+}
+
+// ensurePersonalSchool gives a teacher the school they administer.
+//
+// It runs on every sync rather than only on the first, because the schools
+// migration could not name these: teacher names live in auth-api-be, so the SQL
+// left a placeholder. The first sync that can resolve a real name replaces it.
+//
+// Failures are logged and swallowed. A teacher who cannot log in because their
+// school could not be created is a worse outcome than one who logs in and gets
+// it on the next sync, and this runs on every request that touches the profile.
+func ensurePersonalSchool(ctx context.Context, app *appcontext.Context, profile domain.UserProfile, displayName string) {
+	if profile.ProfileType != "teacher" {
+		return
+	}
+
+	existing, err := app.Repositories.School.GetPersonal(ctx, profile.ID)
+	if err != nil {
+		log.Printf("[schools] personal school lookup failed user_id=%s err=%v", profile.ID, err)
+		return
+	}
+
+	wanted := domain.PersonalSchoolName(displayName)
+
+	if existing != nil {
+		// Only the placeholder is replaced. A teacher who renamed their school
+		// keeps that name; overwriting it on every login would undo their edit.
+		if existing.Name == domain.PlaceholderSchoolName && wanted != domain.PlaceholderSchoolName {
+			if err := app.Repositories.School.Rename(ctx, existing.ID, wanted); err != nil {
+				log.Printf("[schools] rename failed school_id=%s err=%v", existing.ID, err)
+			}
+		}
+		return
+	}
+
+	schoolID, err := app.Repositories.School.Create(ctx, domain.School{
+		Name:      wanted,
+		Kind:      domain.SchoolKindPersonal,
+		Billing:   domain.SchoolBillingSubscription,
+		CreatedBy: profile.ID,
+	})
+	if err != nil {
+		log.Printf("[schools] create failed user_id=%s err=%v", profile.ID, err)
+		return
+	}
+
+	if err := app.Repositories.School.AddMember(ctx, domain.SchoolMember{
+		SchoolID: schoolID,
+		UserID:   profile.ID,
+		Role:     domain.SchoolRoleAdmin,
+	}); err != nil {
+		log.Printf("[schools] membership failed school_id=%s err=%v", schoolID, err)
+	}
 }

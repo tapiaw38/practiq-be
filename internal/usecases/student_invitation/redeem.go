@@ -10,6 +10,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 	"github.com/tapiaw38/practiq-be/internal/platform/invitecode"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
@@ -93,6 +94,8 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InvitationRedeemError, err)
 	}
+
+	school.JoinTeacherSchool(ctx, app, invitation.TeacherID, studentID)
 
 	limiter.clear(studentID)
 
