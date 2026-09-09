@@ -3,15 +3,27 @@ package subject
 import (
 	"context"
 
+	"github.com/lib/pq"
+
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-func (r *repository) List(ctx context.Context) ([]domain.Subject, error) {
-	rows, err := r.db.QueryContext(ctx, `
+// List returns the subjects of the given schools. A nil slice means no
+// narrowing, which is a platform superadmin — not "no schools", which returns
+// nothing.
+func (r *repository) List(ctx context.Context, schoolIDs []string) ([]domain.Subject, error) {
+	query := `
 		SELECT id, name, COALESCE(description, ''), created_by, created_at
 		FROM subjects
-		ORDER BY name ASC
-	`)
+	`
+	args := []any{}
+	if schoolIDs != nil {
+		query += ` WHERE school_id = ANY($1)`
+		args = append(args, pq.Array(schoolIDs))
+	}
+	query += ` ORDER BY name ASC`
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

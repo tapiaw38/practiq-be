@@ -9,7 +9,9 @@ import (
 
 type Repository interface {
 	Create(context.Context, domain.Grade) (string, error)
-	List(context.Context) ([]domain.Grade, error)
+	// List narrows to the given schools; nil means a superadmin, who is not
+	// narrowed at all.
+	List(ctx context.Context, schoolIDs []string) ([]domain.Grade, error)
 	Get(context.Context, string) (*domain.Grade, error)
 	Update(context.Context, string, domain.Grade) error
 	Delete(context.Context, string) error

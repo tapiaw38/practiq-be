@@ -371,6 +371,11 @@ var (
 		StatusCode:   http.StatusInternalServerError,
 		Message:      "failed to sync profile",
 	}
+	SchoolLookupError = ErrorDetails{
+		InternalCode: "school:lookup:error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "failed to resolve the school",
+	}
 	// StudentLimitReachedError is 402: the request is well formed and the
 	// caller is allowed, what is missing is a bigger plan.
 	StudentLimitReachedError = ErrorDetails{
