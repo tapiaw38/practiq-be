@@ -11,7 +11,7 @@ import (
 
 type (
 	ListUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool) (*ListOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string) (*ListOutput, apperrors.ApplicationError)
 	}
 
 	listUsecase struct {
@@ -27,10 +27,10 @@ func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
 	return &listUsecase{contextFactory: contextFactory}
 }
 
-func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool) (*ListOutput, apperrors.ApplicationError) {
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string) (*ListOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	scope, err := school.ScopeFor(ctx, app, requesterID, isSuperAdmin)
+	scope, err := school.ScopeForSchool(ctx, app, requesterID, isSuperAdmin, schoolID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SubjectListError, err)
 	}

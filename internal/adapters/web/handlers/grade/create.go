@@ -27,6 +27,7 @@ func NewCreateHandler(uc ucGrade.CreateUsecase) gin.HandlerFunc {
 			Description: input.Description,
 			VisualTheme: input.VisualTheme,
 			CreatedBy:   middlewares.GetUserID(c),
+			SchoolID:    c.GetHeader("X-School-ID"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

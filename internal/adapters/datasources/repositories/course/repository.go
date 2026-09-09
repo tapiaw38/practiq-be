@@ -10,6 +10,7 @@ import (
 type ListFilterOptions struct {
 	TeacherID string
 	StudentID string
+	SchoolID  string
 }
 type Repository interface {
 	Create(context.Context, domain.Course) (string, error)

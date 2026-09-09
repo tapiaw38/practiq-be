@@ -21,6 +21,7 @@ type (
 	ListInput struct {
 		TeacherID string
 		StudentID string
+		SchoolID  string
 	}
 
 	ListOutput struct {
@@ -38,6 +39,7 @@ func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*ListOutput
 	courses, err := app.Repositories.Course.List(ctx, reposCourse.ListFilterOptions{
 		TeacherID: input.TeacherID,
 		StudentID: input.StudentID,
+		SchoolID:  input.SchoolID,
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseListError, err)

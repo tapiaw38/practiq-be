@@ -25,6 +25,7 @@ type (
 		Description string
 		VisualTheme string
 		CreatedBy   string
+		SchoolID    string
 	}
 
 	CreateOutput struct {
@@ -41,7 +42,7 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Create
 
 	// Resolved here rather than taken from the request: a caller must not be
 	// able to file a grade or subject under a school they do not belong to.
-	schoolID, appErr := school.OwnedSchoolID(ctx, app, input.CreatedBy)
+	schoolID, appErr := school.OwnedSchoolIDSelected(ctx, app, input.CreatedBy, input.SchoolID)
 	if appErr != nil {
 		return nil, appErr
 	}

@@ -49,3 +49,23 @@ func ScopeFor(ctx context.Context, app *appcontext.Context, userID string, isSup
 	}
 	return Scope{SchoolIDs: ids}, nil
 }
+
+// ScopeForSchool narrows a caller to their explicitly selected school.
+func ScopeForSchool(ctx context.Context, app *appcontext.Context, userID string, isSuperAdmin bool, schoolID string) (Scope, error) {
+	if schoolID == "" {
+		return ScopeFor(ctx, app, userID, isSuperAdmin)
+	}
+	if isSuperAdmin {
+		return Scope{SchoolIDs: []string{schoolID}}, nil
+	}
+	members, err := app.Repositories.School.ListForUser(ctx, userID)
+	if err != nil {
+		return Scope{}, err
+	}
+	for _, member := range members {
+		if member.SchoolID == schoolID && member.Active {
+			return Scope{SchoolIDs: []string{schoolID}}, nil
+		}
+	}
+	return Scope{SchoolIDs: []string{}}, nil
+}

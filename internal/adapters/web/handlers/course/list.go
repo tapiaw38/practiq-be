@@ -20,6 +20,7 @@ func NewListHandler(uc ucCourse.ListUsecase) gin.HandlerFunc {
 		} else {
 			input.StudentID = userID
 		}
+		input.SchoolID = c.GetHeader("X-School-ID")
 
 		output, appErr := uc.Execute(c, input)
 		if appErr != nil {

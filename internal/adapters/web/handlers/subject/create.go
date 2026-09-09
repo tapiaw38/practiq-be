@@ -25,6 +25,7 @@ func NewCreateHandler(uc ucSubject.CreateUsecase) gin.HandlerFunc {
 			Name:        input.Name,
 			Description: input.Description,
 			CreatedBy:   middlewares.GetUserID(c),
+			SchoolID:    c.GetHeader("X-School-ID"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

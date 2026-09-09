@@ -27,6 +27,11 @@ func (r *repository) List(ctx context.Context, opts ListFilterOptions) ([]domain
 		args = append(args, opts.StudentID)
 		argIdx++
 	}
+	if opts.SchoolID != "" {
+		query += fmt.Sprintf(` AND g.school_id::text = $%d`, argIdx)
+		args = append(args, opts.SchoolID)
+		argIdx++
+	}
 	_ = argIdx
 
 	query += ` ORDER BY created_at DESC`

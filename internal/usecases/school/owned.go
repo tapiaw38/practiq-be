@@ -31,3 +31,19 @@ func OwnedSchoolID(ctx context.Context, app *appcontext.Context, userID string) 
 	}
 	return "", apperrors.NewBadRequestError("you do not administer a school")
 }
+
+func OwnedSchoolIDSelected(ctx context.Context, app *appcontext.Context, userID, schoolID string) (string, apperrors.ApplicationError) {
+	if schoolID == "" {
+		return OwnedSchoolID(ctx, app, userID)
+	}
+	members, err := app.Repositories.School.ListForUser(ctx, userID)
+	if err != nil {
+		return "", apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	for _, member := range members {
+		if member.SchoolID == schoolID && member.Role == domain.SchoolRoleAdmin && member.Active {
+			return schoolID, nil
+		}
+	}
+	return "", apperrors.NewBadRequestError("you do not administer this school")
+}
