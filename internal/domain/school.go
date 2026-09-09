@@ -52,13 +52,12 @@ type (
 )
 
 // PersonalSchoolName is what a teacher's own school is called before they
-// rename it. Falling back to the placeholder rather than to something like
-// "Escuela de " with nothing after it: a name is shown to the teacher, and half
-// a name reads as a bug.
+// rename it. Falling back to the placeholder rather than to a half name: a
+// name is shown to the teacher, and an empty suffix reads as a bug.
 func PersonalSchoolName(teacherName string) string {
 	name := strings.TrimSpace(teacherName)
 	if name == "" {
 		return PlaceholderSchoolName
 	}
-	return "Escuela de " + name
+	return "Mi escuela de " + name
 }

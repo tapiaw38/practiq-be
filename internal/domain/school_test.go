@@ -11,7 +11,7 @@ func TestPersonalSchoolName(t *testing.T) {
 		{
 			name:        "the teacher's name makes the school's",
 			teacherName: "Ana García",
-			want:        "Escuela de Ana García",
+			want:        "Mi escuela de Ana García",
 		},
 		{
 			// identity.FullName falls back to the user id when auth-api-be has
@@ -21,7 +21,7 @@ func TestPersonalSchoolName(t *testing.T) {
 			want:        PlaceholderSchoolName,
 		},
 		{
-			// Half a name — "Escuela de " with nothing after — reads as a bug
+			// Half a name with nothing after it reads as a bug
 			// on a screen, so whitespace counts as no name.
 			name:        "whitespace is no name",
 			teacherName: "   ",
@@ -30,7 +30,7 @@ func TestPersonalSchoolName(t *testing.T) {
 		{
 			name:        "surrounding spaces are trimmed",
 			teacherName: "  Ana García  ",
-			want:        "Escuela de Ana García",
+			want:        "Mi escuela de Ana García",
 		},
 	}
 
