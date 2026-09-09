@@ -28,6 +28,10 @@ type Repository interface {
 	// teaches at an institution must not have those students charged to their
 	// personal plan.
 	CountStudents(ctx context.Context, schoolID string) (int, error)
+	// ListStudentsByActivity orders a school's active students least recently
+	// active first, which is the order a downgrade deactivates by.
+	ListStudentsByActivity(ctx context.Context, schoolID string) ([]string, error)
+	SetMemberActive(ctx context.Context, schoolID, userID string, active bool) error
 }
 
 type repository struct {

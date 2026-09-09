@@ -96,3 +96,48 @@ func (r *repository) CountStudents(ctx context.Context, schoolID string) (int, e
 	`, schoolID).Scan(&count)
 	return count, err
 }
+
+// ListStudentsByActivity returns a school's active students, least recently
+// active first.
+//
+// That order is what a downgrade deactivates by. Ordering by seniority instead
+// would keep the students who finished months ago and cut the ones sitting in
+// class today: a teacher's oldest students are usually their most finished
+// ones. Students who never practised sort first, before anyone who did.
+func (r *repository) ListStudentsByActivity(ctx context.Context, schoolID string) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT sm.user_id
+		FROM school_members sm
+		LEFT JOIN (
+			SELECT student_id, MAX(last_practiced_at) AS last_at
+			FROM student_topic_progress GROUP BY student_id
+		) activity ON activity.student_id = sm.user_id
+		WHERE sm.school_id = $1 AND sm.role = 'student' AND sm.active
+		ORDER BY activity.last_at ASC NULLS FIRST, sm.created_at ASC
+	`, schoolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// SetMemberActive is what a downgrade uses to push a student out of a plan and
+// what a teacher uses to bring one back. Nothing is deleted: the student keeps
+// their account and their history, and stops reaching this school's courses.
+func (r *repository) SetMemberActive(ctx context.Context, schoolID, userID string, active bool) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE school_members SET active = $3
+		WHERE school_id = $1 AND user_id = $2
+	`, schoolID, userID, active)
+	return err
+}

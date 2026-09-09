@@ -7,7 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-const selectColumns = `id, code, teacher_id, uses, expires_at, revoked_at, created_at`
+const selectColumns = `id, code, teacher_id, COALESCE(school_id::text, ''), uses, expires_at, revoked_at, created_at`
 
 func (r *repository) GetByCode(ctx context.Context, code string) (*domain.StudentInvitation, error) {
 	query := `SELECT ` + selectColumns + ` FROM student_invitations WHERE code = $1`
@@ -35,6 +35,7 @@ func scanInvitation(row scanner) (*domain.StudentInvitation, error) {
 		&invitation.ID,
 		&invitation.Code,
 		&invitation.TeacherID,
+		&invitation.SchoolID,
 		&invitation.Uses,
 		&invitation.ExpiresAt,
 		&invitation.RevokedAt,

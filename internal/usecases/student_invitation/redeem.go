@@ -95,7 +95,7 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 		return nil, apperrors.NewApplicationError(mappings.InvitationRedeemError, err)
 	}
 
-	school.JoinTeacherSchool(ctx, app, invitation.TeacherID, studentID)
+	school.JoinSchool(ctx, app, invitation.SchoolID, invitation.TeacherID, studentID)
 
 	limiter.clear(studentID)
 

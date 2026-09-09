@@ -9,6 +9,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/invitecode"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 // defaultTTL: el código se dicta al principio del ciclo lectivo y tiene que
@@ -52,6 +53,14 @@ func (u *createUsecase) Execute(ctx context.Context, teacherID string) (*CreateO
 		}
 	}
 
+	// The invitation carries the school so redeeming it does not have to guess
+	// from the teacher. A teacher at an institution has students who belong to
+	// the institution, not to their own school.
+	schoolID, appErr := school.OwnedSchoolID(ctx, app, teacherID)
+	if appErr != nil {
+		return nil, appErr
+	}
+
 	expiresAt := time.Now().Add(defaultTTL)
 
 	var lastErr error
@@ -64,6 +73,7 @@ func (u *createUsecase) Execute(ctx context.Context, teacherID string) (*CreateO
 		created, err := app.Repositories.StudentInvitation.Create(ctx, domain.StudentInvitation{
 			Code:      code,
 			TeacherID: teacherID,
+			SchoolID:  schoolID,
 			ExpiresAt: &expiresAt,
 		})
 		if err == nil {

@@ -211,6 +211,12 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.Manage))
 	teacherOnly.DELETE("/schools/:id/members/:userId", handlerSchool.NewRemoveMemberHandler(uc.School.Manage))
 
+	// A downgrade leaves more students than the new plan allows. The teacher
+	// sees who would go and may choose who stays before it is applied.
+	teacherOnly.GET("/teachers/me/subscription/downgrade", subscription.NewDowngradePreviewHandler(uc.Subscription.Downgrade))
+	teacherOnly.POST("/teachers/me/subscription/downgrade", subscription.NewDowngradeApplyHandler(uc.Subscription.Downgrade))
+	teacherOnly.POST("/teachers/me/students/:studentId/reactivate", subscription.NewReactivateStudentHandler(uc.Subscription.Downgrade))
+
 	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.Plans))
 	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.Plans))
 	adminOnly.DELETE("/subscription-plans/:id", subscription.NewDeactivatePlanHandler(uc.Subscription.Plans))

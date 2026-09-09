@@ -20,23 +20,36 @@ import (
 // inviting a student needs the invitation itself to name the school, which
 // comes with institutions.
 func JoinTeacherSchool(ctx context.Context, app *appcontext.Context, teacherID, studentID string) {
-	school, err := app.Repositories.School.GetPersonal(ctx, teacherID)
-	if err != nil {
-		log.Printf("[schools] school lookup failed teacher_id=%s err=%v", teacherID, err)
-		return
-	}
-	if school == nil {
-		return
+	JoinSchool(ctx, app, "", teacherID, studentID)
+}
+
+// JoinSchool adds a student to a named school, falling back to the teacher's
+// own when none is named.
+//
+// An invitation names one: a teacher at an institution has students who belong
+// to the institution, and deducing the school from the teacher put them in the
+// teacher's personal school instead.
+func JoinSchool(ctx context.Context, app *appcontext.Context, schoolID, teacherID, studentID string) {
+	if schoolID == "" {
+		school, err := app.Repositories.School.GetPersonal(ctx, teacherID)
+		if err != nil {
+			log.Printf("[schools] school lookup failed teacher_id=%s err=%v", teacherID, err)
+			return
+		}
+		if school == nil {
+			return
+		}
+		schoolID = school.ID
 	}
 
 	// Swallowed on purpose: the student is already linked to the teacher by the
 	// caller, and failing the whole operation over a membership row would undo
 	// something that worked. The next sync or redemption adds it.
 	if err := app.Repositories.School.AddMember(ctx, domain.SchoolMember{
-		SchoolID: school.ID,
+		SchoolID: schoolID,
 		UserID:   studentID,
 		Role:     domain.SchoolRoleStudent,
 	}); err != nil {
-		log.Printf("[schools] membership failed school_id=%s user_id=%s err=%v", school.ID, studentID, err)
+		log.Printf("[schools] membership failed school_id=%s user_id=%s err=%v", schoolID, studentID, err)
 	}
 }

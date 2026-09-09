@@ -6,6 +6,9 @@ type StudentInvitation struct {
 	ID        string
 	Code      string
 	TeacherID string
+	// SchoolID is the school the student joins on redemption. Deducing it from
+	// the teacher put an institution's students in the teacher's own school.
+	SchoolID  string
 	Uses      int
 	ExpiresAt *time.Time
 	RevokedAt *time.Time
