@@ -27,13 +27,15 @@ func NewCreateHandler(uc ucCourse.CreateUsecase) gin.HandlerFunc {
 
 		userID := middlewares.GetUserID(c)
 		output, appErr := uc.Execute(c, middlewares.IsTeacher(c), ucCourse.CreateInput{
-			TeacherID:   userID,
-			GradeID:     input.GradeID,
-			SubjectID:   input.SubjectID,
-			Title:       input.Title,
-			Description: input.Description,
-			Level:       input.Level,
-			Subject:     input.Subject,
+			TeacherID:    userID,
+			SchoolID:     c.GetHeader("X-School-ID"),
+			IsSuperAdmin: middlewares.IsSuperAdmin(c),
+			GradeID:      input.GradeID,
+			SubjectID:    input.SubjectID,
+			Title:        input.Title,
+			Description:  input.Description,
+			Level:        input.Level,
+			Subject:      input.Subject,
 		})
 		if appErr != nil {
 			appErr.Log(c)

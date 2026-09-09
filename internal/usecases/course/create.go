@@ -9,6 +9,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -21,13 +22,15 @@ type (
 	}
 
 	CreateInput struct {
-		TeacherID   string
-		GradeID     string `json:"grade_id"`
-		SubjectID   string `json:"subject_id"`
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Level       string `json:"level"`
-		Subject     string `json:"subject"`
+		TeacherID    string
+		SchoolID     string
+		IsSuperAdmin bool
+		GradeID      string `json:"grade_id"`
+		SubjectID    string `json:"subject_id"`
+		Title        string `json:"title"`
+		Description  string `json:"description"`
+		Level        string `json:"level"`
+		Subject      string `json:"subject"`
 	}
 
 	CreateOutput struct {
@@ -50,6 +53,23 @@ func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input Creat
 	}
 	if strings.TrimSpace(input.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
+	}
+	grade, err := app.Repositories.Grade.Get(ctx, input.GradeID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.GradeGetError, err)
+	}
+	if grade == nil || grade.SchoolID != input.SchoolID {
+		return nil, apperrors.NewBadRequestError("grade does not belong to active school")
+	}
+	subject, err := app.Repositories.Subject.Get(ctx, input.SubjectID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SubjectGetError, err)
+	}
+	if subject == nil || subject.SchoolID != input.SchoolID {
+		return nil, apperrors.NewBadRequestError("subject does not belong to active school")
+	}
+	if appErr := school.EnsureAdministers(ctx, app, input.TeacherID, input.IsSuperAdmin, input.SchoolID); appErr != nil {
+		return nil, appErr
 	}
 
 	id, err := app.Repositories.Course.Create(ctx, domain.Course{
