@@ -3,6 +3,7 @@ package grade
 import (
 	"net/http"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	ucGrade "github.com/tapiaw38/practiq-be/internal/usecases/grade"
 
 	"github.com/gin-gonic/gin"
@@ -23,7 +24,7 @@ func NewUpdateHandler(uc ucGrade.UpdateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, id, ucGrade.UpdateInput{
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), id, ucGrade.UpdateInput{
 			Name:        input.Name,
 			Description: input.Description,
 			VisualTheme: input.VisualTheme,

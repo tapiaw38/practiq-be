@@ -3,6 +3,7 @@ package subject
 import (
 	"net/http"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	ucSubject "github.com/tapiaw38/practiq-be/internal/usecases/subject"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,7 @@ func NewUpdateHandler(uc ucSubject.UpdateUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, id, ucSubject.UpdateInput{
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), id, ucSubject.UpdateInput{
 			Name:        input.Name,
 			Description: input.Description,
 		})

@@ -72,23 +72,26 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// Grades. La estructura académica es institucional: la escribe el
 	// administrador. El listado queda abierto porque el alumno arma con él su
 	// propia navegación.
-	adminOnly.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
+	// Managing the academic catalogue moved from the platform superadmin to
+	// whoever administers the school. The group only says a teacher may ask;
+	// the use cases decide which rows they may touch, by school.
+	teacherOnly.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
 	api.GET("/grades", handlerGrade.NewListHandler(uc.Grade.List))
-	adminOnly.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
-	adminOnly.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
-	adminOnly.POST("/grades/:id/members", handlerGrade.NewAssignMemberHandler(uc.Grade.AssignMember))
+	teacherOnly.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
+	teacherOnly.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
+	teacherOnly.POST("/grades/:id/members", handlerGrade.NewAssignMemberHandler(uc.Grade.AssignMember))
 	teacherOnly.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
-	adminOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
+	teacherOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
 	api.GET("/users/:userId/grades", handlerGrade.NewListUserGradesHandler(uc.Grade.ListUserGrades))
 	// Batches the call above: dashboards were firing one request per student
 	// to build the "which grade is this student in" list.
 	api.POST("/grades/batch-by-users", handlerGrade.NewListGradesByUsersHandler(uc.Grade.ListGradesByUsers))
 
 	// Subjects. Mismo criterio que grades.
-	adminOnly.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
+	teacherOnly.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
 	api.GET("/subjects", handlerSubject.NewListHandler(uc.Subject.List))
-	adminOnly.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
-	adminOnly.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
+	teacherOnly.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
+	teacherOnly.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
 
 	// Teacher/student assignments
 	adminOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))

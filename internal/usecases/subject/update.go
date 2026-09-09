@@ -7,11 +7,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	schoolUC "github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	UpdateUsecase interface {
-		Execute(context.Context, string, UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -32,8 +33,22 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// The route lets a teacher ask; this decides which rows they may touch.
+	// Without it, opening these routes beyond the platform superadmin would let
+	// any teacher edit another school's subjects.
+	current, err := app.Repositories.Subject.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SubjectGetError, err)
+	}
+	if current == nil {
+		return nil, apperrors.NewNotFoundError("subject not found")
+	}
+	if appErr := schoolUC.EnsureAdministers(ctx, app, requesterID, isSuperAdmin, current.SchoolID); appErr != nil {
+		return nil, appErr
+	}
 
 	if err := app.Repositories.Subject.Update(ctx, id, domain.Subject{
 		Name:        input.Name,

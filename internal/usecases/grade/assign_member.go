@@ -7,11 +7,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	schoolUC "github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	AssignMemberUsecase interface {
-		Execute(context.Context, string, string) (*AssignMemberOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError)
 	}
 
 	assignMemberUsecase struct {
@@ -27,7 +28,7 @@ func NewAssignMemberUsecase(contextFactory appcontext.Factory) AssignMemberUseca
 	return &assignMemberUsecase{contextFactory: contextFactory}
 }
 
-func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError) {
+func (u *assignMemberUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)
@@ -36,6 +37,11 @@ func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID strin
 	}
 	if grade == nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeNotFoundError, nil)
+	}
+
+	// The route lets a teacher ask; this decides whose grade they may touch.
+	if appErr := schoolUC.EnsureAdministers(ctx, app, requesterID, isSuperAdmin, grade.SchoolID); appErr != nil {
+		return nil, appErr
 	}
 
 	profile, err := app.Repositories.UserProfile.Get(ctx, userID)

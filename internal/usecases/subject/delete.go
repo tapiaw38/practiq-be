@@ -6,11 +6,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	schoolUC "github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	DeleteUsecase interface {
-		Execute(context.Context, string) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError
 	}
 
 	deleteUsecase struct {
@@ -22,8 +23,22 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-func (u *deleteUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
+
+	// The route lets a teacher ask; this decides which rows they may touch.
+	// Without it, opening these routes beyond the platform superadmin would let
+	// any teacher edit another school's subjects.
+	current, err := app.Repositories.Subject.Get(ctx, id)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.SubjectGetError, err)
+	}
+	if current == nil {
+		return apperrors.NewNotFoundError("subject not found")
+	}
+	if appErr := schoolUC.EnsureAdministers(ctx, app, requesterID, isSuperAdmin, current.SchoolID); appErr != nil {
+		return appErr
+	}
 
 	if err := app.Repositories.Subject.Delete(ctx, id); err != nil {
 		return apperrors.NewApplicationError(mappings.SubjectDeleteError, err)
