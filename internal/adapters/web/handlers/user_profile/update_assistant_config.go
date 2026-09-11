@@ -18,7 +18,7 @@ func NewUpdateAssistantConfigHandler(uc ucProfile.UpdateAssistantConfigUsecase) 
 		}
 
 		userID := middlewares.GetUserID(c)
-		output, appErr := uc.Execute(c, ucProfile.UpdateAssistantConfigInput{
+		output, appErr := uc.Execute(c, userID, middlewares.IsSuperAdmin(c), ucProfile.UpdateAssistantConfigInput{
 			ID:               userID,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,

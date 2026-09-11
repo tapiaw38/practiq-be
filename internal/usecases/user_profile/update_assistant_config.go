@@ -8,11 +8,12 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	UpdateAssistantConfigUsecase interface {
-		Execute(context.Context, UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError)
 	}
 
 	updateAssistantConfigUsecase struct {
@@ -36,8 +37,16 @@ func NewUpdateAssistantConfigUsecase(contextFactory appcontext.Factory) UpdateAs
 	return &updateAssistantConfigUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, input UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError) {
+func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	// Reuses the assignment-visibility rule: the requester may touch this
+	// profile if it's their own, or they administer a school the target
+	// belongs to. Without this, opening the route beyond superadmin would let
+	// a school admin rewrite any profile's assistant credentials.
+	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.ID); appErr != nil {
+		return nil, appErr
+	}
 
 	baseURL := strings.TrimSpace(input.AssistantBaseURL)
 	apiKey := strings.TrimSpace(input.AssistantAPIKey)

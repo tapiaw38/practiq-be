@@ -58,7 +58,9 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	adminOnly.PUT("/site-contact", sitecontact.Update(contacts))
 	teacherOnly := api.Group("/")
 	teacherOnly.Use(middlewares.RequireTeacher())
-	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
+	// School-scoped: school.EnsureCanViewAssignmentsFor in the usecase, same
+	// rule as teacher-student assignment above.
+	teacherOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
 

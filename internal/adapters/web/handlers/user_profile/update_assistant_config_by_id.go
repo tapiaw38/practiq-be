@@ -6,6 +6,7 @@ import (
 	ucProfile "github.com/tapiaw38/practiq-be/internal/usecases/user_profile"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
 func NewUpdateAssistantConfigByIDHandler(uc ucProfile.UpdateAssistantConfigUsecase) gin.HandlerFunc {
@@ -22,7 +23,7 @@ func NewUpdateAssistantConfigByIDHandler(uc ucProfile.UpdateAssistantConfigUseca
 			return
 		}
 
-		output, appErr := uc.Execute(c, ucProfile.UpdateAssistantConfigInput{
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), ucProfile.UpdateAssistantConfigInput{
 			ID:               profileID,
 			AssistantBaseURL: input.AssistantBaseURL,
 			AssistantAPIKey:  input.AssistantAPIKey,
