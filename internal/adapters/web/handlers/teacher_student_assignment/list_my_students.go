@@ -18,7 +18,7 @@ func NewListMyStudentsHandler(uc ucAssignment.ListStudentsUsecase) gin.HandlerFu
 			BearerToken: c.GetHeader("Authorization"),
 		}
 
-		output, appErr := uc.Execute(c, input)
+		output, appErr := uc.Execute(c, teacherID, middlewares.IsSuperAdmin(c), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

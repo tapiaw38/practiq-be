@@ -13,7 +13,7 @@ import (
 
 type (
 	AssignUsecase interface {
-		Execute(context.Context, string, string) (*AssignOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, string, string) (*AssignOutput, apperrors.ApplicationError)
 	}
 
 	assignUsecase struct {
@@ -29,8 +29,14 @@ func NewAssignUsecase(contextFactory appcontext.Factory) AssignUsecase {
 	return &assignUsecase{contextFactory: contextFactory}
 }
 
-func (u *assignUsecase) Execute(ctx context.Context, teacherID, studentID string) (*AssignOutput, apperrors.ApplicationError) {
+func (u *assignUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, teacherID, studentID string) (*AssignOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+	// A school admin may only link people who already share their school —
+	// see school.EnsureCanLinkTeacherStudent for why this used to be
+	// superadmin-only.
+	if appErr := school.EnsureCanLinkTeacherStudent(ctx, app, requesterID, isSuperAdmin, teacherID, studentID); appErr != nil {
+		return nil, appErr
+	}
 	// A superadmin assigning is still a teacher gaining a student, and the
 	// plan is the teacher's either way.
 	if appErr := subscription.EnsureCanAddStudent(ctx, app, teacherID, studentID); appErr != nil {

@@ -7,11 +7,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	UnassignUsecase interface {
-		Execute(context.Context, string, string) (*UnassignOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, string, string) (*UnassignOutput, apperrors.ApplicationError)
 	}
 
 	unassignUsecase struct {
@@ -27,8 +28,11 @@ func NewUnassignUsecase(contextFactory appcontext.Factory) UnassignUsecase {
 	return &unassignUsecase{contextFactory: contextFactory}
 }
 
-func (u *unassignUsecase) Execute(ctx context.Context, teacherID, studentID string) (*UnassignOutput, apperrors.ApplicationError) {
+func (u *unassignUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, teacherID, studentID string) (*UnassignOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+	if appErr := school.EnsureCanLinkTeacherStudent(ctx, app, requesterID, isSuperAdmin, teacherID, studentID); appErr != nil {
+		return nil, appErr
+	}
 	if err := app.Repositories.TeacherStudentAssignment.Unassign(ctx, teacherID, studentID); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AssignmentDeleteError, err)
 	}

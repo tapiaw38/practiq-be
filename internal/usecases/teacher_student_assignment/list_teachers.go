@@ -8,11 +8,12 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	ListTeachersUsecase interface {
-		Execute(context.Context, ListTeachersInput) (*ListTeachersOutput, apperrors.ApplicationError)
+		Execute(context.Context, string, bool, ListTeachersInput) (*ListTeachersOutput, apperrors.ApplicationError)
 	}
 
 	listTeachersUsecase struct {
@@ -35,8 +36,12 @@ func NewListTeachersUsecase(contextFactory appcontext.Factory) ListTeachersUseca
 	return &listTeachersUsecase{contextFactory: contextFactory}
 }
 
-func (u *listTeachersUsecase) Execute(ctx context.Context, input ListTeachersInput) (*ListTeachersOutput, apperrors.ApplicationError) {
+func (u *listTeachersUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input ListTeachersInput) (*ListTeachersOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.StudentID); appErr != nil {
+		return nil, appErr
+	}
 
 	filter := tsaRepo.ListFilter{
 		UserID: input.StudentID,

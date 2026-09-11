@@ -95,10 +95,13 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
 
 	// Teacher/student assignments
-	adminOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
-	adminOnly.DELETE("/teacher-student-assignments/:teacherId/:studentId", handlerAssignment.NewUnassignHandler(uc.Assignment.Unassign))
-	adminOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
-	adminOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
+	// School-scoped now: the usecases check school.EnsureCanLinkTeacherStudent /
+	// EnsureCanViewAssignmentsFor, so a school admin only reaches people who
+	// share their school. A platform superadmin still passes everywhere.
+	teacherOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
+	teacherOnly.DELETE("/teacher-student-assignments/:teacherId/:studentId", handlerAssignment.NewUnassignHandler(uc.Assignment.Unassign))
+	teacherOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
+	teacherOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
 	api.GET("/teachers/me/students", handlerAssignment.NewListMyStudentsHandler(uc.Assignment.ListStudents))
 
 	// Invitaciones: el docente genera y revoca el código; el alumno lo canjea y

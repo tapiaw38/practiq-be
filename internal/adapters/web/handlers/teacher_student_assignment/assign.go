@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	ucAssignment "github.com/tapiaw38/practiq-be/internal/usecases/teacher_student_assignment"
 )
 
@@ -20,7 +21,7 @@ func NewAssignHandler(uc ucAssignment.AssignUsecase) gin.HandlerFunc {
 			return
 		}
 
-		output, appErr := uc.Execute(c, input.TeacherID, input.StudentID)
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), input.TeacherID, input.StudentID)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
