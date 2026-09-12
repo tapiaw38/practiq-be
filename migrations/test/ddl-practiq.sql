@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS grades (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(150) NOT NULL UNIQUE,
     description TEXT,
+    visual_theme VARCHAR(30) NOT NULL DEFAULT 'primary' CHECK (visual_theme IN ('primary', 'secondary')),
     created_by VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -151,6 +152,7 @@ CREATE TABLE IF NOT EXISTS student_attempts (
     exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
     practice_sheet_id UUID REFERENCES practice_sheets(id) ON DELETE SET NULL,
     answer_text TEXT,
+    image_url TEXT DEFAULT '',
     ai_feedback TEXT NOT NULL DEFAULT '',
     is_correct BOOLEAN,
     score NUMERIC(5,2),
@@ -207,7 +209,7 @@ CREATE TABLE IF NOT EXISTS ai_help_requests (
     exercise_id UUID REFERENCES exercises(id) ON DELETE SET NULL,
     question TEXT NOT NULL,
     ai_response TEXT,
-    help_type VARCHAR(50) CHECK (help_type IN ('hint', 'explanation', 'similar_example')),
+    help_type VARCHAR(50) CHECK (help_type IN ('hint', 'explanation', 'similar_example', 'review_answer')),
     created_at TIMESTAMP DEFAULT NOW()
 );
 

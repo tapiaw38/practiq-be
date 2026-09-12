@@ -6,24 +6,40 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-type ListUsecase interface {
-	Execute(context.Context) (*GradeListOutput, apperrors.ApplicationError)
+type (
+	ListUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string) (*ListOutput, apperrors.ApplicationError)
+	}
+
+	listUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListOutput struct {
+		Data []GradeData `json:"data"`
+	}
+)
+
+func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
+	return &listUsecase{contextFactory: contextFactory}
 }
 
-type listUsecase struct {
-	factory appcontext.Factory
-}
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string) (*ListOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewListUsecase(factory appcontext.Factory) ListUsecase {
-	return &listUsecase{factory: factory}
-}
+	scope, err := school.ScopeForSchool(ctx, app, requesterID, isSuperAdmin, schoolID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.GradeListError, err)
+	}
+	if scope.Empty() {
+		// Belonging to no school means seeing nothing, not everything.
+		return &ListOutput{Data: []GradeData{}}, nil
+	}
 
-func (u *listUsecase) Execute(ctx context.Context) (*GradeListOutput, apperrors.ApplicationError) {
-	app := u.factory()
-
-	grades, err := app.Repositories.Grade.List(ctx)
+	grades, err := app.Repositories.Grade.List(ctx, scope.SchoolIDs)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeListError, err)
 	}
@@ -33,5 +49,5 @@ func (u *listUsecase) Execute(ctx context.Context) (*GradeListOutput, apperrors.
 		data = append(data, toGradeData(grade))
 	}
 
-	return &GradeListOutput{Data: data}, nil
+	return &ListOutput{Data: data}, nil
 }

@@ -3,38 +3,61 @@ package material
 import (
 	"context"
 
+	materialRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListUsecase interface {
-	Execute(context.Context, string) (*MaterialListOutput, apperrors.ApplicationError)
+type (
+	ListUsecase interface {
+		Execute(context.Context, string, bool, ListInput) (*ListOutput, apperrors.ApplicationError)
+	}
+
+	listUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListInput struct {
+		CourseID string
+		Limit    int
+		Offset   int
+	}
+
+	ListOutput struct {
+		Data []MaterialData `json:"data"`
+	}
+)
+
+func NewListUsecase(contextFactory appcontext.Factory) ListUsecase {
+	return &listUsecase{contextFactory: contextFactory}
 }
 
-type listUsecase struct {
-	factory appcontext.Factory
-}
+func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input ListInput) (*ListOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewListUsecase(factory appcontext.Factory) ListUsecase {
-	return &listUsecase{factory: factory}
-}
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID); appErr != nil {
+		return nil, appErr
+	}
 
-func (u *listUsecase) Execute(ctx context.Context, courseID string) (*MaterialListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	filter := materialRepo.ListFilter{
+		CourseID: input.CourseID,
+		Limit:    input.Limit,
+		Offset:   input.Offset,
+	}
 
-	materials, err := app.Repositories.Material.List(ctx, courseID)
+	materials, err := app.Repositories.Material.List(ctx, filter)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialListError, err)
 	}
 
 	var data []MaterialData
 	for _, m := range materials {
-		data = append(data, toMaterialData(m))
+		data = append(data, withViewURL(app, toMaterialPreview(m)))
 	}
 	if data == nil {
 		data = []MaterialData{}
 	}
 
-	return &MaterialListOutput{Data: data}, nil
+	return &ListOutput{Data: data}, nil
 }

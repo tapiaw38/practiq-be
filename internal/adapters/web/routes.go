@@ -2,27 +2,50 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	sitecontactRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/site_contact"
+	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
+	userprofileRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
+	handlerReview "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/attempt_review"
 	handlerCourse "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course"
 	courselevel "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_level"
+	handlerCP "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/exercise"
 	handlerGrade "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/grade"
+	handlerLS "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
+	handlerNotification "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notification"
 	practicesheet "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/practice_sheet"
+	handlerSchool "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/school"
+	sitecontact "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/site_contact"
+	handlerInvitation "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_invitation"
 	studentprogress "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_progress"
+	studentreport "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/student_report"
 	handlerSubject "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subject"
+	subscription "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/subscription"
 	handlerAssignment "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/teacher_student_assignment"
 	handlerTopic "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/topic"
+	handlerUpload "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/upload"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
+	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
+	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository) {
+	// Landing catalogue. It deliberately exposes only active, sellable plans;
+	// everything that identifies a teacher or manages a subscription remains
+	// behind the authenticated API group below.
+	public := app.Group("/api/public")
+	public.GET("/subscription-plans", subscription.NewPublicListPlansHandler(uc.Subscription.Plans))
+	public.GET("/site-contact", sitecontact.Public(contacts))
+
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware())
+	api.Use(middlewares.LoadProfileType(userProfiles))
 
 	// Profile
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
@@ -30,102 +53,213 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases) {
 	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
 	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly := api.Group("/")
-	adminOnly.Use(middlewares.RequireRoles("admin", "superadmin"))
-	adminOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
+	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
+	adminOnly.GET("/site-contact", sitecontact.Get(contacts))
+	adminOnly.PUT("/site-contact", sitecontact.Update(contacts))
+	teacherOnly := api.Group("/")
+	teacherOnly.Use(middlewares.RequireTeacher())
+	// School-scoped: school.EnsureCanViewAssignmentsFor in the usecase, same
+	// rule as teacher-student assignment above.
+	teacherOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
+	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
 
-	// Courses
-	api.POST("/courses", handlerCourse.NewCreateHandler(uc.Course.Create))
+	// Courses. Los use cases validan que el curso sea del profesor; el grupo
+	// evita además que un alumno llegue siquiera a intentarlo.
+	teacherOnly.POST("/courses", handlerCourse.NewCreateHandler(uc.Course.Create))
 	api.GET("/courses", handlerCourse.NewListHandler(uc.Course.List))
 	api.GET("/courses/:id", handlerCourse.NewGetHandler(uc.Course.Get))
-	api.PUT("/courses/:id", handlerCourse.NewUpdateHandler(uc.Course.Update))
-	api.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
+	teacherOnly.PUT("/courses/:id", handlerCourse.NewUpdateHandler(uc.Course.Update))
+	teacherOnly.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
 
-	// Grades
-	api.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
+	// Grades. La estructura académica es institucional: la escribe el
+	// administrador. El listado queda abierto porque el alumno arma con él su
+	// propia navegación.
+	// Managing the academic catalogue moved from the platform superadmin to
+	// whoever administers the school. The group only says a teacher may ask;
+	// the use cases decide which rows they may touch, by school.
+	teacherOnly.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
 	api.GET("/grades", handlerGrade.NewListHandler(uc.Grade.List))
-	api.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
-	api.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
-	adminOnly.POST("/grades/:id/members", handlerGrade.NewAssignMemberHandler(uc.Grade.AssignMember))
-	api.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
-	adminOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
+	teacherOnly.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
+	teacherOnly.DELETE("/grades/:id", handlerGrade.NewDeleteHandler(uc.Grade.Delete))
+	teacherOnly.POST("/grades/:id/members", handlerGrade.NewAssignMemberHandler(uc.Grade.AssignMember))
+	teacherOnly.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
+	teacherOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
 	api.GET("/users/:userId/grades", handlerGrade.NewListUserGradesHandler(uc.Grade.ListUserGrades))
+	// Batches the call above: dashboards were firing one request per student
+	// to build the "which grade is this student in" list.
+	api.POST("/grades/batch-by-users", handlerGrade.NewListGradesByUsersHandler(uc.Grade.ListGradesByUsers))
 
-	// Subjects
-	api.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
+	// Subjects. Mismo criterio que grades.
+	teacherOnly.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
 	api.GET("/subjects", handlerSubject.NewListHandler(uc.Subject.List))
-	api.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
-	api.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
+	teacherOnly.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
+	teacherOnly.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
 
 	// Teacher/student assignments
-	adminOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
-	adminOnly.DELETE("/teacher-student-assignments/:teacherId/:studentId", handlerAssignment.NewUnassignHandler(uc.Assignment.Unassign))
-	adminOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
-	adminOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
+	// School-scoped now: the usecases check school.EnsureCanLinkTeacherStudent /
+	// EnsureCanViewAssignmentsFor, so a school admin only reaches people who
+	// share their school. A platform superadmin still passes everywhere.
+	teacherOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
+	teacherOnly.DELETE("/teacher-student-assignments/:teacherId/:studentId", handlerAssignment.NewUnassignHandler(uc.Assignment.Unassign))
+	teacherOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
+	teacherOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
 	api.GET("/teachers/me/students", handlerAssignment.NewListMyStudentsHandler(uc.Assignment.ListStudents))
+
+	// Invitaciones: el docente genera y revoca el código; el alumno lo canjea y
+	// queda vinculado sin que intervenga el administrador.
+	teacherOnly.POST("/invitations", handlerInvitation.NewCreateHandler(uc.Invitation.Create))
+	teacherOnly.GET("/invitations/active", handlerInvitation.NewGetActiveHandler(uc.Invitation.GetActive))
+	teacherOnly.DELETE("/invitations/:id", handlerInvitation.NewRevokeHandler(uc.Invitation.Revoke))
+	api.POST("/invitations/redeem", handlerInvitation.NewRedeemHandler(uc.Invitation.Redeem))
 
 	// Enrollments
 	api.POST("/courses/:id/enroll", enrollment.NewEnrollHandler(uc.Enrollment.Enroll))
 	api.GET("/courses/:id/students", enrollment.NewListStudentsHandler(uc.Enrollment.ListStudents))
 
 	// Materials
-	api.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
+	teacherOnly.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
 	api.GET("/courses/:id/materials", material.NewListHandler(uc.Material.List))
-	api.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
-	api.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
+	api.GET("/materials/:id", material.NewGetHandler(uc.Material.Get))
+	teacherOnly.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
+	teacherOnly.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
 
 	// Topics
-	api.POST("/courses/:id/topics", handlerTopic.NewCreateHandler(uc.Topic.Create))
+	teacherOnly.POST("/courses/:id/topics", handlerTopic.NewCreateHandler(uc.Topic.Create))
 	api.GET("/courses/:id/topics", handlerTopic.NewListHandler(uc.Topic.List))
-	api.PUT("/topics/:id", handlerTopic.NewUpdateHandler(uc.Topic.Update))
-	api.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
+	teacherOnly.PUT("/topics/:id", handlerTopic.NewUpdateHandler(uc.Topic.Update))
+	teacherOnly.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
 
 	// Exercises
-	api.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
+	teacherOnly.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
 	api.GET("/topics/:id/exercises", exercise.NewListHandler(uc.Exercise.List))
-	api.PUT("/exercises/:id", exercise.NewUpdateHandler(uc.Exercise.Update))
-	api.DELETE("/exercises/:id", exercise.NewDeleteHandler(uc.Exercise.Delete))
+	api.GET("/exercises/:id/statement-image", exercise.NewStatementImageHandler(uc.Exercise.StatementImage))
+	teacherOnly.PUT("/exercises/:id", exercise.NewUpdateHandler(uc.Exercise.Update))
+	teacherOnly.DELETE("/exercises/:id", exercise.NewDeleteHandler(uc.Exercise.Delete))
 
 	// Practice Sheets
-	api.POST("/courses/:id/practice-sheets", practicesheet.NewCreateHandler(uc.PracticeSheet.Create))
+	teacherOnly.POST("/courses/:id/practice-sheets", practicesheet.NewCreateHandler(uc.PracticeSheet.Create))
 	api.GET("/courses/:id/practice-sheets", practicesheet.NewListHandler(uc.PracticeSheet.List))
 	api.GET("/practice-sheets/:id", practicesheet.NewGetHandler(uc.PracticeSheet.Get))
-	api.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
-	api.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
+	api.GET("/practice-sheets/:id/exercises/:exerciseId/assistant-media", practicesheet.NewGetAssistantMediaHandler(uc.PracticeSheet.GetAssistantMedia))
+	teacherOnly.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
+	teacherOnly.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
-	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit))
-	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler())
+	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit, submitJobRepo))
+	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler(submitJobRepo))
 
 	// Student Progress (self-service)
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
+	api.GET("/students/me/dashboard", studentprogress.NewDashboardHandler(uc.Progress.Dashboard))
 	api.GET("/students/me/courses/:id/progress", studentprogress.NewGetCourseProgressHandler(uc.Progress.GetCourse))
 
 	// Teacher view of student progress
 	api.GET("/teachers/me/students/:studentId/progress", studentprogress.NewGetStudentProgressHandler(uc.Progress.GetStudentProgress))
 	api.GET("/teachers/me/students/:studentId/courses/:courseId/progress", studentprogress.NewGetStudentCourseProgressHandler(uc.Progress.GetStudentCourseProgress))
 	api.GET("/teachers/me/students/:studentId/attempts", studentprogress.NewGetStudentAttemptsHandler(uc.Progress.GetStudentAttempts))
+	teacherOnly.GET("/teachers/me/students/:studentId/report.pdf", studentreport.NewGeneratePDFHandler(uc.Report.GeneratePDF))
 
 	// AI Tutor
 	api.POST("/ai/conversations", ai.NewCreateConversationHandler(uc.AI.CreateConversation))
 	api.GET("/ai/conversations/:id/messages", ai.NewGetMessagesHandler(uc.AI.GetMessages))
 	api.POST("/ai/help", ai.NewHelpHandler(uc.AI.Help))
+	api.POST("/ai/copilot", ai.NewCopilotHandler(uc.AI.Help))
+	api.POST("/ai/copilot/stream", ai.NewCopilotStreamHandler(uc.AI.Help))
+	api.POST("/ai/curiosities", ai.NewGenerateCuriositiesHandler(uc.AI.GenerateCuriosities))
 	api.GET("/assistant-proxy/conversation/user", ai.NewProxyListConversationsHandler(uc.AI.Proxy))
 	api.GET("/assistant-proxy/conversation/:id", ai.NewProxyGetConversationHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/", ai.NewProxyCreateConversationHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/:id/message", ai.NewProxySendMessageHandler(uc.AI.Proxy))
+	api.POST("/assistant-proxy/conversation/:id/message/text", ai.NewProxySendTextMessageHandler(uc.AI.Proxy))
 
 	// Course levels
 	api.GET("/courses/:id/levels", courselevel.NewGetHandler(uc.CourseLevel.Get))
 
 	// Notebooks
-	api.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))
+	teacherOnly.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))
 	api.GET("/courses/:id/notebooks", handlerNB.NewListHandler(uc.Notebook.List))
 	api.GET("/notebooks/:id", handlerNB.NewGetHandler(uc.Notebook.Get))
-	api.PUT("/notebooks/:id", handlerNB.NewUpdateHandler(uc.Notebook.Update))
-	api.DELETE("/notebooks/:id", handlerNB.NewDeleteHandler(uc.Notebook.Delete))
-	api.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
-	api.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
+	teacherOnly.PUT("/notebooks/:id", handlerNB.NewUpdateHandler(uc.Notebook.Update))
+	teacherOnly.DELETE("/notebooks/:id", handlerNB.NewDeleteHandler(uc.Notebook.Delete))
+	teacherOnly.POST("/notebooks/:id/pages", handlerNB.NewAddPageHandler(uc.Notebook.AddPage))
+	teacherOnly.PUT("/notebook-pages/:id", handlerNB.NewUpdatePageHandler(uc.Notebook.UpdatePage))
 	api.POST("/notebook-pages/:id/submit", handlerNB.NewSaveSubmissionHandler(uc.Notebook.SaveSubmission))
-	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission))
-	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler())
+	api.POST("/notebook-pages/:id/submit-async", handlerNB.NewSaveSubmissionAsyncHandler(uc.Notebook.SaveSubmission, submitJobRepo))
+	api.GET("/notebook-pages/submit-jobs/:jobId", handlerNB.NewGetSubmitJobHandler(submitJobRepo))
+	teacherOnly.GET("/notebook-submissions", handlerNB.NewListSubmissionsHandler(uc.Notebook.ListSubmissions))
+	teacherOnly.POST("/notebook-submissions/:id/review", handlerNB.NewReviewSubmissionHandler(uc.Notebook.ReviewSubmission))
+	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
+
+	// Attachment answers the assistant could not grade
+	// Reading the catalogue is open to teachers: they have to see what they
+	// could move to. Changing it is not.
+	teacherOnly.GET("/subscription-plans", subscription.NewListPlansHandler(uc.Subscription.Plans))
+	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
+	// No subscription id in these paths: the one being acted on is the
+	// caller's, so there is nothing to swap for somebody else's.
+	teacherOnly.GET("/teachers/me/subscription/checkout-config", subscription.NewCheckoutConfigHandler(config.GetConfigService().ServerConfig.MercadoPagoPublicKey))
+	teacherOnly.POST("/teachers/me/subscription", subscription.NewSubscribeHandler(uc.Subscription.Subscribe))
+	teacherOnly.POST("/teachers/me/subscription/pause", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionPause))
+	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
+	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))
+
+	// Institutions exist because somebody agreed to invoice one, so an operator
+	// creates them and names their admins. Personal schools are not created
+	// here: they appear when a teacher signs up.
+	adminOnly.GET("/schools", handlerSchool.NewListHandler(uc.School.Manage))
+	adminOnly.POST("/schools", handlerSchool.NewCreateHandler(uc.School.Manage))
+	adminOnly.POST("/schools/:id/close", handlerSchool.NewCloseHandler(uc.School.Manage))
+	adminOnly.POST("/schools/:id/reopen", handlerSchool.NewReopenHandler(uc.School.Manage))
+	adminOnly.GET("/schools/:id/archive", handlerSchool.NewArchiveHandler(uc.School.Manage))
+
+	// The school selector is also needed by students. It is read-only and the
+	// usecase returns only the caller's active memberships. Campus uses this as
+	// its source of tenant scope; authorization remains in Practiq, where the
+	// membership source of truth lives.
+	api.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))
+
+	// An institution's admin runs its people; a superadmin passes everywhere.
+	teacherOnly.PUT("/schools/:id", handlerSchool.NewUpdateHandler(uc.School.Manage))
+	teacherOnly.GET("/schools/:id/members", handlerSchool.NewListMembersHandler(uc.School.Manage))
+	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.Manage))
+	teacherOnly.DELETE("/schools/:id/members/:userId", handlerSchool.NewRemoveMemberHandler(uc.School.Manage))
+
+	// A downgrade leaves more students than the new plan allows. The teacher
+	// sees who would go and may choose who stays before it is applied.
+	teacherOnly.GET("/teachers/me/subscription/downgrade", subscription.NewDowngradePreviewHandler(uc.Subscription.Downgrade))
+	teacherOnly.POST("/teachers/me/subscription/downgrade", subscription.NewDowngradeApplyHandler(uc.Subscription.Downgrade))
+	teacherOnly.POST("/teachers/me/students/:studentId/reactivate", subscription.NewReactivateStudentHandler(uc.Subscription.Downgrade))
+
+	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.Plans))
+	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.Plans))
+	adminOnly.DELETE("/subscription-plans/:id", subscription.NewDeactivatePlanHandler(uc.Subscription.Plans))
+
+	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
+	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))
+	teacherOnly.GET("/attempt-reviews/:id/statement-image", handlerReview.NewStatementImageHandler(uc.AttemptReview.StatementImage))
+
+	// File uploads (attachment answers, teacher materials)
+	api.POST("/uploads", handlerUpload.NewHandler(uc.Upload.Upload))
+
+	// Notifications
+	api.GET("/notifications", handlerNotification.NewListHandler(uc.Notification.List))
+	api.POST("/notifications/:id/read", handlerNotification.NewMarkReadHandler(uc.Notification.MarkRead))
+	api.POST("/notifications/read-all", handlerNotification.NewMarkAllReadHandler(uc.Notification.MarkAllRead))
+	api.DELETE("/notifications/:id", handlerNotification.NewDeleteHandler(uc.Notification.Delete))
+
+	// Learning Strategies
+	api.GET("/learning-strategies", handlerLS.NewListHandler(uc.LearningStrategy.List))
+	api.GET("/learning-strategies/:id", handlerLS.NewGetHandler(uc.LearningStrategy.Get))
+	adminOnly.POST("/learning-strategies", handlerLS.NewCreateHandler(uc.LearningStrategy.Create))
+	adminOnly.PUT("/learning-strategies/:id", handlerLS.NewUpdateHandler(uc.LearningStrategy.Update))
+	adminOnly.DELETE("/learning-strategies/:id", handlerLS.NewDeleteHandler(uc.LearningStrategy.Delete))
+
+	// Course Learning Strategies
+	api.GET("/courses/:id/strategies", handlerLS.NewListByCourseHandler(uc.LearningStrategy.ListByCourse))
+	teacherOnly.POST("/courses/:id/strategies", handlerLS.NewAssignToCourseHandler(uc.LearningStrategy.AssignToCourse))
+	teacherOnly.DELETE("/course-learning-strategies/:id", handlerLS.NewUnassignFromCourseHandler(uc.LearningStrategy.UnassignFromCourse))
+
+	// Course Progress
+	teacherOnly.GET("/students/:studentId/courses/:courseId/progress", handlerCP.NewGetForStudentHandler(uc.CourseProgress.GetForStudent))
+	teacherOnly.GET("/students/:studentId/progress", handlerCP.NewListForStudentHandler(uc.CourseProgress.ListForStudent))
 }

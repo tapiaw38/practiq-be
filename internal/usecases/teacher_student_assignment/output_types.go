@@ -2,28 +2,30 @@ package teacherstudentassignment
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
-type UserData struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Email          string `json:"email"`
-	ProfileType    string `json:"profile_type"`
-	AcademicStatus string `json:"academic_status"`
-}
+type (
+	OperationResultData struct {
+		Message string `json:"message"`
+	}
 
-type UsersOutput struct {
-	Data []UserData `json:"data"`
-}
+	UserData struct {
+		ID             string `json:"id"`
+		Name           string `json:"name"`
+		Email          string `json:"email"`
+		ProfileType    string `json:"profile_type"`
+		AcademicStatus string `json:"academic_status"`
+	}
+)
 
-type MutationOutput struct {
-	Message string `json:"message"`
-}
-
-func toUserData(user domain.UserProfile) UserData {
+func toUserData(user domain.UserProfile, name, email string) UserData {
 	return UserData{
 		ID:             user.ID,
-		Name:           user.Name,
-		Email:          user.Email,
+		Name:           name,
+		Email:          email,
 		ProfileType:    user.ProfileType,
 		AcademicStatus: user.AcademicStatus,
 	}
+}
+
+func toOperationResultData(result domain.OperationResult) OperationResultData {
+	return OperationResultData{Message: result.Message}
 }

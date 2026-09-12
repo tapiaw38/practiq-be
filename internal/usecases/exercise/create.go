@@ -9,30 +9,47 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateUsecase interface {
-	Execute(context.Context, CreateInput) (*ExerciseOutput, apperrors.ApplicationError)
+type (
+	CreateUsecase interface {
+		Execute(context.Context, string, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+	}
+
+	createUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateInput struct {
+		TopicID       string
+		Type          string `json:"type"`
+		Question      string `json:"question"`
+		CorrectAnswer string `json:"correct_answer"`
+		Explanation   string `json:"explanation"`
+		Difficulty    int    `json:"difficulty"`
+		Metadata      string `json:"metadata"`
+	}
+
+	CreateOutput struct {
+		Data ExerciseData `json:"data"`
+	}
+)
+
+func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
+	return &createUsecase{contextFactory: contextFactory}
 }
 
-type createUsecase struct {
-	factory appcontext.Factory
-}
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-type CreateInput struct {
-	TopicID       string
-	Type          string `json:"type"`
-	Question      string `json:"question"`
-	CorrectAnswer string `json:"correct_answer"`
-	Explanation   string `json:"explanation"`
-	Difficulty    int    `json:"difficulty"`
-	Metadata      string `json:"metadata"`
-}
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, input.TopicID); appErr != nil {
+		return nil, appErr
+	}
 
-func NewCreateUsecase(factory appcontext.Factory) CreateUsecase {
-	return &createUsecase{factory: factory}
-}
-
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*ExerciseOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata, input.CorrectAnswer); appErr != nil {
+		return nil, appErr
+	}
+	if appErr := validateExerciseMediaURL(app, requesterID, input.Metadata, ""); appErr != nil {
+		return nil, appErr
+	}
 
 	difficulty := input.Difficulty
 	if difficulty < 1 {
@@ -42,6 +59,10 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Exerci
 		difficulty = 10
 	}
 
+	// There is no previous exercise to inherit a drawing from on create; this
+	// call is here to upload the one the editor posted inline.
+	metadata := storeTeacherImage(ctx, app, requesterID, input.Metadata, domain.Exercise{})
+
 	id, err := app.Repositories.Exercise.Create(ctx, domain.Exercise{
 		TopicID:       input.TopicID,
 		Type:          input.Type,
@@ -49,7 +70,7 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Exerci
 		CorrectAnswer: input.CorrectAnswer,
 		Explanation:   input.Explanation,
 		Difficulty:    difficulty,
-		Metadata:      input.Metadata,
+		Metadata:      metadata,
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ExerciseCreateError, err)
@@ -60,5 +81,5 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Exerci
 		return nil, apperrors.NewApplicationError(mappings.ExerciseListError, err)
 	}
 
-	return &ExerciseOutput{Data: toExerciseData(*e)}, nil
+	return &CreateOutput{Data: toExerciseData(app, *e)}, nil
 }

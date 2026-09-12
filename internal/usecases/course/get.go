@@ -8,28 +8,37 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetUsecase interface {
-	Execute(context.Context, string) (*CourseOutput, apperrors.ApplicationError)
+type (
+	GetUsecase interface {
+		Execute(context.Context, string, bool, string) (*GetOutput, apperrors.ApplicationError)
+	}
+
+	getUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetOutput struct {
+		Data CourseData `json:"data"`
+	}
+)
+
+func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
+	return &getUsecase{contextFactory: contextFactory}
 }
 
-type getUsecase struct {
-	factory appcontext.Factory
-}
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) (*GetOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewGetUsecase(factory appcontext.Factory) GetUsecase {
-	return &getUsecase{factory: factory}
-}
-
-func (u *getUsecase) Execute(ctx context.Context, id string) (*CourseOutput, apperrors.ApplicationError) {
-	app := u.factory()
-
-	c, err := app.Repositories.Course.Get(ctx, id)
+	course, err := app.Repositories.Course.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
-	if c == nil {
+	if course == nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseNotFoundError, nil)
 	}
+	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, id); appErr != nil {
+		return nil, appErr
+	}
 
-	return &CourseOutput{Data: toCourseData(*c)}, nil
+	return &GetOutput{Data: toCourseData(*course)}, nil
 }
