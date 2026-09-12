@@ -50,7 +50,7 @@ func NewDowngradeUsecase(contextFactory appcontext.Factory) DowngradeUsecase {
 func (u *downgradeUsecase) Preview(ctx context.Context, teacherID string) (*DowngradeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	scope, appErr := scopeFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, "", teacherID)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -74,7 +74,7 @@ func (u *downgradeUsecase) Preview(ctx context.Context, teacherID string) (*Down
 func (u *downgradeUsecase) Apply(ctx context.Context, teacherID string, keep []string) (*DowngradeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	scope, appErr := scopeFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, "", teacherID)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -103,7 +103,7 @@ func (u *downgradeUsecase) Apply(ctx context.Context, teacherID string, keep []s
 func (u *downgradeUsecase) Reactivate(ctx context.Context, teacherID, studentID string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
-	scope, appErr := scopeFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, "", teacherID)
 	if appErr != nil {
 		return appErr
 	}

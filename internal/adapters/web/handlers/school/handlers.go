@@ -69,6 +69,47 @@ func NewUpdateHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	}
 }
 
+func NewCloseHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var input ucSchool.CloseInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
+		output, appErr := uc.Close(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), c.Param("id"), input)
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, output)
+	}
+}
+
+func NewReopenHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		output, appErr := uc.Reopen(c, middlewares.IsSuperAdmin(c), c.Param("id"))
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, output)
+	}
+}
+
+func NewArchiveHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		output, appErr := uc.Archive(c, middlewares.IsSuperAdmin(c), c.Param("id"), c.GetHeader("Authorization"))
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, output)
+	}
+}
+
 func NewListMembersHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		output, appErr := uc.ListMembers(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), c.Param("id"), c.GetHeader("Authorization"))

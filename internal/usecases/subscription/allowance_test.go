@@ -34,12 +34,20 @@ func (f *fakeAssignments) CountStudents(context.Context, string) (int, error) {
 
 type fakeSchools struct {
 	schoolRepo.Repository
-	school   *domain.School
+	// school is the teacher's own, returned by GetPersonal.
+	school *domain.School
+	// byID is every school reachable by name, so a test can have a teacher own
+	// one school while a student joins another.
+	byID     map[string]*domain.School
 	students int
 }
 
 func (f *fakeSchools) GetPersonal(context.Context, string) (*domain.School, error) {
 	return f.school, nil
+}
+
+func (f *fakeSchools) Get(_ context.Context, id string) (*domain.School, error) {
+	return f.byID[id], nil
 }
 
 func (f *fakeSchools) CountStudents(context.Context, string) (int, error) {
@@ -92,7 +100,7 @@ func appWith(assignments *fakeAssignments, pay *fakePayments, schools *fakeSchoo
 
 func subscriptionSchool(students int) *fakeSchools {
 	return &fakeSchools{
-		school:   &domain.School{ID: "s1", Billing: domain.SchoolBillingSubscription},
+		school:   &domain.School{ID: "s1", Kind: domain.SchoolKindPersonal, Billing: domain.SchoolBillingSubscription, CreatedBy: "teacher-1"},
 		students: students,
 	}
 }
@@ -111,6 +119,9 @@ func TestEnsureCanAddStudent(t *testing.T) {
 		payments    *fakePayments
 		schools     *fakeSchools
 		profiles    *fakeProfiles
+		// schoolID is the school the student joins. Empty means the teacher's
+		// own, which is what a direct assignment passes.
+		schoolID    string
 		wantRefused bool
 	}{
 		{
@@ -197,13 +208,56 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			schools:     &fakeSchools{school: nil},
 			payments:    &fakePayments{entitlement: paidPlan(5)},
 		},
+		{
+			// The bug this signature exists for. Every teacher is given a
+			// personal school on sign-up, so resolving the cap from the teacher
+			// charged an institution's student against that teacher's own plan
+			// — and refused them the moment it filled, over a limit the
+			// institution does not have.
+			name:        "a full personal plan does not refuse an institution's student",
+			assignments: &fakeAssignments{},
+			schools: &fakeSchools{
+				school:   &domain.School{ID: "personal", Kind: domain.SchoolKindPersonal, Billing: domain.SchoolBillingSubscription, CreatedBy: "teacher-1"},
+				byID:     map[string]*domain.School{"inst": {ID: "inst", Kind: domain.SchoolKindInstitution, Billing: domain.SchoolBillingDirect}},
+				students: 5,
+			},
+			payments: &fakePayments{entitlement: paidPlan(5)},
+			schoolID: "inst",
+		},
+		{
+			// Institutions are invoiced by contract. The billing column saying
+			// otherwise does not create a per-student price nobody agreed to.
+			name:        "an institution is uncapped even when billed by subscription",
+			assignments: &fakeAssignments{},
+			schools: &fakeSchools{
+				school:   &domain.School{ID: "personal", Kind: domain.SchoolKindPersonal, Billing: domain.SchoolBillingSubscription, CreatedBy: "teacher-1"},
+				byID:     map[string]*domain.School{"inst": {ID: "inst", Kind: domain.SchoolKindInstitution, Billing: domain.SchoolBillingSubscription}},
+				students: 5000,
+			},
+			payments: &fakePayments{entitlement: paidPlan(5)},
+			schoolID: "inst",
+		},
+		{
+			// Naming the teacher's own school must behave exactly like naming
+			// none, or the same limit would depend on which caller asked.
+			name:        "naming the personal school still applies its plan",
+			assignments: &fakeAssignments{},
+			schools: &fakeSchools{
+				school:   &domain.School{ID: "personal", Kind: domain.SchoolKindPersonal, Billing: domain.SchoolBillingSubscription, CreatedBy: "teacher-1"},
+				byID:     map[string]*domain.School{"personal": {ID: "personal", Kind: domain.SchoolKindPersonal, Billing: domain.SchoolBillingSubscription, CreatedBy: "teacher-1"}},
+				students: 5,
+			},
+			payments:    &fakePayments{entitlement: paidPlan(5)},
+			schoolID:    "personal",
+			wantRefused: true,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app := appWith(tc.assignments, tc.payments, tc.schools, tc.profiles)
 
-			appErr := EnsureCanAddStudent(context.Background(), app, "teacher-1", "student-1")
+			appErr := EnsureCanAddStudent(context.Background(), app, tc.schoolID, "teacher-1", "student-1")
 
 			if tc.wantRefused && appErr == nil {
 				t.Fatal("expected the link to be refused")

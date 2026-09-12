@@ -208,6 +208,9 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// here: they appear when a teacher signs up.
 	adminOnly.GET("/schools", handlerSchool.NewListHandler(uc.School.Manage))
 	adminOnly.POST("/schools", handlerSchool.NewCreateHandler(uc.School.Manage))
+	adminOnly.POST("/schools/:id/close", handlerSchool.NewCloseHandler(uc.School.Manage))
+	adminOnly.POST("/schools/:id/reopen", handlerSchool.NewReopenHandler(uc.School.Manage))
+	adminOnly.GET("/schools/:id/archive", handlerSchool.NewArchiveHandler(uc.School.Manage))
 
 	// An institution's admin runs its people; a superadmin passes everywhere.
 	teacherOnly.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))

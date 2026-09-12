@@ -49,7 +49,10 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 	if course == nil {
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
-	if appErr := subscription.EnsureCanAddStudent(ctx, app, course.TeacherID, studentID); appErr != nil {
+	if appErr := school.RequireActive(ctx, app, course.SchoolID); appErr != nil {
+		return nil, appErr
+	}
+	if appErr := subscription.EnsureCanAddStudent(ctx, app, course.SchoolID, course.TeacherID, studentID); appErr != nil {
 		return nil, appErr
 	}
 
@@ -61,7 +64,10 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentCreateError, err)
 	}
 
-	school.JoinTeacherSchool(ctx, app, course.TeacherID, studentID)
+	// The course's school, not the teacher's. Deducing it from the teacher put
+	// a student enrolled in an institution's course into that teacher's
+	// personal school instead — the same mistake invitations already fixed.
+	school.JoinSchool(ctx, app, course.SchoolID, course.TeacherID, studentID)
 
 	return &EnrollOutput{Data: toOperationResultData(domain.OperationResult{Message: "enrolled successfully"})}, nil
 }

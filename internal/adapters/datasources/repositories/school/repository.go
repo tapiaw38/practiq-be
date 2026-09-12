@@ -21,6 +21,9 @@ type Repository interface {
 	Get(ctx context.Context, id string) (*domain.School, error)
 	List(ctx context.Context) ([]domain.School, error)
 	Update(ctx context.Context, id string, s domain.School) error
+	Close(ctx context.Context, id, closedBy, reason string) error
+	Reopen(ctx context.Context, id string) error
+	CountActiveAdmins(ctx context.Context, schoolID string) (int, error)
 	RemoveMember(ctx context.Context, schoolID, userID string) error
 	ListMembers(ctx context.Context, schoolID string) ([]domain.SchoolMember, error)
 	// CountStudents counts the active students of one school. The limit is a

@@ -12,6 +12,7 @@ type Repository interface {
 	GetByCode(context.Context, string) (*domain.StudentInvitation, error)
 	GetActiveByTeacher(context.Context, string) (*domain.StudentInvitation, error)
 	Revoke(ctx context.Context, id, teacherID string) error
+	RevokeForSchool(ctx context.Context, schoolID string) error
 	// Redeem deja registrado el canje y devuelve si es la primera vez de este
 	// alumno con este código.
 	Redeem(ctx context.Context, invitationID, studentID string) (bool, error)

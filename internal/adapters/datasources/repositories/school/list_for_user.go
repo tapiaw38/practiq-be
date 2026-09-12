@@ -9,9 +9,10 @@ import (
 func (r *repository) ListForUser(ctx context.Context, userID string) ([]domain.SchoolMember, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT school_id, user_id, role, active
-		FROM school_members
-		WHERE user_id = $1
-		ORDER BY created_at
+		FROM school_members sm
+		JOIN schools s ON s.id = sm.school_id AND s.status = 'active'
+		WHERE sm.user_id = $1
+		ORDER BY sm.created_at
 	`, userID)
 	if err != nil {
 		return nil, err

@@ -3,8 +3,11 @@ package domain
 import "time"
 
 type Course struct {
-	ID          string
-	TeacherID   string
+	ID        string
+	TeacherID string
+	// SchoolID is derived from its grade/subject. It is carried at read time so
+	// every access path can enforce the school's lifecycle.
+	SchoolID    string
 	GradeID     string
 	GradeName   string
 	GradeTheme  string

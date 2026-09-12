@@ -41,6 +41,10 @@ func JoinSchool(ctx context.Context, app *appcontext.Context, schoolID, teacherI
 		}
 		schoolID = school.ID
 	}
+	if err := RequireActive(ctx, app, schoolID); err != nil {
+		log.Printf("[schools] membership skipped inactive school_id=%s", schoolID)
+		return
+	}
 
 	// Swallowed on purpose: the student is already linked to the teacher by the
 	// caller, and failing the whole operation over a membership row would undo

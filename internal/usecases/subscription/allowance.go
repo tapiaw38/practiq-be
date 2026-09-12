@@ -9,10 +9,16 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-// EnsureCanAddStudent refuses a link that would take a teacher past their plan.
+// EnsureCanAddStudent refuses a link that would take a school past its plan.
 //
 // Called wherever a teacher gains a student, so the number on the subscription
 // tab is a limit and not a decoration.
+//
+// schoolID is the school the student is joining — an invitation's, a course's —
+// and it is what the cap is read from. Pass it empty only when there is none to
+// name, which means the teacher's own school. Resolving it from the teacher
+// instead charged an institution's students against that teacher's personal
+// plan and refused them once it filled.
 //
 // A student the teacher already has is always allowed through: the paths that
 // call this are idempotent, and re-running one must not start failing because
@@ -20,7 +26,7 @@ import (
 func EnsureCanAddStudent(
 	ctx context.Context,
 	app *appcontext.Context,
-	teacherID, studentID string,
+	schoolID, teacherID, studentID string,
 ) apperrors.ApplicationError {
 	already, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, teacherID, studentID)
 	if err != nil {
@@ -34,7 +40,7 @@ func EnsureCanAddStudent(
 	// school who also teaches at an institution must not have those students
 	// charged to their personal plan. scopeFor decides all of that, and the
 	// subscription screen reads the same answer.
-	scope, appErr := scopeFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, schoolID, teacherID)
 	if appErr != nil {
 		return appErr
 	}

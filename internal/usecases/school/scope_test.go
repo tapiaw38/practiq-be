@@ -19,6 +19,10 @@ func (f *fakeSchools) ListForUser(context.Context, string) ([]domain.SchoolMembe
 	return f.members, nil
 }
 
+func (f *fakeSchools) Get(_ context.Context, id string) (*domain.School, error) {
+	return &domain.School{ID: id, Status: domain.SchoolStatusActive}, nil
+}
+
 func appWith(members ...domain.SchoolMember) *appcontext.Context {
 	return &appcontext.Context{
 		Repositories: &repositories.Repositories{School: &fakeSchools{members: members}},

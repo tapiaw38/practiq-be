@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) apperrors.ApplicationError {
@@ -20,6 +21,11 @@ func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, reques
 	}
 	if course == nil {
 		return apperrors.NewNotFoundError("course not found")
+	}
+	if !isSuperAdmin {
+		if appErr := school.RequireActive(ctx, app, course.SchoolID); appErr != nil {
+			return appErr
+		}
 	}
 	if course.TeacherID == requesterID {
 		return nil

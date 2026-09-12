@@ -11,9 +11,10 @@ import (
 func (r *repository) Get(ctx context.Context, id string) (*domain.School, error) {
 	var s domain.School
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, name, kind, billing, COALESCE(created_by, ''), created_at
+		SELECT id, name, kind, billing, status, COALESCE(created_by, ''), created_at,
+		       closed_at, COALESCE(closed_by, ''), COALESCE(close_reason, '')
 		FROM schools WHERE id = $1
-	`, id).Scan(&s.ID, &s.Name, &s.Kind, &s.Billing, &s.CreatedBy, &s.CreatedAt)
+	`, id).Scan(&s.ID, &s.Name, &s.Kind, &s.Billing, &s.Status, &s.CreatedBy, &s.CreatedAt, &s.ClosedAt, &s.ClosedBy, &s.CloseReason)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -25,7 +26,8 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.School, error)
 
 func (r *repository) List(ctx context.Context) ([]domain.School, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, name, kind, billing, COALESCE(created_by, ''), created_at
+		SELECT id, name, kind, billing, status, COALESCE(created_by, ''), created_at,
+		       closed_at, COALESCE(closed_by, ''), COALESCE(close_reason, '')
 		FROM schools ORDER BY kind, name
 	`)
 	if err != nil {
@@ -36,12 +38,30 @@ func (r *repository) List(ctx context.Context) ([]domain.School, error) {
 	schools := []domain.School{}
 	for rows.Next() {
 		var s domain.School
-		if err := rows.Scan(&s.ID, &s.Name, &s.Kind, &s.Billing, &s.CreatedBy, &s.CreatedAt); err != nil {
+		if err := rows.Scan(&s.ID, &s.Name, &s.Kind, &s.Billing, &s.Status, &s.CreatedBy, &s.CreatedAt, &s.ClosedAt, &s.ClosedBy, &s.CloseReason); err != nil {
 			return nil, err
 		}
 		schools = append(schools, s)
 	}
 	return schools, rows.Err()
+}
+
+func (r *repository) Close(ctx context.Context, id, closedBy, reason string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE schools SET status = 'closed', closed_at = NOW(),
+			closed_by = NULLIF($2, ''), close_reason = NULLIF($3, ''), updated_at = NOW()
+		WHERE id = $1
+	`, id, closedBy, reason)
+	return err
+}
+
+func (r *repository) Reopen(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE schools SET status = 'active', closed_at = NULL, closed_by = NULL,
+			close_reason = NULL, updated_at = NOW()
+		WHERE id = $1
+	`, id)
+	return err
 }
 
 // Update only touches what a caller named. Kind and billing decide what a
@@ -64,6 +84,15 @@ func (r *repository) RemoveMember(ctx context.Context, schoolID, userID string) 
 		DELETE FROM school_members WHERE school_id = $1 AND user_id = $2
 	`, schoolID, userID)
 	return err
+}
+
+func (r *repository) CountActiveAdmins(ctx context.Context, schoolID string) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM school_members
+		WHERE school_id = $1 AND role = 'admin' AND active
+	`, schoolID).Scan(&count)
+	return count, err
 }
 
 func (r *repository) ListMembers(ctx context.Context, schoolID string) ([]domain.SchoolMember, error) {

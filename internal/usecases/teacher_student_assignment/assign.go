@@ -38,8 +38,9 @@ func (u *assignUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, appErr
 	}
 	// A superadmin assigning is still a teacher gaining a student, and the
-	// plan is the teacher's either way.
-	if appErr := subscription.EnsureCanAddStudent(ctx, app, teacherID, studentID); appErr != nil {
+	// plan is the teacher's either way. No school is named here — a direct
+	// assignment is the teacher's own — so the cap comes from theirs.
+	if appErr := subscription.EnsureCanAddStudent(ctx, app, "", teacherID, studentID); appErr != nil {
 		return nil, appErr
 	}
 

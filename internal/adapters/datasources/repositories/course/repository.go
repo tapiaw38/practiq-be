@@ -17,6 +17,7 @@ type Repository interface {
 	Get(context.Context, string) (*domain.Course, error)
 	GetByIDs(context.Context, []string) ([]domain.Course, error)
 	List(context.Context, ListFilterOptions) ([]domain.Course, error)
+	ListArchive(context.Context, string) ([]domain.Course, error)
 	Update(context.Context, string, domain.Course) error
 	Delete(context.Context, string) error
 	ListDashboardSummaries(ctx context.Context, studentID string) ([]domain.CourseDashboardSummary, error)

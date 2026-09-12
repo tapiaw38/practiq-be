@@ -73,10 +73,16 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 		limiter.recordFailure(studentID, now)
 		return nil, apperrors.NewApplicationError(mappings.InvitationInvalidCodeError, nil)
 	}
+	if appErr := school.RequireActive(ctx, app, invitation.SchoolID); appErr != nil {
+		return nil, appErr
+	}
 
 	// Checked before the code is spent: a redemption refused for a full plan
 	// must leave the invitation usable, or the student burns it for nothing.
-	if appErr := subscription.EnsureCanAddStudent(ctx, app, invitation.TeacherID, studentID); appErr != nil {
+	// Against the school the invitation names, which is where the student ends
+	// up: charging the teacher's personal plan for a student joining an
+	// institution refused them over a limit that does not apply.
+	if appErr := subscription.EnsureCanAddStudent(ctx, app, invitation.SchoolID, invitation.TeacherID, studentID); appErr != nil {
 		return nil, appErr
 	}
 

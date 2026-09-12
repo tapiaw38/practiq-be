@@ -20,6 +20,14 @@ const (
 	SchoolBillingDirect       = "direct"
 )
 
+// School lifecycle. Closed schools retain every record but disappear from
+// members' scopes. Suspended is reserved for temporary operational pauses.
+const (
+	SchoolStatusActive    = "active"
+	SchoolStatusSuspended = "suspended"
+	SchoolStatusClosed    = "closed"
+)
+
 // Roles inside a school. They belong to the membership, not to the person, so
 // the same teacher can administer their own school and teach at an institution.
 const (
@@ -35,12 +43,16 @@ const PlaceholderSchoolName = "Mi escuela"
 
 type (
 	School struct {
-		ID        string
-		Name      string
-		Kind      string
-		Billing   string
-		CreatedBy string
-		CreatedAt time.Time
+		ID          string
+		Name        string
+		Kind        string
+		Billing     string
+		Status      string
+		CreatedBy   string
+		CreatedAt   time.Time
+		ClosedAt    *time.Time
+		ClosedBy    string
+		CloseReason string
 	}
 
 	SchoolMember struct {

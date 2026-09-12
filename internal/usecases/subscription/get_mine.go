@@ -70,7 +70,7 @@ func (u *getMineUsecase) Execute(ctx context.Context, teacherID string) (*GetMin
 	// the number that refuses a student are one number. They were two, read
 	// from different tables, and disagreed whenever a downgrade deactivated
 	// somebody or a school membership failed to be written.
-	scope, appErr := scopeFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, "", teacherID)
 	if appErr != nil {
 		return nil, appErr
 	}

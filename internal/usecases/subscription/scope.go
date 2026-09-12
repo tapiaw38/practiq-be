@@ -50,24 +50,47 @@ type planScope struct {
 // Enforced reports whether a limit should be applied at all.
 func (s planScope) Enforced() bool { return s.State == capEnforced }
 
-// scopeFor resolves what a teacher's subscription allows right now.
+// scopeFor resolves what a plan allows for students joining a given school.
+//
+// The school is the one the student ends up in, not the one the teacher
+// happens to own. Every teacher gets a personal school on sign-up
+// (ensurePersonalSchool), so resolving the cap from the teacher charged an
+// institution's students against that teacher's own plan — and refused them
+// once it filled, even though institutions are invoiced by contract and have
+// no student limit at all.
+//
+// An empty schoolID means the teacher's own school: the only caller that has
+// no school to name is a direct teacher-student assignment, which is exactly
+// the personal case.
 //
 // Every rule about who is capped and by how much lives here. It used to be
 // written once per consumer, and the copies drifted: the screen counted a
 // teacher's students by assignment while the limit counted a school's members,
 // so the two disagreed about whether the plan was full.
-func scopeFor(ctx context.Context, app *appcontext.Context, teacherID string) (planScope, apperrors.ApplicationError) {
-	school, err := app.Repositories.School.GetPersonal(ctx, teacherID)
-	if err != nil {
-		return planScope{}, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+func scopeFor(ctx context.Context, app *appcontext.Context, schoolID, teacherID string) (planScope, apperrors.ApplicationError) {
+	school, appErr := resolveSchool(ctx, app, schoolID, teacherID)
+	if appErr != nil {
+		return planScope{}, appErr
 	}
-	// Only teachers at institutions have no school of their own, and an
-	// institution's students are not on anybody's subscription.
-	if school == nil || school.Billing == domain.SchoolBillingDirect {
+	if school == nil {
 		return planScope{State: capNone}, nil
 	}
 
-	entitlement, err := app.Integrations.Payments.GetEntitlement(ctx, teacherID)
+	// An institution is invoiced by contract, so nothing about it is capped
+	// per student — whatever its billing column says. Its own admins decide how
+	// many students, teachers and admins it has, and none of that is sold here.
+	if school.Kind == domain.SchoolKindInstitution || school.Billing == domain.SchoolBillingDirect {
+		return planScope{SchoolID: school.ID, State: capNone}, nil
+	}
+
+	// A personal school is its owner's, and it is their plan that pays for it —
+	// not the plan of whoever happens to be adding the student.
+	owner := school.CreatedBy
+	if owner == "" {
+		owner = teacherID
+	}
+
+	entitlement, err := app.Integrations.Payments.GetEntitlement(ctx, owner)
 	if err != nil {
 		// Deliberately allowed. Reading the plan failed, so the plan is
 		// unknown, and treating unknown as "free plan" would stop paying
@@ -107,6 +130,25 @@ func scopeFor(ctx context.Context, app *appcontext.Context, teacherID string) (p
 		Plan:     domain.EffectiveFreePlan(profile.CreatedAt, time.Now().UTC()),
 		State:    capEnforced,
 	}, nil
+}
+
+// resolveSchool reads the named school, or the teacher's own when none is
+// named. A nil school is one that does not exist, which caps nothing: there is
+// no plan behind a school that is not there.
+func resolveSchool(ctx context.Context, app *appcontext.Context, schoolID, teacherID string) (*domain.School, apperrors.ApplicationError) {
+	var (
+		school *domain.School
+		err    error
+	)
+	if schoolID != "" {
+		school, err = app.Repositories.School.Get(ctx, schoolID)
+	} else {
+		school, err = app.Repositories.School.GetPersonal(ctx, teacherID)
+	}
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	return school, nil
 }
 
 // studentsUsed counts a school's active students: the same number the limit is

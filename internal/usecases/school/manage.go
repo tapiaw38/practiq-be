@@ -23,6 +23,9 @@ type (
 		List(ctx context.Context, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError)
 		Create(ctx context.Context, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
 		Update(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
+		Close(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in CloseInput) (*SchoolOutput, apperrors.ApplicationError)
+		Reopen(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError)
+		Archive(ctx context.Context, isSuperAdmin bool, id, bearerToken string) (*ArchiveOutput, apperrors.ApplicationError)
 		// Mine is what the asking user belongs to, for the school selector.
 		Mine(ctx context.Context, requesterID, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError)
 		// AddMember is the superadmin assigning an institution's admin, and
@@ -49,11 +52,17 @@ type (
 		Role   string `json:"role"`
 	}
 
+	CloseInput struct {
+		ConfirmName string `json:"confirm_name"`
+		Reason      string `json:"reason"`
+	}
+
 	SchoolData struct {
 		ID      string `json:"id"`
 		Name    string `json:"name"`
 		Kind    string `json:"kind"`
 		Billing string `json:"billing"`
+		Status  string `json:"status"`
 		// Role is the asking user's role in it, empty when they are only
 		// looking as a superadmin.
 		Role string `json:"role,omitempty"`
@@ -77,6 +86,21 @@ type (
 
 	MembersOutput struct {
 		Data []MemberData `json:"data"`
+	}
+
+	ArchiveCourseData struct {
+		ID          string `json:"id"`
+		Title       string `json:"title"`
+		GradeName   string `json:"grade_name"`
+		SubjectName string `json:"subject_name"`
+	}
+	ArchiveData struct {
+		School  SchoolData          `json:"school"`
+		Members []MemberData        `json:"members"`
+		Courses []ArchiveCourseData `json:"courses"`
+	}
+	ArchiveOutput struct {
+		Data ArchiveData `json:"data"`
 	}
 )
 
@@ -189,6 +213,82 @@ func (u *manageUsecase) Update(ctx context.Context, requesterID string, isSuperA
 	return u.read(ctx, app, id, "")
 }
 
+// Close preserves academic and billing history but removes every member from
+// the active scope. Only a platform superadmin can close or reopen a school.
+func (u *manageUsecase) Close(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in CloseInput) (*SchoolOutput, apperrors.ApplicationError) {
+	if !isSuperAdmin {
+		return nil, apperrors.NewForbiddenError()
+	}
+	app := u.contextFactory()
+	school, err := app.Repositories.School.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	if school == nil {
+		return nil, apperrors.NewNotFoundError("school not found")
+	}
+	if school.Status == domain.SchoolStatusClosed {
+		return u.read(ctx, app, id, "")
+	}
+	if strings.TrimSpace(in.ConfirmName) != school.Name {
+		return nil, apperrors.NewBadRequestError("confirmation must match the school name")
+	}
+	if err := app.Repositories.School.Close(ctx, id, requesterID, strings.TrimSpace(in.Reason)); err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	// Existing codes must become unusable with the school. RequireActive in
+	// redeem is the second guard if a concurrent request races this update.
+	if err := app.Repositories.StudentInvitation.RevokeForSchool(ctx, id); err != nil {
+		return nil, apperrors.NewApplicationError(mappings.InvitationRevokeError, err)
+	}
+	return u.read(ctx, app, id, "")
+}
+
+func (u *manageUsecase) Reopen(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError) {
+	if !isSuperAdmin {
+		return nil, apperrors.NewForbiddenError()
+	}
+	app := u.contextFactory()
+	school, err := app.Repositories.School.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	if school == nil {
+		return nil, apperrors.NewNotFoundError("school not found")
+	}
+	if err := app.Repositories.School.Reopen(ctx, id); err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	return u.read(ctx, app, id, "")
+}
+
+func (u *manageUsecase) Archive(ctx context.Context, isSuperAdmin bool, id, bearerToken string) (*ArchiveOutput, apperrors.ApplicationError) {
+	if !isSuperAdmin {
+		return nil, apperrors.NewForbiddenError()
+	}
+	app := u.contextFactory()
+	school, err := app.Repositories.School.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	if school == nil {
+		return nil, apperrors.NewNotFoundError("school not found")
+	}
+	members, appErr := u.ListMembers(ctx, "", true, id, bearerToken)
+	if appErr != nil {
+		return nil, appErr
+	}
+	courses, err := app.Repositories.Course.ListArchive(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.CourseListError, err)
+	}
+	data := make([]ArchiveCourseData, 0, len(courses))
+	for _, course := range courses {
+		data = append(data, ArchiveCourseData{ID: course.ID, Title: course.Title, GradeName: course.GradeName, SubjectName: course.SubjectName})
+	}
+	return &ArchiveOutput{Data: ArchiveData{School: toSchoolData(*school, ""), Members: members.Data, Courses: data}}, nil
+}
+
 func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string, in MemberInput) apperrors.ApplicationError {
 	app := u.contextFactory()
 
@@ -234,8 +334,27 @@ func (u *manageUsecase) RemoveMember(ctx context.Context, requesterID string, is
 	if appErr := EnsureAdministers(ctx, app, requesterID, isSuperAdmin, schoolID); appErr != nil {
 		return appErr
 	}
-	// Removing the last admin would leave a school nobody can administer, and
-	// only a superadmin could put one back.
+	// Removing the last admin would leave an active school nobody can
+	// administer. This applies to a superadmin too: they can close/reopen, not
+	// accidentally turn an operating school ownerless.
+	members, err := app.Repositories.School.ListMembers(ctx, schoolID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	for _, member := range members {
+		if member.UserID == userID && member.Role == domain.SchoolRoleAdmin && member.Active {
+			admins, err := app.Repositories.School.CountActiveAdmins(ctx, schoolID)
+			if err != nil {
+				return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+			}
+			if admins <= 1 {
+				return apperrors.NewBadRequestError("an active school needs at least one admin")
+			}
+			break
+		}
+	}
+	// Keep a normal school admin from removing themself even if another admin
+	// exists; use a handover instead.
 	if !isSuperAdmin && userID == requesterID {
 		return apperrors.NewBadRequestError("you cannot remove yourself from a school you administer")
 	}
@@ -249,8 +368,10 @@ func (u *manageUsecase) RemoveMember(ctx context.Context, requesterID string, is
 func (u *manageUsecase) ListMembers(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID, bearerToken string) (*MembersOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := EnsureAdministers(ctx, app, requesterID, isSuperAdmin, schoolID); appErr != nil {
-		return nil, appErr
+	if !isSuperAdmin {
+		if appErr := EnsureAdministers(ctx, app, requesterID, false, schoolID); appErr != nil {
+			return nil, appErr
+		}
 	}
 
 	members, err := app.Repositories.School.ListMembers(ctx, schoolID)
@@ -293,7 +414,7 @@ func (u *manageUsecase) read(ctx context.Context, app *appcontext.Context, id, r
 }
 
 func toSchoolData(s domain.School, role string) SchoolData {
-	return SchoolData{ID: s.ID, Name: s.Name, Kind: s.Kind, Billing: s.Billing, Role: role}
+	return SchoolData{ID: s.ID, Name: s.Name, Kind: s.Kind, Billing: s.Billing, Status: s.Status, Role: role}
 }
 
 // resolvePersonalSchoolNames fixes display names produced by the initial SQL

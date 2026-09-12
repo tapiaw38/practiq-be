@@ -29,6 +29,8 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 			LEFT JOIN grades g ON g.id = c.grade_id
 			LEFT JOIN schools gs ON gs.id = g.school_id
 			LEFT JOIN schools ts ON ts.created_by = c.teacher_id AND ts.kind = 'personal'
+			JOIN schools active_school ON active_school.id = COALESCE(g.school_id, ts.id)
+				AND active_school.status = 'active'
 			WHERE c.deleted_at IS NULL
 			  -- A student reaches a course either by enrolling in it directly or
 			  -- by belonging to its grade, and the grade is the usual route.
