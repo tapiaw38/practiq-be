@@ -33,7 +33,24 @@ type (
 		baseURL string
 		http    *http.Client
 	}
+
+	// UpstreamError carries auth-api-be's status so callers can tell a caller
+	// problem from a practiq-be problem. A 401 here means the caller's own
+	// token was rejected — reporting that as a 500 sent people looking for a
+	// server fault when the answer was to sign in again.
+	UpstreamError struct {
+		Status int
+		Detail string
+	}
 )
+
+func (e *UpstreamError) Error() string {
+	return fmt.Sprintf("auth-api-be call failed (status %d): %s", e.Status, e.Detail)
+}
+
+func (e *UpstreamError) Unauthorized() bool {
+	return e.Status == http.StatusUnauthorized || e.Status == http.StatusForbidden
+}
 
 func NewClient(baseURL string) Client {
 	return &client{baseURL: baseURL, http: &http.Client{Timeout: 10 * time.Second}}
@@ -101,7 +118,7 @@ func (c *client) GetBatch(ctx context.Context, bearerToken string, usernames []s
 	if resp.StatusCode >= 300 {
 		var errBody map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		return nil, fmt.Errorf("auth-api-be batch lookup failed (status %d): %v", resp.StatusCode, errBody)
+		return nil, &UpstreamError{Status: resp.StatusCode, Detail: fmt.Sprintf("%v", errBody)}
 	}
 
 	var parsed struct {

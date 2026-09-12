@@ -69,9 +69,9 @@ func (u *listStudentsUsecase) Execute(ctx context.Context, input ListStudentsInp
 	for _, s := range students {
 		ids = append(ids, s.ID)
 	}
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	var data []StudentData

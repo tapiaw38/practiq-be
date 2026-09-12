@@ -60,9 +60,9 @@ func (u *subscribeUsecase) Execute(ctx context.Context, teacherID, bearerToken s
 	// rather than the request. Accepting an email from the body would let a
 	// teacher bill a subscription to somebody else's address; accepting an id
 	// would let them subscribe another account entirely.
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{teacherID})
-	if err != nil {
-		return apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{teacherID})
+	if appErr != nil {
+		return appErr
 	}
 	email := strings.TrimSpace(names[teacherID].Email)
 	if email == "" {

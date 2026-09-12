@@ -44,9 +44,9 @@ func (u *updateProfileTypeUsecase) Execute(ctx context.Context, id, profileType,
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if appErr != nil {
+		return nil, appErr
 	}
 	info := names[id]
 	return &UpdateProfileTypeOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email)}, nil

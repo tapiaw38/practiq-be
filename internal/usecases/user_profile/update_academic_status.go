@@ -46,9 +46,9 @@ func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status, b
 		return nil, apperrors.NewApplicationError(mappings.NotFoundError, nil)
 	}
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if appErr != nil {
+		return nil, appErr
 	}
 	info := names[id]
 

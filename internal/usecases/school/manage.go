@@ -406,9 +406,9 @@ func (u *manageUsecase) ListMembers(ctx context.Context, requesterID string, isS
 	for _, member := range members {
 		ids = append(ids, member.UserID)
 	}
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	data := make([]MemberData, 0, len(members))
@@ -451,9 +451,9 @@ func resolvePersonalSchoolNames(ctx context.Context, app *appcontext.Context, be
 		}
 	}
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ownerIDs)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ownerIDs)
+	if appErr != nil {
+		return nil, appErr
 	}
 	for i := range schools {
 		if legacyPersonalSchoolName(schools[i]) {

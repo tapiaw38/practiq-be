@@ -146,9 +146,9 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, input ListI
 	for _, review := range reviews {
 		ids = append(ids, review.StudentID)
 	}
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.AttemptReviewListError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if appErr != nil {
+		return nil, appErr
 	}
 	for i, review := range reviews {
 		reviews[i].StudentName = identity.FullName(names[review.StudentID], review.StudentID)

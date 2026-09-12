@@ -38,9 +38,9 @@ func (u *getUsecase) Execute(ctx context.Context, id, bearerToken string) (*GetO
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if appErr != nil {
+		return nil, appErr
 	}
 	info := names[id]
 

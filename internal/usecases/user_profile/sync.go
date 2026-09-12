@@ -79,9 +79,9 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	if appErr != nil {
+		return nil, appErr
 	}
 	info := names[input.ID]
 	displayName := identity.FullName(info, input.ID)

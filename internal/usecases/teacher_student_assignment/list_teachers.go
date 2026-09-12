@@ -58,9 +58,9 @@ func (u *listTeachersUsecase) Execute(ctx context.Context, requesterID string, i
 	for _, user := range users {
 		ids = append(ids, user.ID)
 	}
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, ids)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	data := make([]UserData, 0, len(users))

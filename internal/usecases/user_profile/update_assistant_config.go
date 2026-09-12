@@ -70,9 +70,9 @@ func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, requesterID 
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	if appErr != nil {
+		return nil, appErr
 	}
 	info := names[input.ID]
 

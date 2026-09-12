@@ -47,9 +47,9 @@ func (u *listMembersUsecase) Execute(ctx context.Context, gradeID, bearerToken s
 	for _, member := range members {
 		ids = append(ids, member.ID)
 	}
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	data := make([]GradeMemberData, 0, len(members))

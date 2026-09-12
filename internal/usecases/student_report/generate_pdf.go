@@ -136,9 +136,9 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSu
 
 	summary := calculateSummary(topicProgress, dailyAttempts, studentLoc)
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{filter.StudentID})
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{filter.StudentID})
+	if appErr != nil {
+		return nil, appErr
 	}
 	info := names[filter.StudentID]
 
