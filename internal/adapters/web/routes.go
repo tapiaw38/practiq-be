@@ -212,8 +212,13 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	adminOnly.POST("/schools/:id/reopen", handlerSchool.NewReopenHandler(uc.School.Manage))
 	adminOnly.GET("/schools/:id/archive", handlerSchool.NewArchiveHandler(uc.School.Manage))
 
+	// The school selector is also needed by students. It is read-only and the
+	// usecase returns only the caller's active memberships. Campus uses this as
+	// its source of tenant scope; authorization remains in Practiq, where the
+	// membership source of truth lives.
+	api.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))
+
 	// An institution's admin runs its people; a superadmin passes everywhere.
-	teacherOnly.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))
 	teacherOnly.PUT("/schools/:id", handlerSchool.NewUpdateHandler(uc.School.Manage))
 	teacherOnly.GET("/schools/:id/members", handlerSchool.NewListMembersHandler(uc.School.Manage))
 	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.Manage))

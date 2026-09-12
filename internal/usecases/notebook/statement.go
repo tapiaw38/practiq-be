@@ -15,26 +15,26 @@ func pageHasImageStatement(contentData string) bool {
 	return value != "" && (isLikelyImageData(value) || isImageURL(value))
 }
 
-func ensurePageStatement(ctx context.Context, app *appcontext.Context, teacherID string, page *domain.NotebookPage) {
+func ensurePageStatement(ctx context.Context, app *appcontext.Context, teacherID string, page *domain.NotebookPage) bool {
 	if page == nil || strings.TrimSpace(page.StatementText) != "" {
-		return
+		return page != nil && strings.TrimSpace(page.StatementText) != ""
 	}
 	if !pageHasImageStatement(page.ContentData) {
-		return
+		return true
 	}
 	if app.Integrations.AssistantGateway == nil {
-		return
+		return false
 	}
 
 	cfg := teacherAssistantConfig(ctx, app, teacherID)
 	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
-		return
+		return false
 	}
 
 	resolved, err := resolveImageForOCR(ctx, app, page.ContentData)
 	if err != nil {
 		log.Printf("[notebook] statement backfill resolve failed page_id=%s err=%v", page.ID, err)
-		return
+		return false
 	}
 
 	transcription, err := app.Integrations.AssistantGateway.AnalyzeNotebookStatement(
@@ -42,18 +42,19 @@ func ensurePageStatement(ctx context.Context, app *appcontext.Context, teacherID
 	)
 	if err != nil {
 		log.Printf("[notebook] statement backfill failed page_id=%s err=%v", page.ID, err)
-		return
+		return false
 	}
 
 	transcription = strings.TrimSpace(transcription)
 	if transcription == "" || strings.EqualFold(transcription, "UNREADABLE") {
-		return
+		return false
 	}
 
 	page.StatementText = transcription
 	if err := app.Repositories.Notebook.UpdatePageStatement(ctx, page.ID, transcription); err != nil {
 		log.Printf("[notebook] statement backfill persist failed page_id=%s err=%v", page.ID, err)
 	}
+	return true
 }
 
 func teacherAssistantConfig(ctx context.Context, app *appcontext.Context, teacherID string) assistant.Config {

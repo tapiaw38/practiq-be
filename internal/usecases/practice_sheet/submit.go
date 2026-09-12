@@ -247,6 +247,14 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 					if resultAIFeedback == "" && aiFeedback != "" {
 						resultAIFeedback = aiFeedback
 					}
+				} else if isCorrect, ungraded = unresolvedEvaluation(isCorrect); ungraded {
+					log.Printf("[practice_submit] evaluation unavailable, leaving ungraded student_id=%s exercise_id=%s err=%v", studentID, attempt.ExerciseID, aiErr)
+					if aiFeedback == "" {
+						aiFeedback = evaluationUnavailableFeedback(teacherGrades)
+					}
+					if resultAIFeedback == "" {
+						resultAIFeedback = aiFeedback
+					}
 				}
 			}
 		}
@@ -257,6 +265,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				imageURL = uploaded
 			} else {
 				log.Printf("[image_storage] practice attempt upload failed student_id=%s exercise_id=%s err=%v", studentID, attempt.ExerciseID, uploadErr)
+				// Keep answer recoverable when object storage is temporarily
+				// unavailable. The repository persists image_url; dropping it here
+				// would make a successful submission lose the student's drawing.
+				imageURL = canvasData
 			}
 		}
 
@@ -311,14 +323,16 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 		if createErr != nil {
 			log.Printf("[practice_submit] could not persist attempt student_id=%s sheet_id=%s err=%v", studentID, sheetID, createErr)
-			if ps.SheetType == sheetTypeLevelTest {
-				persistenceErr = createErr
-				break
-			}
+			persistenceErr = createErr
+			break
 		}
 
 		if attempt.CanvasData != "" && attemptID != "" {
-			app.Repositories.StudentAttempt.SaveCanvasWork(ctx, attemptID, attempt.CanvasData)
+			if saveErr := app.Repositories.StudentAttempt.SaveCanvasWork(ctx, attemptID, attempt.CanvasData); saveErr != nil {
+				log.Printf("[practice_submit] could not persist canvas student_id=%s sheet_id=%s attempt_id=%s err=%v", studentID, sheetID, attemptID, saveErr)
+				persistenceErr = saveErr
+				break
+			}
 		}
 
 		// Practice sheets teach from their detailed result. A level test must not
@@ -342,7 +356,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		})
 	}
 
-	if ps.SheetType == sheetTypeLevelTest && persistenceErr != nil {
+	if persistenceErr != nil {
+		if ps.SheetType != sheetTypeLevelTest {
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, persistenceErr)
+		}
 		// Detached from the request: the usual reason a submission fails is that
 		// this very context expired, and running the recovery through it meant
 		// both queries failed instantly and the student stayed locked out — the
@@ -586,6 +603,33 @@ func teacherGradesSheet(sheetType string) bool {
 // transcribe. Only a level test can point the student at a correction: on a
 // practice nobody is going to look at it, so asking them to request one would
 // send them after something the app no longer offers.
+// unresolvedEvaluation decides an answer the assistant was asked to judge and
+// could not.
+//
+// What is left is a string comparison, and it only knows whether the wording
+// matched. An exact match needs no interpretation and stands as correct. A
+// mismatch does not mean wrong: it cannot tell "cuatro" from "4", and letting
+// it decide marks a right answer wrong with nobody to appeal to. That case is
+// indeterminate, so it leaves the denominator instead of the student's score —
+// the same treatment an unreadable canvas already gets.
+func unresolvedEvaluation(textMatches bool) (isCorrect, ungraded bool) {
+	if textMatches {
+		return true, false
+	}
+	return false, true
+}
+
+// evaluationUnavailableFeedback explains an answer nobody could judge. It is
+// said plainly rather than dressed up as a hint: the student answered, the
+// wording did not match the expected one, and the only thing that could have
+// told whether it meant the same was unreachable.
+func evaluationUnavailableFeedback(teacherGrades bool) string {
+	if teacherGrades {
+		return "No pudimos evaluar tu respuesta en este momento, así que la va a revisar el docente."
+	}
+	return "No pudimos evaluar tu respuesta en este momento, así que no cuenta en tu puntaje."
+}
+
 func unreadableCanvasFeedback(teacherGrades bool) string {
 	if teacherGrades {
 		return "No pudimos leer tu respuesta escrita, así que la va a corregir el docente."

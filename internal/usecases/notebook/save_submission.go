@@ -22,6 +22,12 @@ type (
 		StudentID  string
 		CanvasData string
 		AnswerText string
+		// Version orders this delivery against others from the same student.
+		// It is set where the request is accepted, not here: saving runs after
+		// the assistant replies, and by then two deliveries may be in flight
+		// and about to finish in the wrong order. Zero means "not ordered",
+		// which the repository treats as always applicable.
+		Version int64
 	}
 
 	saveSubmissionUsecase struct{ contextFactory appcontext.Factory }
@@ -77,13 +83,16 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		assistantCfg.APIKey = profile.AssistantAPIKey
 	}
 
-	ensurePageStatement(ctx, app, notebook.TeacherID, page)
+	statementReady := ensurePageStatement(ctx, app, notebook.TeacherID, page)
+	if app.Integrations.AssistantGateway != nil && !app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+		assistantCfg = teacherAssistantConfig(ctx, app, notebook.TeacherID)
+	}
 
 	// Whether a teacher is needed is decided at the end, from what the assistant
 	// managed to do. It is read here because the OCR path rewrites canvasForOCR.
 	hasStudentWork := strings.TrimSpace(input.AnswerText) != "" || strings.TrimSpace(input.CanvasData) != ""
 
-	if page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+	if statementReady && page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
 		if expectedAnswer != "" {
 			studentAnswer := strings.TrimSpace(input.AnswerText)
@@ -132,6 +141,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	}
 
 	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect)
+	submission.Version = input.Version
 
 	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil {
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
@@ -151,10 +161,6 @@ func evaluateNotebookSubmission(
 	page *domain.NotebookPage,
 	expectedAnswer, studentAnswer, gradeName string,
 ) (assistant.EvaluationResult, error) {
-	if statement := strings.TrimSpace(page.StatementText); statement != "" {
-		expectedAnswer = statement
-	}
-
 	return app.Integrations.AssistantGateway.EvaluatePracticeAnswer(
 		ctx, cfg, buildNotebookPromptContext(page), expectedAnswer, studentAnswer, gradeName,
 	)

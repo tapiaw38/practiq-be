@@ -2,10 +2,12 @@ package notebook
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"time"
 
+	notebookRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/notebook"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	ucNB "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 
@@ -30,6 +32,11 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 
 		jobID := utils.NewSubmitJobID()
 		now := time.Now().UTC()
+		// Taken here, where the delivery is accepted, and not inside the
+		// goroutine: what has to be ordered is the order the student sent
+		// them, and the goroutines finish in whatever order the assistant
+		// replies.
+		version := now.UnixNano()
 		if err := repo.Create(c.Request.Context(), domain.SubmitJob{
 			ID:        jobID,
 			Kind:      "notebook",
@@ -50,21 +57,36 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 			return
 		}
 
-		go func(pid, sid, jid string, payload struct {
+		go func(pid, sid, jid string, ver int64, payload struct {
 			CanvasData string `json:"canvas_data"`
 			AnswerText string `json:"answer_text"`
 		}) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
+			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer finishCancel()
 
 			err := uc.Execute(ctx, ucNB.SaveSubmissionInput{
 				PageID:     pid,
 				StudentID:  sid,
 				CanvasData: payload.CanvasData,
 				AnswerText: payload.AnswerText,
+				Version:    ver,
 			})
+			// A delivery the student has already replaced is not a failure to
+			// report. Telling them this one failed would send them to resubmit
+			// work that the newer answer already covers.
+			if errors.Is(err, notebookRepo.ErrStaleSubmission) {
+				if updateErr := repo.Update(finishCtx, domain.SubmitJob{
+					ID:     jid,
+					Status: "done",
+				}); updateErr != nil {
+					log.Printf("failed to update submit job: %v", updateErr)
+				}
+				return
+			}
 			if err != nil {
-				if updateErr := repo.Update(ctx, domain.SubmitJob{
+				if updateErr := repo.Update(finishCtx, domain.SubmitJob{
 					ID:        jid,
 					Status:    "failed",
 					ErrorCode: "notebook:submit-failed",
@@ -74,13 +96,13 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 				}
 				return
 			}
-			if updateErr := repo.Update(ctx, domain.SubmitJob{
+			if updateErr := repo.Update(finishCtx, domain.SubmitJob{
 				ID:     jid,
 				Status: "done",
 			}); updateErr != nil {
 				log.Printf("failed to update submit job: %v", updateErr)
 			}
-		}(pageID, studentID, jobID, input)
+		}(pageID, studentID, jobID, version, input)
 
 		c.JSON(http.StatusAccepted, gin.H{
 			"data": gin.H{

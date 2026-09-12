@@ -93,15 +93,18 @@ func parseEvaluationResponse(raw string) (EvaluationResult, error) {
 	}
 
 	var parsed struct {
-		IsCorrect bool   `json:"is_correct"`
+		IsCorrect *bool   `json:"is_correct"`
 		Feedback  string `json:"feedback"`
 	}
 	if err := json.Unmarshal([]byte(body), &parsed); err != nil {
 		return EvaluationResult{}, err
 	}
+	if parsed.IsCorrect == nil {
+		return EvaluationResult{}, errors.New("assistant evaluation has no explicit verdict")
+	}
 
 	return EvaluationResult{
-		IsCorrect: parsed.IsCorrect,
+		IsCorrect: *parsed.IsCorrect,
 		Feedback:  normalizeFeedback(parsed.Feedback),
 	}, nil
 }

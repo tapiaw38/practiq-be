@@ -45,11 +45,16 @@ type NotebookSubmission struct {
 	AIFeedback         string
 	AIReviewedAt       *time.Time
 	NeedsTeacherReview bool
-	TeacherIsCorrect   *bool
-	TeacherFeedback    string
-	TeacherReviewedAt  *time.Time
-	SubmittedAt        time.Time
-	UpdatedAt          time.Time
+	// Version orders deliveries by when the server accepted them. Saving runs
+	// after the assistant replies, so two submissions can be in flight at once
+	// and finish out of order; the repository refuses to apply a version older
+	// than the stored one.
+	Version           int64
+	TeacherIsCorrect  *bool
+	TeacherFeedback   string
+	TeacherReviewedAt *time.Time
+	SubmittedAt       time.Time
+	UpdatedAt         time.Time
 }
 
 type NotebookSubmissionFull struct {

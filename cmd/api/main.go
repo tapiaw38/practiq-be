@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
+	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -15,6 +18,42 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
+
+// staleSubmitJobAfter is longer than a submission can legitimately take: the
+// goroutine that runs one gives up at five minutes. Anything older than this
+// is not slow, it is gone.
+const staleSubmitJobAfter = 10 * time.Minute
+
+// startSubmitJobSweeper closes submissions whose process is no longer running.
+//
+// The work lives in a goroutine and its payload nowhere else, so a restart
+// leaves jobs marked processing that nothing will ever finish. The client
+// polls them forever, and the student waits on a spinner instead of
+// resubmitting. This runs once at boot — the restart case — and then on a
+// timer, for a goroutine that died without saying so.
+func startSubmitJobSweeper(repo submitjob.Repository) {
+	sweep := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		closed, err := repo.FailStale(ctx, staleSubmitJobAfter)
+		if err != nil {
+			log.Printf("[submit_jobs] could not close interrupted submissions: %v", err)
+			return
+		}
+		if closed > 0 {
+			log.Printf("[submit_jobs] closed %d interrupted submission(s)", closed)
+		}
+	}
+
+	sweep()
+	go func() {
+		ticker := time.NewTicker(staleSubmitJobAfter)
+		defer ticker.Stop()
+		for range ticker.C {
+			sweep()
+		}
+	}()
+}
 
 func main() {
 	loadConfig()
@@ -58,6 +97,8 @@ func main() {
 	})
 
 	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, repos.SiteContact)
+
+	startSubmitJobSweeper(repos.SubmitJob)
 
 	port := cfg.ServerConfig.Port
 	log.Printf("practiq-be running on port %s", port)

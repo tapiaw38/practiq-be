@@ -54,6 +54,9 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		assistantCfg.APIKey = profile.AssistantAPIKey
 	}
 
+	if app.Integrations.AssistantGateway != nil && !app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
+		assistantCfg = teacherAssistantConfig(ctx, app, submission.TeacherID)
+	}
 	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		return nil, fmt.Errorf("assistant service not configured")
 	}
@@ -65,15 +68,12 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		gradeName = course.GradeName
 	}
 
+	statementReady := ensurePageStatement(ctx, app, submission.TeacherID, page)
 	expectedAnswer := normalizeNotebookExpectedAnswer(page.ContentData)
-	if expectedAnswer == "" {
-		expectedAnswer = "[sin respuesta esperada]"
-	}
 
 	var recognizedText string
 	var isCorrect *bool
 	var feedback string
-	ensurePageStatement(ctx, app, submission.TeacherID, page)
 
 	// Whether a teacher is needed is decided at the end, from what the assistant
 	// managed to do. See submissionNeedsTeacherReview.
@@ -104,7 +104,9 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	if strings.EqualFold(studentAnswer, "UNREADABLE") {
 		feedback = "respuesta no legible (UNREADABLE)"
 		isCorrect = nil
-	} else if studentAnswer != "" {
+	} else if !statementReady {
+		feedback = "la consigna no está disponible para evaluar"
+	} else if studentAnswer != "" && expectedAnswer != "" {
 		// Evaluate the answer with AI, against the teacher's page when it is an
 		// image (see evaluateNotebookSubmission).
 		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName)
