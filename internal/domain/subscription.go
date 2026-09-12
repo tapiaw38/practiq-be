@@ -45,6 +45,31 @@ type (
 	}
 )
 
+// TrialEndsAt is when a teacher's free month runs out. Counted from when their
+// profile was created, which is the only moment that exists for every teacher.
+func TrialEndsAt(profileCreatedAt time.Time) time.Time {
+	return profileCreatedAt.AddDate(0, 0, FreePlan.TrialDays)
+}
+
+// EffectiveFreePlan is what a teacher who never paid may use right now.
+//
+// Once the free month is over it allows nothing. The trial is the whole free
+// offer, not a discount on it: a teacher past it subscribes or keeps no
+// students, which is the only reason to offer a month in the first place.
+//
+// Returning a zero allowance rather than a separate "expired" flag is what
+// makes every consumer agree without being told: the limit check refuses the
+// next student, the downgrade preview lists the ones over, and the screen
+// shows 0 available. None of them need to know a trial exists.
+func EffectiveFreePlan(profileCreatedAt, now time.Time) TeacherPlan {
+	if now.After(TrialEndsAt(profileCreatedAt)) {
+		expired := FreePlan
+		expired.MaxStudents = 0
+		return expired
+	}
+	return FreePlan
+}
+
 // PlanFromMetadata reads a payments plan's metadata into Practiq's terms.
 //
 // Anything missing falls back to the free plan's allowance rather than to
@@ -71,13 +96,14 @@ func (s TeacherSubscription) CanAddStudent() bool {
 	return s.StudentsUsed < s.Plan.MaxStudents
 }
 
-// FreeSubscription is the answer for a teacher who has never paid. The free
-// month is counted from when their profile was created, which is the only
-// moment that exists for every teacher.
-func FreeSubscription(profileCreatedAt time.Time, studentsUsed int) TeacherSubscription {
-	renewsAt := profileCreatedAt.AddDate(0, 0, FreePlan.TrialDays)
+// FreeSubscription is the answer for a teacher who has never paid.
+//
+// RenewsAt is the day the free month ends whether or not it already has, so a
+// teacher whose trial ran out is told when rather than left with a blank date.
+func FreeSubscription(profileCreatedAt, now time.Time, studentsUsed int) TeacherSubscription {
+	renewsAt := TrialEndsAt(profileCreatedAt)
 	return TeacherSubscription{
-		Plan:         FreePlan,
+		Plan:         EffectiveFreePlan(profileCreatedAt, now),
 		Active:       false,
 		StudentsUsed: studentsUsed,
 		RenewsAt:     &renewsAt,

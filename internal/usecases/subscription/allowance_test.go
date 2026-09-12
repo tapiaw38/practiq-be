@@ -5,9 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	"time"
+
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
 	schoolRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/school"
 	teacherstudentassignment "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/teacher_student_assignment"
+	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/payments"
 	"github.com/tapiaw38/practiq-be/internal/domain"
@@ -53,11 +56,35 @@ func (f *fakePayments) GetEntitlement(context.Context, string) (*payments.Entitl
 	return f.entitlement, f.err
 }
 
-func appWith(assignments *fakeAssignments, pay *fakePayments, schools *fakeSchools) *appcontext.Context {
+// fakeProfiles carries the one thing the free plan depends on: how long ago
+// the teacher signed up, which is what the trial is counted from.
+type fakeProfiles struct {
+	userprofile.Repository
+	createdAt time.Time
+}
+
+func (f *fakeProfiles) Get(context.Context, string) (*domain.UserProfile, error) {
+	return &domain.UserProfile{CreatedAt: f.createdAt}, nil
+}
+
+// withinTrial and pastTrial are the two sides of the free month.
+func withinTrial() *fakeProfiles {
+	return &fakeProfiles{createdAt: time.Now().AddDate(0, 0, -1)}
+}
+
+func pastTrial() *fakeProfiles {
+	return &fakeProfiles{createdAt: time.Now().AddDate(0, 0, -(domain.FreePlan.TrialDays + 1))}
+}
+
+func appWith(assignments *fakeAssignments, pay *fakePayments, schools *fakeSchools, profiles *fakeProfiles) *appcontext.Context {
+	if profiles == nil {
+		profiles = withinTrial()
+	}
 	return &appcontext.Context{
 		Repositories: &repositories.Repositories{
 			TeacherStudentAssignment: assignments,
 			School:                   schools,
+			UserProfile:              profiles,
 		},
 		Integrations: &integrations.Integrations{Payments: pay},
 	}
@@ -83,6 +110,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 		assignments *fakeAssignments
 		payments    *fakePayments
 		schools     *fakeSchools
+		profiles    *fakeProfiles
 		wantRefused bool
 	}{
 		{
@@ -111,7 +139,35 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			assignments: &fakeAssignments{},
 			schools:     subscriptionSchool(domain.FreePlan.MaxStudents),
 			payments:    &fakePayments{entitlement: &payments.Entitlement{Active: false}},
+			profiles:    withinTrial(),
 			wantRefused: true,
+		},
+		{
+			name:        "the free month still has room in it",
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(0),
+			payments:    &fakePayments{entitlement: &payments.Entitlement{Active: false}},
+			profiles:    withinTrial(),
+		},
+		{
+			// The point of a trial. Once the free month is over the teacher
+			// subscribes or adds nobody, even though they are under the one
+			// student the free plan would otherwise allow.
+			name:        "an expired trial allows nobody at all",
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(0),
+			payments:    &fakePayments{entitlement: &payments.Entitlement{Active: false}},
+			profiles:    pastTrial(),
+			wantRefused: true,
+		},
+		{
+			// Paying is what ends the trial's hold, so an expired one must not
+			// follow a teacher who subscribed.
+			name:        "a paid plan ignores the trial having run out",
+			assignments: &fakeAssignments{},
+			schools:     subscriptionSchool(3),
+			payments:    &fakePayments{entitlement: paidPlan(5)},
+			profiles:    pastTrial(),
 		},
 		{
 			// The dangerous default. Treating an unreadable plan as the free
@@ -145,7 +201,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			app := appWith(tc.assignments, tc.payments, tc.schools)
+			app := appWith(tc.assignments, tc.payments, tc.schools, tc.profiles)
 
 			appErr := EnsureCanAddStudent(context.Background(), app, "teacher-1", "student-1")
 

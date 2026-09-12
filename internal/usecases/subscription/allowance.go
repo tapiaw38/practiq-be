@@ -2,7 +2,6 @@ package subscription
 
 import (
 	"context"
-	"log"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -33,43 +32,22 @@ func EnsureCanAddStudent(
 
 	// The limit belongs to a school, not to a teacher. A teacher with their own
 	// school who also teaches at an institution must not have those students
-	// charged to their personal plan.
-	school, err := app.Repositories.School.GetPersonal(ctx, teacherID)
-	if err != nil {
-		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	// charged to their personal plan. scopeFor decides all of that, and the
+	// subscription screen reads the same answer.
+	scope, appErr := scopeFor(ctx, app, teacherID)
+	if appErr != nil {
+		return appErr
 	}
-	if school == nil {
-		// Only teachers at institutions have no school of their own, and an
-		// institution's students are not on anybody's subscription.
-		return nil
-	}
-	if school.Billing == domain.SchoolBillingDirect {
-		// Invoiced outside the product: no entitlement to read and no cap.
+	if !scope.Enforced() {
 		return nil
 	}
 
-	entitlement, err := app.Integrations.Payments.GetEntitlement(ctx, teacherID)
-	if err != nil {
-		// Deliberately allowed. Reading the plan failed, so the plan is
-		// unknown, and treating unknown as "free plan, one student" would stop
-		// paying teachers from working every time the payments service
-		// hiccups. Letting one extra student in costs a little revenue;
-		// refusing a teacher their class costs the product.
-		log.Printf("[payments] allowance check skipped teacher_id=%s err=%v", teacherID, err)
-		return nil
+	used, appErr := studentsUsed(ctx, app, scope.SchoolID)
+	if appErr != nil {
+		return appErr
 	}
 
-	plan := domain.FreePlan
-	if entitlement != nil && entitlement.Active {
-		plan = domain.PlanFromMetadata(0, "", entitlement.Metadata)
-	}
-
-	used, err := app.Repositories.School.CountStudents(ctx, school.ID)
-	if err != nil {
-		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
-	}
-
-	if !(domain.TeacherSubscription{Plan: plan, StudentsUsed: used}).CanAddStudent() {
+	if !(domain.TeacherSubscription{Plan: scope.Plan, StudentsUsed: used}).CanAddStudent() {
 		return apperrors.NewApplicationError(mappings.StudentLimitReachedError, nil)
 	}
 	return nil

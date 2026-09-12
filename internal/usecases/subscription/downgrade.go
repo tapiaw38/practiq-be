@@ -50,50 +50,52 @@ func NewDowngradeUsecase(contextFactory appcontext.Factory) DowngradeUsecase {
 func (u *downgradeUsecase) Preview(ctx context.Context, teacherID string) (*DowngradeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	schoolID, plan, appErr := planFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, teacherID)
 	if appErr != nil {
 		return nil, appErr
 	}
-	if schoolID == "" {
+	// Nothing is deactivated for a teacher with no cap, nor on a payments
+	// outage: an unreadable plan must not cost anyone their students.
+	if !scope.Enforced() {
 		return &DowngradeOutput{}, nil
 	}
 
-	byActivity, err := app.Repositories.School.ListStudentsByActivity(ctx, schoolID)
+	byActivity, err := app.Repositories.School.ListStudentsByActivity(ctx, scope.SchoolID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 
 	return &DowngradeOutput{Data: DowngradeData{
-		MaxStudents: plan.MaxStudents,
-		Deactivated: domain.StudentsToDeactivate(byActivity, plan.MaxStudents, nil),
+		MaxStudents: scope.Plan.MaxStudents,
+		Deactivated: domain.StudentsToDeactivate(byActivity, scope.Plan.MaxStudents, nil),
 	}}, nil
 }
 
 func (u *downgradeUsecase) Apply(ctx context.Context, teacherID string, keep []string) (*DowngradeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	schoolID, plan, appErr := planFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, teacherID)
 	if appErr != nil {
 		return nil, appErr
 	}
-	if schoolID == "" {
+	if !scope.Enforced() {
 		return &DowngradeOutput{}, nil
 	}
 
-	byActivity, err := app.Repositories.School.ListStudentsByActivity(ctx, schoolID)
+	byActivity, err := app.Repositories.School.ListStudentsByActivity(ctx, scope.SchoolID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 
-	deactivated := domain.StudentsToDeactivate(byActivity, plan.MaxStudents, keep)
+	deactivated := domain.StudentsToDeactivate(byActivity, scope.Plan.MaxStudents, keep)
 	for _, studentID := range deactivated {
-		if err := app.Repositories.School.SetMemberActive(ctx, schoolID, studentID, false); err != nil {
+		if err := app.Repositories.School.SetMemberActive(ctx, scope.SchoolID, studentID, false); err != nil {
 			return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 		}
 	}
 
 	return &DowngradeOutput{Data: DowngradeData{
-		MaxStudents: plan.MaxStudents,
+		MaxStudents: scope.Plan.MaxStudents,
 		Deactivated: deactivated,
 	}}, nil
 }
@@ -101,51 +103,29 @@ func (u *downgradeUsecase) Apply(ctx context.Context, teacherID string, keep []s
 func (u *downgradeUsecase) Reactivate(ctx context.Context, teacherID, studentID string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
-	schoolID, plan, appErr := planFor(ctx, app, teacherID)
+	scope, appErr := scopeFor(ctx, app, teacherID)
 	if appErr != nil {
 		return appErr
 	}
-	if schoolID == "" {
+	if scope.SchoolID == "" {
 		return apperrors.NewNotFoundError("no school to reactivate in")
 	}
 
-	used, err := app.Repositories.School.CountStudents(ctx, schoolID)
-	if err != nil {
-		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
-	}
 	// Checked against the same rule an addition goes through: reactivating is
-	// adding a student back, and the plan does not care how they got there.
-	if !(domain.TeacherSubscription{Plan: plan, StudentsUsed: used}).CanAddStudent() {
-		return apperrors.NewApplicationError(mappings.StudentLimitReachedError, nil)
+	// adding a student back, and the plan does not care how they got there. An
+	// outage skips the check for the same reason adding one does.
+	if scope.Enforced() {
+		used, appErr := studentsUsed(ctx, app, scope.SchoolID)
+		if appErr != nil {
+			return appErr
+		}
+		if !(domain.TeacherSubscription{Plan: scope.Plan, StudentsUsed: used}).CanAddStudent() {
+			return apperrors.NewApplicationError(mappings.StudentLimitReachedError, nil)
+		}
 	}
 
-	if err := app.Repositories.School.SetMemberActive(ctx, schoolID, studentID, true); err != nil {
+	if err := app.Repositories.School.SetMemberActive(ctx, scope.SchoolID, studentID, true); err != nil {
 		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 	return nil
-}
-
-// planFor resolves the school a teacher's plan applies to, and what it allows.
-// An empty school id means there is nothing to enforce: no school of their own,
-// or one invoiced outside the product.
-func planFor(ctx context.Context, app *appcontext.Context, teacherID string) (string, domain.TeacherPlan, apperrors.ApplicationError) {
-	school, err := app.Repositories.School.GetPersonal(ctx, teacherID)
-	if err != nil {
-		return "", domain.TeacherPlan{}, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
-	}
-	if school == nil || school.Billing == domain.SchoolBillingDirect {
-		return "", domain.TeacherPlan{}, nil
-	}
-
-	plan := domain.FreePlan
-	entitlement, err := app.Integrations.Payments.GetEntitlement(ctx, teacherID)
-	if err != nil {
-		// Same direction as everywhere else: an unreadable plan must not cost
-		// anyone their students. Nothing is deactivated on a payments outage.
-		return "", domain.TeacherPlan{}, nil
-	}
-	if entitlement != nil && entitlement.Active {
-		plan = domain.PlanFromMetadata(0, "", entitlement.Metadata)
-	}
-	return school.ID, plan, nil
 }

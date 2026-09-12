@@ -67,8 +67,9 @@ func TestCanAddStudentStopsAtTheLimit(t *testing.T) {
 
 func TestFreeSubscriptionRunsAMonthFromTheProfile(t *testing.T) {
 	created := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+	withinTheMonth := created.AddDate(0, 0, 3)
 
-	got := FreeSubscription(created, 1)
+	got := FreeSubscription(created, withinTheMonth, 1)
 
 	if got.Active {
 		t.Fatal("the free plan is not an active subscription")
@@ -82,5 +83,62 @@ func TestFreeSubscriptionRunsAMonthFromTheProfile(t *testing.T) {
 	want := created.AddDate(0, 0, 30)
 	if got.RenewsAt == nil || !got.RenewsAt.Equal(want) {
 		t.Fatalf("renews at %v, want %v", got.RenewsAt, want)
+	}
+}
+
+func TestEffectiveFreePlan(t *testing.T) {
+	created := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name string
+		now  time.Time
+		want int
+	}{
+		{
+			name: "the day it is created",
+			now:  created,
+			want: 1,
+		},
+		{
+			name: "the last day of the month still allows the student",
+			now:  created.AddDate(0, 0, FreePlan.TrialDays),
+			want: 1,
+		},
+		{
+			// The whole point of the trial: past it, nothing is free, so the
+			// allowance is none rather than the one it used to be.
+			name: "a day past the month allows nobody",
+			now:  created.AddDate(0, 0, FreePlan.TrialDays).Add(time.Second),
+			want: 0,
+		},
+		{
+			name: "long expired stays at nobody",
+			now:  created.AddDate(1, 0, 0),
+			want: 0,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := EffectiveFreePlan(created, tc.now).MaxStudents
+			if got != tc.want {
+				t.Fatalf("allows %d students, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+// An expired trial has to refuse the first student, not merely stop the
+// second. Zero is the number that makes every consumer agree without being
+// told a trial exists.
+func TestExpiredTrialRefusesEvenTheFirstStudent(t *testing.T) {
+	created := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+	expired := FreeSubscription(created, created.AddDate(0, 0, FreePlan.TrialDays+1), 0)
+
+	if expired.CanAddStudent() {
+		t.Fatal("an expired trial must not admit a student, not even the first")
+	}
+	if expired.RenewsAt == nil {
+		t.Fatal("a teacher whose month ran out still needs to be told when it did")
 	}
 }
