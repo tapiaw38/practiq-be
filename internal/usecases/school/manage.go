@@ -330,6 +330,19 @@ func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSup
 		}
 	}
 
+	// A person joins a school by their Practiq profile, which exists once they
+	// have signed in. Without this the insert failed on a foreign key and
+	// surfaced as "failed to resolve the school" — a 500 about the wrong thing,
+	// which sent an admin looking at the school instead of at the person they
+	// were adding.
+	profile, err := app.Repositories.UserProfile.Get(ctx, in.UserID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	if profile == nil {
+		return apperrors.NewNotFoundError("that person has no Practiq profile yet — they have to sign in once before joining a school")
+	}
+
 	if err := app.Repositories.School.AddMember(ctx, domain.SchoolMember{
 		SchoolID: schoolID, UserID: in.UserID, Role: role,
 	}); err != nil {
