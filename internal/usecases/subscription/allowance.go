@@ -20,22 +20,14 @@ import (
 // instead charged an institution's students against that teacher's personal
 // plan and refused them once it filled.
 //
-// A student the teacher already has is always allowed through: the paths that
-// call this are idempotent, and re-running one must not start failing because
-// the plan happens to be full.
+// A student who already belongs to the school is always allowed through: the
+// paths that call this are idempotent, and re-running one must not start
+// failing because the plan happens to be full.
 func EnsureCanAddStudent(
 	ctx context.Context,
 	app *appcontext.Context,
 	schoolID, teacherID, studentID string,
 ) apperrors.ApplicationError {
-	already, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, teacherID, studentID)
-	if err != nil {
-		return apperrors.NewApplicationError(mappings.AssignmentListError, err)
-	}
-	if already {
-		return nil
-	}
-
 	// The limit belongs to a school, not to a teacher. A teacher with their own
 	// school who also teaches at an institution must not have those students
 	// charged to their personal plan. scopeFor decides all of that, and the
@@ -45,6 +37,18 @@ func EnsureCanAddStudent(
 		return appErr
 	}
 	if !scope.Enforced() {
+		return nil
+	}
+
+	// Asked of the same table the count comes from. Asking whether the teacher
+	// already had the student instead let one through whose membership was
+	// inactive — a downgrade had deactivated them — and the count they were
+	// waved past is the one their reactivation then pushed over the plan.
+	already, appErr := isActiveMember(ctx, app, scope.SchoolID, studentID)
+	if appErr != nil {
+		return appErr
+	}
+	if already {
 		return nil
 	}
 

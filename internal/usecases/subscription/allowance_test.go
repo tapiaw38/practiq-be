@@ -40,6 +40,7 @@ type fakeSchools struct {
 	// one school while a student joins another.
 	byID     map[string]*domain.School
 	students int
+	memberOf []domain.SchoolMember
 }
 
 func (f *fakeSchools) GetPersonal(context.Context, string) (*domain.School, error) {
@@ -52,6 +53,13 @@ func (f *fakeSchools) Get(_ context.Context, id string) (*domain.School, error) 
 
 func (f *fakeSchools) CountStudents(context.Context, string) (int, error) {
 	return f.students, nil
+}
+
+// memberOf is which schools the student already belongs to, and whether that
+// membership is still active. The limit asks this to decide whether adding
+// them again would move the count at all.
+func (f *fakeSchools) ListForUser(context.Context, string) ([]domain.SchoolMember, error) {
+	return f.memberOf, nil
 }
 
 type fakePayments struct {
@@ -140,10 +148,29 @@ func TestEnsureCanAddStudent(t *testing.T) {
 		{
 			// These paths are idempotent. Re-running one must not start failing
 			// because the plan filled up in between; nothing is being added.
-			name:        "a student the teacher already has is always allowed",
+			name:        "a student already in the school is always allowed",
+			assignments: &fakeAssignments{},
+			schools: func() *fakeSchools {
+				s := subscriptionSchool(99)
+				s.memberOf = []domain.SchoolMember{{SchoolID: "s1", Role: domain.SchoolRoleStudent, Active: true}}
+				return s
+			}(),
+			payments: &fakePayments{entitlement: paidPlan(5)},
+		},
+		{
+			// The reason this asks about membership rather than about the
+			// teacher-student link. A downgrade deactivated this student, so
+			// they are not in the count — letting them back in is an addition,
+			// and it has to fit like any other.
+			name:        "a deactivated student is not already in, so the plan decides",
 			assignments: &fakeAssignments{hasAccess: true},
-			schools:     subscriptionSchool(99),
+			schools: func() *fakeSchools {
+				s := subscriptionSchool(5)
+				s.memberOf = []domain.SchoolMember{{SchoolID: "s1", Role: domain.SchoolRoleStudent, Active: false}}
+				return s
+			}(),
 			payments:    &fakePayments{entitlement: paidPlan(5)},
+			wantRefused: true,
 		},
 		{
 			name:        "no subscription means the free allowance",

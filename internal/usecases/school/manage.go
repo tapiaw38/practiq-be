@@ -9,6 +9,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
 type (
@@ -318,6 +319,15 @@ func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSup
 	// invoice one.
 	if school.Kind == domain.SchoolKindPersonal && role != domain.SchoolRoleStudent {
 		return apperrors.NewForbiddenError()
+	}
+
+	// The same limit every other way in goes through. This one was open: the
+	// "Usuarios" panel adds a student straight to the school, so without it a
+	// teacher could pass their plan from the one screen built for it.
+	if role == domain.SchoolRoleStudent {
+		if appErr := subscription.EnsureCanAddStudent(ctx, app, schoolID, requesterID, in.UserID); appErr != nil {
+			return appErr
+		}
 	}
 
 	if err := app.Repositories.School.AddMember(ctx, domain.SchoolMember{

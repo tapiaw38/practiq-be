@@ -151,6 +151,24 @@ func resolveSchool(ctx context.Context, app *appcontext.Context, schoolID, teach
 	return school, nil
 }
 
+// isActiveMember reports whether a student already counts towards this
+// school's total, which is what makes adding them again free.
+func isActiveMember(ctx context.Context, app *appcontext.Context, schoolID, studentID string) (bool, apperrors.ApplicationError) {
+	if schoolID == "" {
+		return false, nil
+	}
+	members, err := app.Repositories.School.ListForUser(ctx, studentID)
+	if err != nil {
+		return false, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	for _, member := range members {
+		if member.SchoolID == schoolID && member.Active {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // studentsUsed counts a school's active students: the same number the limit is
 // checked against, wherever it is shown.
 func studentsUsed(ctx context.Context, app *appcontext.Context, schoolID string) (int, apperrors.ApplicationError) {
