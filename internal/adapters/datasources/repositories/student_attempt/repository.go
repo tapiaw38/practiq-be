@@ -13,6 +13,8 @@ type Repository interface {
 	// ClaimLevelTestSubmission atomically reserves a student's one submission
 	// for a level test. False means it was already submitted.
 	ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string) (bool, error)
+	// HasLevelTestSubmission reports whether student already submitted test.
+	HasLevelTestSubmission(ctx context.Context, studentID, sheetID string) (bool, error)
 	// ReleaseLevelTestSubmission undoes a claim whose submission never landed.
 	ReleaseLevelTestSubmission(ctx context.Context, studentID, sheetID string) error
 	// DeleteBySheet removes an incomplete level-test submission before releasing

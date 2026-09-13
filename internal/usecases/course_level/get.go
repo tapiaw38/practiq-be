@@ -92,6 +92,26 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 			continue
 		}
 		sd := toSheetData(s)
+		if s.SheetType == "level_test" && requesterID != "" {
+			submitted, statusErr := app.Repositories.StudentAttempt.HasLevelTestSubmission(ctx, requesterID, s.ID)
+			if statusErr != nil {
+				return nil, apperrors.NewApplicationError(mappings.InternalServerError, statusErr)
+			}
+			sd.Submitted = submitted
+			if submitted {
+				outcome, outcomeErr := app.Repositories.StudentAttempt.GetSheetOutcome(ctx, requesterID, s.ID)
+				if outcomeErr != nil {
+					return nil, apperrors.NewApplicationError(mappings.InternalServerError, outcomeErr)
+				}
+				sd.PendingReview = outcome.Pending > 0
+				if outcome.Total > 0 && outcome.Pending == 0 {
+					score := outcome.Correct * 100 / outcome.Total
+					passed := score >= 75
+					sd.Score = &score
+					sd.Passed = &passed
+				}
+			}
+		}
 		if s.SheetType == "level_test" {
 			b.levelTest = &sd
 		} else {

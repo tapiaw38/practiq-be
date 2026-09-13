@@ -15,6 +15,10 @@ type (
 		// AvailableUntil is UTC and empty when the sheet remains open.
 		AvailableUntil string `json:"available_until,omitempty"`
 		Exercises      int    `json:"exercises"`
+		Submitted      bool   `json:"submitted"`
+		PendingReview  bool   `json:"pending_review"`
+		Score          *int   `json:"score,omitempty"`
+		Passed         *bool  `json:"passed,omitempty"`
 	}
 
 	NotebookData struct {
