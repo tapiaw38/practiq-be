@@ -20,13 +20,7 @@ func NewGetByIDHandler(uc ucProfile.GetUsecase) gin.HandlerFunc {
 			return
 		}
 
-		// Authorization check: only admins or the profile owner can view profiles
-		if !isSuperAdmin && requesterID != profileID {
-			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user profiles"})
-			return
-		}
-
-		output, appErr := uc.Execute(c, profileID, c.GetHeader("Authorization"))
+		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, profileID, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

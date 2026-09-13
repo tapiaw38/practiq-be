@@ -52,6 +52,18 @@ func Names(ctx context.Context, client authapi.Client, bearerToken string, ids [
 	return result, nil
 }
 
+func ByEmail(ctx context.Context, client authapi.Client, bearerToken, email string) (*authapi.UserInfo, apperrors.ApplicationError) {
+	info, err := client.GetByEmail(ctx, bearerToken, email)
+	if err != nil {
+		var upstream *authapi.UpstreamError
+		if errors.As(err, &upstream) && upstream.Unauthorized() {
+			return nil, apperrors.NewUnauthorizedError()
+		}
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	return info, nil
+}
+
 // FullName joins first and last name, falling back to the bare id when the
 // lookup missed (unknown id, or auth-api-be call failed upstream).
 func FullName(info authapi.UserInfo, fallbackID string) string {

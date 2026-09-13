@@ -69,6 +69,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// School-scoped: school.EnsureCanViewAssignmentsFor in the usecase, same
 	// rule as teacher-student assignment above.
 	teacherOnly.PUT("/profile/:id/ui-theme", userprofile.NewUpdateUIThemeByIDHandler(uc.Profile.UpdateUITheme))
+	teacherOnly.GET("/profile/find-by-email", userprofile.NewFindByEmailHandler(uc.Profile.FindByEmail))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
 

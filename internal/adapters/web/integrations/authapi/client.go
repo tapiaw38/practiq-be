@@ -19,9 +19,6 @@ type (
 	}
 
 	Client interface {
-		// GetByEmail forwards the caller's own bearer token (auth-api-be
-		// requires superadmin for this lookup) and returns nil, nil when no
-		// account exists for that email — not found is not an error here.
 		GetByEmail(ctx context.Context, bearerToken, email string) (*UserInfo, error)
 		// GetBatch resolves display identity (name/email) for a set of
 		// usernames in one round trip — open to any authenticated caller.
@@ -60,7 +57,7 @@ func NewClient(baseURL string) Client {
 }
 
 func (c *client) GetByEmail(ctx context.Context, bearerToken, email string) (*UserInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/user/by-email?email="+url.QueryEscape(email), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/user/find-by-email?email="+url.QueryEscape(email), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,12 +75,12 @@ func (c *client) GetByEmail(ctx context.Context, bearerToken, email string) (*Us
 	if resp.StatusCode >= 300 {
 		var errBody map[string]any
 		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-		return nil, fmt.Errorf("auth-api-be user lookup failed (status %d): %v", resp.StatusCode, errBody)
+		return nil, &UpstreamError{Status: resp.StatusCode, Detail: fmt.Sprintf("%v", errBody)}
 	}
 
 	var parsed struct {
 		Data struct {
-			Username  string `json:"username"`
+			ID        string `json:"id"`
 			FirstName string `json:"first_name"`
 			LastName  string `json:"last_name"`
 			Email     string `json:"email"`
@@ -94,7 +91,7 @@ func (c *client) GetByEmail(ctx context.Context, bearerToken, email string) (*Us
 	}
 
 	return &UserInfo{
-		Username:  parsed.Data.Username,
+		Username:  parsed.Data.ID,
 		FirstName: parsed.Data.FirstName,
 		LastName:  parsed.Data.LastName,
 		Email:     parsed.Data.Email,

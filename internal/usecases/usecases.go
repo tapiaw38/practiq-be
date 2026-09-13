@@ -138,6 +138,7 @@ type AIUsecases struct {
 type ProfileUsecases struct {
 	Sync                 ucProfile.SyncUsecase
 	Get                  ucProfile.GetUsecase
+	FindByEmail          ucProfile.FindByEmailUsecase
 	UpdateUITheme        ucProfile.UpdateUIThemeUsecase
 	UpdateAcademicStatus ucProfile.UpdateAcademicStatusUsecase
 	UpdateProfileType    ucProfile.UpdateProfileTypeUsecase
@@ -337,6 +338,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 		Profile: ProfileUsecases{
 			Sync:                 ucProfile.NewSyncUsecase(contextFactory),
 			Get:                  ucProfile.NewGetUsecase(contextFactory),
+			FindByEmail:          ucProfile.NewFindByEmailUsecase(contextFactory),
 			UpdateUITheme:        ucProfile.NewUpdateUIThemeUsecase(contextFactory),
 			UpdateAcademicStatus: ucProfile.NewUpdateAcademicStatusUsecase(contextFactory),
 			UpdateProfileType:    ucProfile.NewUpdateProfileTypeUsecase(contextFactory),

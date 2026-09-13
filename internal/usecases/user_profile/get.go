@@ -8,11 +8,12 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
 	GetUsecase interface {
-		Execute(ctx context.Context, id, bearerToken string) (*GetOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string) (*GetOutput, apperrors.ApplicationError)
 	}
 
 	getUsecase struct {
@@ -28,8 +29,12 @@ func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
 	return &getUsecase{contextFactory: contextFactory}
 }
 
-func (u *getUsecase) Execute(ctx context.Context, id, bearerToken string) (*GetOutput, apperrors.ApplicationError) {
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string) (*GetOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
+
+	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, id); appErr != nil {
+		return nil, appErr
+	}
 
 	p, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
