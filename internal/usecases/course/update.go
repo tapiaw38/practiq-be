@@ -10,35 +10,53 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*CourseOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		GradeID     string `json:"grade_id"`
+		SubjectID   string `json:"subject_id"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Level       string `json:"level"`
+		Subject     string `json:"subject"`
+	}
+
+	UpdateOutput struct {
+		Data CourseData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
-
-type UpdateInput struct {
-	GradeID     string `json:"grade_id"`
-	SubjectID   string `json:"subject_id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Level       string `json:"level"`
-	Subject     string `json:"subject"`
-}
-
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*CourseOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	if strings.TrimSpace(input.GradeID) == "" {
 		return nil, apperrors.NewBadRequestError("grade_id is required")
 	}
 	if strings.TrimSpace(input.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
+	}
+
+	course, err := app.Repositories.Course.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if course == nil {
+		return nil, apperrors.NewNotFoundError("course not found")
+	}
+
+	if !isSuperAdmin && course.TeacherID != requesterID {
+		return nil, apperrors.NewForbiddenError()
 	}
 
 	if err := app.Repositories.Course.Update(ctx, id, domain.Course{
@@ -57,5 +75,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
 
-	return &CourseOutput{Data: toCourseData(*c)}, nil
+	return &UpdateOutput{Data: toCourseData(*c)}, nil
 }

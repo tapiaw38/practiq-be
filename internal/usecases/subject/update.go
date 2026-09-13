@@ -7,27 +7,48 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	schoolUC "github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*SubjectOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Name        string
+		Description string
+	}
+
+	UpdateOutput struct {
+		Data SubjectData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-type UpdateInput struct {
-	Name        string
-	Description string
-}
-
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
-
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*SubjectOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	// The route lets a teacher ask; this decides which rows they may touch.
+	// Without it, opening these routes beyond the platform superadmin would let
+	// any teacher edit another school's subjects.
+	current, err := app.Repositories.Subject.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SubjectGetError, err)
+	}
+	if current == nil {
+		return nil, apperrors.NewNotFoundError("subject not found")
+	}
+	if appErr := schoolUC.EnsureAdministers(ctx, app, requesterID, isSuperAdmin, current.SchoolID); appErr != nil {
+		return nil, appErr
+	}
 
 	if err := app.Repositories.Subject.Update(ctx, id, domain.Subject{
 		Name:        input.Name,
@@ -44,5 +65,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.SubjectNotFoundError, nil)
 	}
 
-	return &SubjectOutput{Data: toSubjectData(*subject)}, nil
+	return &UpdateOutput{Data: toSubjectData(*subject)}, nil
 }

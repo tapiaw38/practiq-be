@@ -8,20 +8,39 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetMessagesUsecase interface {
-	Execute(context.Context, string) (*MessagesListOutput, apperrors.ApplicationError)
+type (
+	GetMessagesUsecase interface {
+		Execute(ctx context.Context, conversationID, requesterID string, isSuperAdmin bool) (*GetMessagesOutput, apperrors.ApplicationError)
+	}
+
+	getMessagesUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetMessagesOutput struct {
+		Data []MessageData `json:"data"`
+	}
+)
+
+func NewGetMessagesUsecase(contextFactory appcontext.Factory) GetMessagesUsecase {
+	return &getMessagesUsecase{contextFactory: contextFactory}
 }
 
-type getMessagesUsecase struct {
-	factory appcontext.Factory
-}
+func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID, requesterID string, isSuperAdmin bool) (*GetMessagesOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewGetMessagesUsecase(factory appcontext.Factory) GetMessagesUsecase {
-	return &getMessagesUsecase{factory: factory}
-}
-
-func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID string) (*MessagesListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	// La conversación con el tutor es del alumno: sin este chequeo bastaba
+	// conocer el id para leer el diálogo de cualquier otro.
+	conversation, err := app.Repositories.AIConversation.Get(ctx, conversationID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.AIMessageListError, err)
+	}
+	if conversation == nil {
+		return nil, apperrors.NewNotFoundError("conversation not found")
+	}
+	if !isSuperAdmin && conversation.StudentID != requesterID {
+		return nil, apperrors.NewForbiddenError()
+	}
 
 	messages, err := app.Repositories.AIConversation.ListMessages(ctx, conversationID)
 	if err != nil {
@@ -36,5 +55,5 @@ func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID string)
 		data = []MessageData{}
 	}
 
-	return &MessagesListOutput{Data: data}, nil
+	return &GetMessagesOutput{Data: data}, nil
 }

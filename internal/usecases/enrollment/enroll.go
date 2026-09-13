@@ -7,22 +7,30 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
+	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-type EnrollUsecase interface {
-	Execute(context.Context, string, string) (*EnrollOutput, apperrors.ApplicationError)
-}
+type (
+	EnrollUsecase interface {
+		Execute(context.Context, string, string) (*EnrollOutput, apperrors.ApplicationError)
+	}
 
-type enrollUsecase struct {
-	factory appcontext.Factory
-}
+	enrollUsecase struct {
+		contextFactory appcontext.Factory
+	}
 
-func NewEnrollUsecase(factory appcontext.Factory) EnrollUsecase {
-	return &enrollUsecase{factory: factory}
+	EnrollOutput struct {
+		Data OperationResultData `json:"data"`
+	}
+)
+
+func NewEnrollUsecase(contextFactory appcontext.Factory) EnrollUsecase {
+	return &enrollUsecase{contextFactory: contextFactory}
 }
 
 func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string) (*EnrollOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	app := u.contextFactory()
 
 	exists, err := app.Repositories.Enrollment.Exists(ctx, courseID, studentID)
 	if err != nil {
@@ -30,6 +38,22 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 	}
 	if exists {
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentAlreadyExistsError, nil)
+	}
+
+	// Enrolling in a course makes the student one of that course's teacher's,
+	// so the teacher's plan decides whether there is room.
+	course, err := app.Repositories.Course.Get(ctx, courseID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if course == nil {
+		return nil, apperrors.NewNotFoundError("course not found")
+	}
+	if appErr := school.RequireActive(ctx, app, course.SchoolID); appErr != nil {
+		return nil, appErr
+	}
+	if appErr := subscription.EnsureCanAddStudent(ctx, app, course.SchoolID, course.TeacherID, studentID); appErr != nil {
+		return nil, appErr
 	}
 
 	if err := app.Repositories.Enrollment.Create(ctx, domain.Enrollment{
@@ -40,5 +64,10 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentCreateError, err)
 	}
 
-	return &EnrollOutput{Message: "enrolled successfully"}, nil
+	// The course's school, not the teacher's. Deducing it from the teacher put
+	// a student enrolled in an institution's course into that teacher's
+	// personal school instead — the same mistake invitations already fixed.
+	school.JoinSchool(ctx, app, course.SchoolID, course.TeacherID, studentID)
+
+	return &EnrollOutput{Data: toOperationResultData(domain.OperationResult{Message: "enrolled successfully"})}, nil
 }

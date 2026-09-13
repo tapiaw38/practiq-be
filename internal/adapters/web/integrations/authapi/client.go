@@ -1,0 +1,172 @@
+package authapi
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+)
+
+type (
+	UserInfo struct {
+		Username  string
+		FirstName string
+		LastName  string
+		Email     string
+	}
+
+	Client interface {
+		GetByEmail(ctx context.Context, bearerToken, email string) (*UserInfo, error)
+		// GetBatch resolves display identity (name/email) for a set of
+		// usernames in one round trip — open to any authenticated caller.
+		// Unknown usernames are silently omitted from the result.
+		GetBatch(ctx context.Context, bearerToken string, usernames []string) ([]UserInfo, error)
+		// GetTokenVersion reads the version auth-api-be currently holds, so a
+		// token issued before a password change can be refused here too.
+		GetTokenVersion(ctx context.Context, bearerToken, userID string) (uint, error)
+	}
+
+	client struct {
+		baseURL string
+		http    *http.Client
+	}
+
+	// UpstreamError carries auth-api-be's status so callers can tell a caller
+	// problem from a practiq-be problem. A 401 here means the caller's own
+	// token was rejected — reporting that as a 500 sent people looking for a
+	// server fault when the answer was to sign in again.
+	UpstreamError struct {
+		Status int
+		Detail string
+	}
+)
+
+func (e *UpstreamError) Error() string {
+	return fmt.Sprintf("auth-api-be call failed (status %d): %s", e.Status, e.Detail)
+}
+
+func (e *UpstreamError) Unauthorized() bool {
+	return e.Status == http.StatusUnauthorized || e.Status == http.StatusForbidden
+}
+
+func NewClient(baseURL string) Client {
+	return &client{baseURL: baseURL, http: &http.Client{Timeout: 10 * time.Second}}
+}
+
+func (c *client) GetByEmail(ctx context.Context, bearerToken, email string) (*UserInfo, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/user/find-by-email?email="+url.QueryEscape(email), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", bearerToken)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	if resp.StatusCode >= 300 {
+		var errBody map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&errBody)
+		return nil, &UpstreamError{Status: resp.StatusCode, Detail: fmt.Sprintf("%v", errBody)}
+	}
+
+	var parsed struct {
+		Data struct {
+			ID        string `json:"id"`
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
+			Email     string `json:"email"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return nil, err
+	}
+
+	return &UserInfo{
+		Username:  parsed.Data.ID,
+		FirstName: parsed.Data.FirstName,
+		LastName:  parsed.Data.LastName,
+		Email:     parsed.Data.Email,
+	}, nil
+}
+
+func (c *client) GetBatch(ctx context.Context, bearerToken string, usernames []string) ([]UserInfo, error) {
+	if len(usernames) == 0 {
+		return nil, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/user/batch?ids="+url.QueryEscape(strings.Join(usernames, ",")), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", bearerToken)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		var errBody map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&errBody)
+		return nil, &UpstreamError{Status: resp.StatusCode, Detail: fmt.Sprintf("%v", errBody)}
+	}
+
+	var parsed struct {
+		Data []struct {
+			ID        string `json:"id"`
+			FirstName string `json:"first_name"`
+			LastName  string `json:"last_name"`
+			Email     string `json:"email"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return nil, err
+	}
+
+	out := make([]UserInfo, 0, len(parsed.Data))
+	for _, d := range parsed.Data {
+		out = append(out, UserInfo{Username: d.ID, FirstName: d.FirstName, LastName: d.LastName, Email: d.Email})
+	}
+	return out, nil
+}
+
+func (c *client) GetTokenVersion(ctx context.Context, bearerToken, userID string) (uint, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/user/"+url.PathEscape(userID)+"/token-version", nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Authorization", bearerToken)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		var errBody map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&errBody)
+		return 0, &UpstreamError{Status: resp.StatusCode, Detail: fmt.Sprintf("%v", errBody)}
+	}
+
+	var parsed struct {
+		Data struct {
+			TokenVersion uint `json:"token_version"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return 0, err
+	}
+
+	return parsed.Data.TokenVersion, nil
+}

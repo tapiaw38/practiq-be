@@ -2,62 +2,65 @@ package studentprogress
 
 import (
 	"context"
-	"time"
 
-	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type AttemptData struct {
-	ID              string  `json:"id"`
-	StudentID       string  `json:"student_id"`
-	ExerciseID      string  `json:"exercise_id"`
-	PracticeSheetID string  `json:"practice_sheet_id"`
-	AnswerText      string  `json:"answer_text"`
-	AIFeedback      string  `json:"ai_feedback,omitempty"`
-	IsCorrect       bool    `json:"is_correct"`
-	Score           float64 `json:"score"`
-	TimeSpentSecs   int     `json:"time_spent_seconds"`
-	HintsUsed       int     `json:"hints_used"`
-	CreatedAt       string  `json:"created_at"`
-}
-
-type AttemptListOutput struct {
-	Data []AttemptData `json:"data"`
-}
-
-func toAttemptData(a domain.StudentAttempt) AttemptData {
-	return AttemptData{
-		ID:              a.ID,
-		StudentID:       a.StudentID,
-		ExerciseID:      a.ExerciseID,
-		PracticeSheetID: a.PracticeSheetID,
-		AnswerText:      a.AnswerText,
-		AIFeedback:      a.AIFeedback,
-		IsCorrect:       a.IsCorrect,
-		Score:           a.Score,
-		TimeSpentSecs:   a.TimeSpentSecs,
-		HintsUsed:       a.HintsUsed,
-		CreatedAt:       a.CreatedAt.Format(time.RFC3339),
+type (
+	GetStudentAttemptsUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError)
 	}
+
+	getStudentAttemptsUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetStudentAttemptsOutput struct {
+		Data []AttemptData `json:"data"`
+	}
+)
+
+func NewGetStudentAttemptsUsecase(contextFactory appcontext.Factory) GetStudentAttemptsUsecase {
+	return &getStudentAttemptsUsecase{contextFactory: contextFactory}
 }
 
-type GetStudentAttemptsUsecase interface {
-	Execute(ctx context.Context, studentID, sheetID string) (*AttemptListOutput, apperrors.ApplicationError)
-}
+func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, studentID, sheetID string) (*GetStudentAttemptsOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-type getStudentAttemptsUsecase struct {
-	factory appcontext.Factory
-}
+	if !isSuperAdmin {
+		hasAccess, err := app.Repositories.TeacherStudentAssignment.HasAccess(ctx, requesterID, studentID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
+		}
+		if !hasAccess {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
-func NewGetStudentAttemptsUsecase(factory appcontext.Factory) GetStudentAttemptsUsecase {
-	return &getStudentAttemptsUsecase{factory: factory}
-}
-
-func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, studentID, sheetID string) (*AttemptListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	// HasAccess only proves the requester can see this student somewhere; it
+	// says nothing about the sheet. Without tying the sheet back to a course
+	// the requester owns, a teacher of one course could read the same student's
+	// answers and scores for a sheet in another course, or in a deleted one.
+	if !isSuperAdmin {
+		sheet, err := app.Repositories.PracticeSheet.Get(ctx, sheetID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
+		}
+		if sheet == nil {
+			return nil, apperrors.NewNotFoundError("practice sheet not found")
+		}
+		// Course.Get filters out soft-deleted courses, so a nil course here is
+		// also the deleted-course case.
+		course, err := app.Repositories.Course.Get(ctx, sheet.CourseID)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+		}
+		if course == nil || course.TeacherID != requesterID {
+			return nil, apperrors.NewForbiddenError()
+		}
+	}
 
 	attempts, err := app.Repositories.StudentAttempt.ListBySheet(ctx, studentID, sheetID)
 	if err != nil {
@@ -72,5 +75,5 @@ func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, studentID, shee
 		data = []AttemptData{}
 	}
 
-	return &AttemptListOutput{Data: data}, nil
+	return &GetStudentAttemptsOutput{Data: data}, nil
 }

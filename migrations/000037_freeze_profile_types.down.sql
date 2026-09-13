@@ -1,0 +1,1 @@
+-- Data-only migration. The old Auth-role bridge is intentionally not restored.

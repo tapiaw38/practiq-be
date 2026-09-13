@@ -8,20 +8,34 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type DeleteUsecase interface {
-	Execute(context.Context, string) apperrors.ApplicationError
+type (
+	DeleteUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError
+	}
+
+	deleteUsecase struct {
+		contextFactory appcontext.Factory
+	}
+)
+
+func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
+	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-type deleteUsecase struct {
-	factory appcontext.Factory
-}
+func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
+	app := u.contextFactory()
 
-func NewDeleteUsecase(factory appcontext.Factory) DeleteUsecase {
-	return &deleteUsecase{factory: factory}
-}
+	course, err := app.Repositories.Course.Get(ctx, id)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if course == nil {
+		return apperrors.NewNotFoundError("course not found")
+	}
 
-func (u *deleteUsecase) Execute(ctx context.Context, id string) apperrors.ApplicationError {
-	app := u.factory()
+	if !isSuperAdmin && course.TeacherID != requesterID {
+		return apperrors.NewForbiddenError()
+	}
 
 	if err := app.Repositories.Course.Delete(ctx, id); err != nil {
 		return apperrors.NewApplicationError(mappings.CourseDeleteError, err)
