@@ -36,22 +36,37 @@ func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUse
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "Seleccioná un PDF, DOCX o imagen de hasta 20 MB."})
 			return
 		}
-		file, header, err := c.Request.FormFile("source")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "Falta el archivo fuente."})
-			return
-		}
-		defer file.Close()
-		content, err := io.ReadAll(io.LimitReader(file, maxExerciseSourceBytes+1))
-		if err != nil || len(content) > maxExerciseSourceBytes {
-			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"code": "common:payload-too-large", "message": "El archivo supera 20 MB."})
-			return
-		}
-		ext := strings.ToLower(filepath.Ext(header.Filename))
-		isDocument := ext == ".pdf" || ext == ".docx"
-		isImage := ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp"
-		if !isDocument && !isImage {
-			c.JSON(http.StatusUnsupportedMediaType, gin.H{"code": "common:unsupported-media", "message": "Formatos permitidos: PDF, DOCX, PNG, JPG o WebP."})
+		// A source file is one way to say what the exercises should be about;
+		// a written instruction is the other. Requiring the file meant a
+		// teacher who could describe the topic in a sentence had to find a
+		// document first. One of the two has to be there: with neither, there
+		// is nothing to base the exercises on.
+		instruction := strings.TrimSpace(c.PostForm("instruction"))
+		var (
+			content    []byte
+			filename   string
+			isDocument bool
+		)
+		if file, header, err := c.Request.FormFile("source"); err == nil {
+			defer file.Close()
+			content, err = io.ReadAll(io.LimitReader(file, maxExerciseSourceBytes+1))
+			if err != nil || len(content) > maxExerciseSourceBytes {
+				c.JSON(http.StatusRequestEntityTooLarge, gin.H{"code": "common:payload-too-large", "message": "El archivo supera 20 MB."})
+				return
+			}
+			ext := strings.ToLower(filepath.Ext(header.Filename))
+			isDocument = ext == ".pdf" || ext == ".docx"
+			isImage := ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".webp"
+			if !isDocument && !isImage {
+				c.JSON(http.StatusUnsupportedMediaType, gin.H{"code": "common:unsupported-media", "message": "Formatos permitidos: PDF, DOCX, PNG, JPG o WebP."})
+				return
+			}
+			filename = header.Filename
+		} else if instruction == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"code":    "common:bad-request",
+				"message": "Subí un archivo o escribí sobre qué tema generar los ejercicios.",
+			})
 			return
 		}
 
@@ -62,9 +77,9 @@ func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUse
 			c.JSON(appErr.StatusCode(), appErr)
 			return
 		}
-		body, contentType, err := draftMessageBody(content, header.Filename, isDocument, c.PostForm("count"), c.PostForm("difficulty"), c.PostForm("instruction"))
+		body, contentType, err := draftMessageBody(content, filename, isDocument, c.PostForm("count"), c.PostForm("difficulty"), instruction)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "No se pudo preparar el documento."})
+			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "No se pudo preparar el pedido."})
 			return
 		}
 		response, appErr := uc.Execute(c, ucAI.ProxyInput{UserID: userID, Method: http.MethodPost, Path: "/conversation/" + conversationID + "/message", ContentType: contentType, Body: body})
@@ -112,24 +127,30 @@ func draftMessageBody(content []byte, filename string, document bool, count, dif
 	if difficulty == "" {
 		difficulty = "5"
 	}
-	prompt := fmt.Sprintf(`Creá exactamente %s ejercicios en español argentino, dificultad %s, basados solamente en archivo adjunto. Devolvé ÚNICAMENTE JSON válido, sin markdown: {"drafts":[{"type":"open_text|multiple_choice|equation","question":"...","correct_answer":"...","explanation":"...","difficulty":1,"metadata":{"options":["..."]}}]}. Usá multiple_choice solo con cuatro opciones y respuesta correcta incluida. No generes canvas, handwritten, attachment ni fill_blanks. %s`, count, difficulty, strings.TrimSpace(instruction))
+	source := "basados solamente en el archivo adjunto"
+	if len(content) == 0 {
+		source = "sobre el tema indicado abajo"
+	}
+	prompt := fmt.Sprintf(`Creá exactamente %s ejercicios en español argentino, dificultad %s, %s. Devolvé ÚNICAMENTE JSON válido, sin markdown: {"drafts":[{"type":"open_text|multiple_choice|equation","question":"...","correct_answer":"...","explanation":"...","difficulty":1,"metadata":{"options":["..."]}}]}. Usá multiple_choice solo con cuatro opciones y respuesta correcta incluida. No generes canvas, handwritten, attachment ni fill_blanks. %s`, count, difficulty, source, strings.TrimSpace(instruction))
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	if err := w.WriteField("content", prompt); err != nil {
 		return nil, "", err
 	}
-	field := "image_content"
-	if document {
-		field = "document_content"
+	if len(content) > 0 {
+		field := "image_content"
+		if document {
+			field = "document_content"
+		}
+		p, err := w.CreateFormFile(field, filename)
+		if err != nil {
+			return nil, "", err
+		}
+		if _, err = p.Write(content); err != nil {
+			return nil, "", err
+		}
 	}
-	p, err := w.CreateFormFile(field, filename)
-	if err != nil {
-		return nil, "", err
-	}
-	if _, err = p.Write(content); err != nil {
-		return nil, "", err
-	}
-	if err = w.Close(); err != nil {
+	if err := w.Close(); err != nil {
 		return nil, "", err
 	}
 	return b.Bytes(), w.FormDataContentType(), nil
