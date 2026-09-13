@@ -6,7 +6,7 @@ import (
 )
 
 func TestDraftMessageBodyWithoutFileSendsOnlyThePrompt(t *testing.T) {
-	body, contentType, err := draftMessageBody(nil, "", false, "3", "7", "fracciones equivalentes")
+	body, contentType, err := draftMessageBody(nil, "", false, "3", "7", "fracciones equivalentes", "")
 	if err != nil {
 		t.Fatalf("draftMessageBody() error = %v", err)
 	}
@@ -31,7 +31,7 @@ func TestDraftMessageBodyWithoutFileSendsOnlyThePrompt(t *testing.T) {
 }
 
 func TestDraftMessageBodyWithFileKeepsTheAttachment(t *testing.T) {
-	body, contentType, err := draftMessageBody([]byte("%PDF-1.7 fake"), "guia.pdf", true, "5", "5", "")
+	body, contentType, err := draftMessageBody([]byte("%PDF-1.7 fake"), "guia.pdf", true, "5", "5", "", "")
 	if err != nil {
 		t.Fatalf("draftMessageBody() error = %v", err)
 	}
@@ -46,7 +46,7 @@ func TestDraftMessageBodyWithFileKeepsTheAttachment(t *testing.T) {
 }
 
 func TestDraftMessageBodySendsAnImagePartForImages(t *testing.T) {
-	body, contentType, err := draftMessageBody([]byte("\x89PNG fake"), "pizarron.png", false, "5", "5", "")
+	body, contentType, err := draftMessageBody([]byte("\x89PNG fake"), "pizarron.png", false, "5", "5", "", "")
 	if err != nil {
 		t.Fatalf("draftMessageBody() error = %v", err)
 	}
@@ -57,5 +57,41 @@ func TestDraftMessageBodySendsAnImagePartForImages(t *testing.T) {
 	}
 	if _, sent := values["document_content"]; sent {
 		t.Fatal("an image was sent as a document")
+	}
+}
+
+func TestDraftMessageBodyAsksForTheChosenTypeOnly(t *testing.T) {
+	body, contentType, err := draftMessageBody(nil, "", false, "3", "4", "el agua", "fill_blanks")
+	if err != nil {
+		t.Fatalf("draftMessageBody() error = %v", err)
+	}
+
+	prompt := readMultipartValues(t, contentType, body)["content"]
+	if !strings.Contains(prompt, `Generá únicamente ejercicios de tipo "fill_blanks"`) {
+		t.Fatalf("prompt = %q, want it to pin the type", prompt)
+	}
+	if !strings.Contains(prompt, "{{1}}") {
+		t.Fatalf("prompt = %q, want the worked example that shows the markers", prompt)
+	}
+}
+
+func TestDraftMessageBodyWithoutATypeAsksForAMix(t *testing.T) {
+	body, contentType, err := draftMessageBody(nil, "", false, "3", "4", "el agua", "")
+	if err != nil {
+		t.Fatalf("draftMessageBody() error = %v", err)
+	}
+
+	prompt := readMultipartValues(t, contentType, body)["content"]
+	if !strings.Contains(prompt, "Variá los tipos") {
+		t.Fatalf("prompt = %q, want the mixed-type instruction", prompt)
+	}
+	if strings.Contains(prompt, "únicamente ejercicios de tipo") {
+		t.Fatalf("prompt = %q, want no type pinned when none was chosen", prompt)
+	}
+}
+
+func TestDraftTypeRuleIgnoresAnUnknownType(t *testing.T) {
+	if got := draftTypeRule("canvas"); got != draftTypeRule("") {
+		t.Fatalf("draftTypeRule(\"canvas\") = %q, want the same as no type at all", got)
 	}
 }

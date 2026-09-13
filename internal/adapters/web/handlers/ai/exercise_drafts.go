@@ -77,7 +77,7 @@ func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUse
 			c.JSON(appErr.StatusCode(), appErr)
 			return
 		}
-		body, contentType, err := draftMessageBody(content, filename, isDocument, c.PostForm("count"), c.PostForm("difficulty"), instruction)
+		body, contentType, err := draftMessageBody(content, filename, isDocument, c.PostForm("count"), c.PostForm("difficulty"), instruction, c.PostForm("exercise_type"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "No se pudo preparar el pedido."})
 			return
@@ -120,7 +120,25 @@ func createDraftConversation(c *gin.Context, uc ucAI.ProxyUsecase, userID string
 	return out.Data.ID, nil
 }
 
-func draftMessageBody(content []byte, filename string, document bool, count, difficulty, instruction string) ([]byte, string, error) {
+// draftTypeRule turns the teacher's choice into an order the assistant can
+// follow. Offered as one option among four in a union, fill_blanks never came
+// back: the model answered with the simplest shape that satisfied the prompt.
+func draftTypeRule(exerciseType string) string {
+	switch exerciseType {
+	case "open_text":
+		return ` Generá únicamente ejercicios de tipo "open_text".`
+	case "equation":
+		return ` Generá únicamente ejercicios de tipo "equation".`
+	case "multiple_choice":
+		return ` Generá únicamente ejercicios de tipo "multiple_choice".`
+	case "fill_blanks":
+		return ` Generá únicamente ejercicios de tipo "fill_blanks". Ejemplo del formato exacto: {"type":"fill_blanks","question":"El agua hierve a {{1}} grados y se congela a {{2}} grados.","correct_answer":"","explanation":"...","difficulty":1,"metadata":{"blanks":[{"id":1,"answer":"100"},{"id":2,"answer":"0"}],"distractors":["50","212"],"layout":"text"}}`
+	default:
+		return " Variá los tipos entre los disponibles."
+	}
+}
+
+func draftMessageBody(content []byte, filename string, document bool, count, difficulty, instruction, exerciseType string) ([]byte, string, error) {
 	if count == "" {
 		count = "5"
 	}
@@ -131,7 +149,7 @@ func draftMessageBody(content []byte, filename string, document bool, count, dif
 	if len(content) == 0 {
 		source = "sobre el tema indicado abajo"
 	}
-	prompt := fmt.Sprintf(`Creá exactamente %s ejercicios en español argentino, dificultad %s, %s. Devolvé ÚNICAMENTE JSON válido, sin markdown: {"drafts":[{"type":"open_text|multiple_choice|equation|fill_blanks","question":"...","correct_answer":"...","explanation":"...","difficulty":1,"metadata":{"options":["..."],"blanks":[{"id":1,"answer":"..."}],"distractors":["..."],"layout":"text"}}]}. Usá multiple_choice solo con cuatro opciones en metadata.options y correct_answer igual a una de ellas. Para fill_blanks escribí el enunciado con marcadores {{1}}, {{2}}, cada número una sola vez y en orden; poné una entrada en metadata.blanks por cada marcador con su respuesta, agregá opciones incorrectas en metadata.distractors, usá metadata.layout "code" solo si el enunciado es código, y dejá correct_answer vacío porque se arma con los huecos. Para los demás tipos no incluyas blanks ni distractors. No generes canvas, handwritten ni attachment. %s`, count, difficulty, source, strings.TrimSpace(instruction))
+	prompt := fmt.Sprintf(`Creá exactamente %s ejercicios en español argentino, dificultad %s, %s. Devolvé ÚNICAMENTE JSON válido, sin markdown: {"drafts":[{"type":"open_text|multiple_choice|equation|fill_blanks","question":"...","correct_answer":"...","explanation":"...","difficulty":1,"metadata":{"options":["..."],"blanks":[{"id":1,"answer":"..."}],"distractors":["..."],"layout":"text"}}]}. Usá multiple_choice solo con cuatro opciones en metadata.options y correct_answer igual a una de ellas. Para fill_blanks escribí el enunciado con marcadores {{1}}, {{2}}, cada número una sola vez y en orden; poné una entrada en metadata.blanks por cada marcador con su respuesta, agregá opciones incorrectas en metadata.distractors, usá metadata.layout "code" solo si el enunciado es código, y dejá correct_answer vacío porque se arma con los huecos. Para los demás tipos no incluyas blanks ni distractors. No generes canvas, handwritten ni attachment.%s %s`, count, difficulty, source, draftTypeRule(exerciseType), strings.TrimSpace(instruction))
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	if err := w.WriteField("content", prompt); err != nil {
