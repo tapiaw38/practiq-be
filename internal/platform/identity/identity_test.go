@@ -22,6 +22,10 @@ func (s stubClient) GetBatch(context.Context, string, []string) ([]authapi.UserI
 	return s.users, s.err
 }
 
+func (s stubClient) GetTokenVersion(context.Context, string, string) (uint, error) {
+	return 0, nil
+}
+
 func TestNamesStatusMapping(t *testing.T) {
 	cases := map[string]struct {
 		err      error

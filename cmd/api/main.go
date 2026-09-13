@@ -15,6 +15,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/database"
+	"github.com/tapiaw38/practiq-be/internal/platform/revocation"
 	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
@@ -96,7 +97,9 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "service": "practiq-be"})
 	})
 
-	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, repos.SiteContact)
+	revoked := revocation.NewChecker(integ.AuthAPI.GetTokenVersion, 60*time.Second)
+
+	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, repos.SiteContact, revoked)
 
 	startSubmitJobSweeper(repos.SubmitJob)
 

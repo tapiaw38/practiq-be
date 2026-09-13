@@ -8,9 +8,13 @@ import (
 	"github.com/gin-gonic/gin"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/platform/auth"
+	"github.com/tapiaw38/practiq-be/internal/platform/revocation"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+// AuthMiddleware accepts a nil checker, which skips the revocation lookup and
+// leaves a token good until it expires — the behaviour before auth-api-be
+// could be asked whether it had been revoked.
+func AuthMiddleware(checker *revocation.Checker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -29,6 +33,12 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims, err := auth.ValidateToken(parts[1])
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"code": "common:unauthorized", "message": "invalid token"})
+			c.Abort()
+			return
+		}
+
+		if checker != nil && !checker.Current(c.Request.Context(), authHeader, claims.UserID, claims.TokenVersion) {
+			c.JSON(http.StatusUnauthorized, gin.H{"code": "common:unauthorized", "message": "session ended, please sign in again"})
 			c.Abort()
 			return
 		}

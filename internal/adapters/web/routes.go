@@ -31,11 +31,12 @@ import (
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
+	"github.com/tapiaw38/practiq-be/internal/platform/revocation"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, revoked *revocation.Checker) {
 	// Landing catalogue. It deliberately exposes only active, sellable plans;
 	// everything that identifies a teacher or manages a subscription remains
 	// behind the authenticated API group below.
@@ -44,7 +45,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	public.GET("/site-contact", sitecontact.Public(contacts))
 
 	api := app.Group("/api")
-	api.Use(middlewares.AuthMiddleware())
+	api.Use(middlewares.AuthMiddleware(revoked))
 	api.Use(middlewares.LoadProfileType(userProfiles))
 
 	// Profile

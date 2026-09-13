@@ -27,6 +27,9 @@ type (
 		// usernames in one round trip — open to any authenticated caller.
 		// Unknown usernames are silently omitted from the result.
 		GetBatch(ctx context.Context, bearerToken string, usernames []string) ([]UserInfo, error)
+		// GetTokenVersion reads the version auth-api-be currently holds, so a
+		// token issued before a password change can be refused here too.
+		GetTokenVersion(ctx context.Context, bearerToken, userID string) (uint, error)
 	}
 
 	client struct {
@@ -138,4 +141,35 @@ func (c *client) GetBatch(ctx context.Context, bearerToken string, usernames []s
 		out = append(out, UserInfo{Username: d.ID, FirstName: d.FirstName, LastName: d.LastName, Email: d.Email})
 	}
 	return out, nil
+}
+
+func (c *client) GetTokenVersion(ctx context.Context, bearerToken, userID string) (uint, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/user/"+url.PathEscape(userID)+"/token-version", nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Authorization", bearerToken)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		var errBody map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&errBody)
+		return 0, &UpstreamError{Status: resp.StatusCode, Detail: fmt.Sprintf("%v", errBody)}
+	}
+
+	var parsed struct {
+		Data struct {
+			TokenVersion uint `json:"token_version"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return 0, err
+	}
+
+	return parsed.Data.TokenVersion, nil
 }
