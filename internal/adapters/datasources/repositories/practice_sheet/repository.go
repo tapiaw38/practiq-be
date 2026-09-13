@@ -15,6 +15,7 @@ type Repository interface {
 	List(context.Context, ListFilter) ([]domain.PracticeSheet, error)
 	Update(context.Context, string, domain.PracticeSheet) error
 	Delete(context.Context, string) error
+	HasOtherLevelTest(ctx context.Context, courseID string, level int, excludeID string) (bool, error)
 }
 type ListFilter struct {
 	CourseID string

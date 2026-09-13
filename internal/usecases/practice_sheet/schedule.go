@@ -42,6 +42,19 @@ func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.
 	if isCourseTeacher(ctx, app, requesterID, isSuperAdmin, ps.CourseID) {
 		return nil
 	}
+	if ps.SheetType == sheetTypeLevelTest {
+		progress, err := app.Repositories.CourseProgress.Get(ctx, requesterID, ps.CourseID)
+		if err != nil {
+			return apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
+		}
+		currentLevel := 1
+		if progress != nil {
+			currentLevel = progress.CurrentLevel
+		}
+		if ps.Level != currentLevel {
+			return apperrors.NewBadRequestError("this level test does not belong to the student's current level")
+		}
+	}
 	if ps.ScheduledAt == nil {
 		return nil
 	}

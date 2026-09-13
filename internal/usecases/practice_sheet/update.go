@@ -63,6 +63,19 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	}
 
 	// Switching a level test back to practice drops its schedule.
+	level := input.Level
+	if level < 1 {
+		level = 1
+	}
+	if input.SheetType == sheetTypeLevelTest {
+		exists, err := app.Repositories.PracticeSheet.HasOtherLevelTest(ctx, ps.CourseID, level, id)
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
+		}
+		if exists {
+			return nil, apperrors.NewBadRequestError("this level already has a level test; edit or delete it first")
+		}
+	}
 	scheduledAt := input.ScheduledAt
 	if input.SheetType != sheetTypeLevelTest {
 		scheduledAt = nil
@@ -71,7 +84,7 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	if err := app.Repositories.PracticeSheet.Update(ctx, id, domain.PracticeSheet{
 		Title:          input.Title,
 		TopicID:        input.TopicID,
-		Level:          input.Level,
+		Level:          level,
 		SheetType:      input.SheetType,
 		TestStyle:      input.TestStyle,
 		ScheduledAt:    scheduledAt,

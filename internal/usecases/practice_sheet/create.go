@@ -66,6 +66,15 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	if sheetType != "level_test" {
 		sheetType = "practice"
 	}
+	if sheetType == sheetTypeLevelTest {
+		exists, err := app.Repositories.PracticeSheet.HasOtherLevelTest(ctx, input.CourseID, level, "")
+		if err != nil {
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetCreateError, err)
+		}
+		if exists {
+			return nil, apperrors.NewBadRequestError("this level already has a level test; edit or delete it first")
+		}
+	}
 	testStyle := input.TestStyle
 	if testStyle != "canvas" {
 		testStyle = "keyboard"

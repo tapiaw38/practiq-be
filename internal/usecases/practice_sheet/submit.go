@@ -391,10 +391,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if ps.SheetType == "level_test" {
 		// Level tests advance the course, not the topic. Topic progress can be
 		// ahead because of regular practice and must not cause level skipping.
-		courseProgress, _ := app.Repositories.CourseProgress.Get(ctx, studentID, ps.CourseID)
-		if courseProgress != nil {
-			currentLevel = courseProgress.CurrentLevel
-		}
+		// ensureSheetIsOpen already proved this is the student's current level.
+		currentLevel = ps.Level
 	} else {
 		currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
 		if currentProgress != nil {
@@ -435,7 +433,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		shouldLevelUp = sheetScore >= levelTestPassThreshold
 		shouldRepeat = !shouldLevelUp
 		if shouldLevelUp {
-			nextLevel = currentLevel + 1
+			nextLevel = ps.Level + 1
 			newMastery = sheetScore
 			recommendation = "¡Aprobaste la prueba! Nivel " + strconv.Itoa(nextLevel) + " desbloqueado."
 		} else {
@@ -514,7 +512,9 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 
 	if ps.SheetType == "level_test" && shouldLevelUp {
-		app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel)
+		if err := app.Repositories.CourseProgress.Upsert(ctx, studentID, ps.CourseID, nextLevel); err != nil {
+			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, err)
+		}
 	}
 
 	if ps.SheetType == sheetTypeLevelTest {
