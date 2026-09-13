@@ -8,11 +8,11 @@ import (
 	"time"
 
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
-	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -95,20 +95,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		exerciseMap[pse.Exercise.ID] = pse.Exercise
 	}
 
-	profile, _ := app.Repositories.UserProfile.Get(ctx, studentID)
-	assistantCfg := assistant.Config{}
-	if profile != nil {
-		assistantCfg.BaseURL = profile.AssistantBaseURL
-		assistantCfg.APIKey = profile.AssistantAPIKey
-	}
-	// The assistant reads this answer on the course's behalf, not the student's.
-	// A student with no credentials of their own left every handwritten answer
-	// untranscribed, which on a level test cost them the exercise. The notebook
-	// flow closed the same hole by resolving the teacher's config.
-	if course != nil && app.Integrations.AssistantGateway != nil &&
-		!app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
-		assistantCfg = teacherAssistantConfig(ctx, app, course.TeacherID)
-	}
+	assistantCfg := assistantcfg.Resolve(ctx, app)
 
 	// Only a level test is corrected by a teacher (the homework notebook has its
 	// own review flow). A practice is graded on the spot with whatever the
@@ -573,22 +560,6 @@ func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAn
 // than measured against an empty string.
 func transcriptionUnavailable(canvasAwaitsOCR, hasTextAnswer, assistantReady bool) bool {
 	return canvasAwaitsOCR && !hasTextAnswer && !assistantReady
-}
-
-// teacherAssistantConfig resolves the assistant the course owner configured, so
-// grading still runs for a student who has no credentials of their own.
-func teacherAssistantConfig(ctx context.Context, app *appcontext.Context, teacherID string) assistant.Config {
-	cfg := assistant.Config{}
-	if strings.TrimSpace(teacherID) == "" {
-		return cfg
-	}
-	teacher, err := app.Repositories.UserProfile.Get(ctx, teacherID)
-	if err != nil || teacher == nil {
-		return cfg
-	}
-	cfg.BaseURL = teacher.AssistantBaseURL
-	cfg.APIKey = teacher.AssistantAPIKey
-	return cfg
 }
 
 // teacherGradesSheet says whether a sheet's answers are corrected by a person.

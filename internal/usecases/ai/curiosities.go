@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
-	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 var defaultCuriosities = []string{
@@ -87,20 +87,10 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		log.Printf("[ai_curiosities] warning: discarding technical fallback from cache course_id=%s", input.CourseID)
 	}
 
-	// Get user profile for AI config
-	profile, err := app.Repositories.UserProfile.Get(ctx, input.UserID)
-	if err != nil {
-		log.Printf("[ai_curiosities] warning: failed to get user profile user_id=%s err=%v", input.UserID, err)
+	cfg := assistantcfg.Resolve(ctx, app)
+	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
+		log.Print("[ai_curiosities] warning: the assistant is not configured for this platform")
 		return u.fallbackResponse(input.CourseID), nil
-	}
-	if profile == nil || profile.AssistantBaseURL == "" {
-		log.Printf("[ai_curiosities] warning: assistant not configured for user_id=%s", input.UserID)
-		return u.fallbackResponse(input.CourseID), nil
-	}
-
-	cfg := assistant.Config{
-		BaseURL: profile.AssistantBaseURL,
-		APIKey:  profile.AssistantAPIKey,
 	}
 
 	// Build topic string from course info

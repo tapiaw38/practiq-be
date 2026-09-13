@@ -9,6 +9,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -21,11 +22,9 @@ type (
 	}
 
 	SyncInput struct {
-		ID               string
-		ProfileType      string
-		Timezone         string
-		AssistantBaseURL string
-		AssistantAPIKey  string
+		ID          string
+		ProfileType string
+		Timezone    string
 		// BearerToken is the caller's own "Bearer <jwt>" header, forwarded to
 		// auth-api-be to resolve the caller's own display name — never
 		// trusted from the request body, since that would let the client
@@ -63,11 +62,9 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 	}
 
 	p := domain.UserProfile{
-		ID:               input.ID,
-		ProfileType:      profileType,
-		Timezone:         input.Timezone,
-		AssistantBaseURL: input.AssistantBaseURL,
-		AssistantAPIKey:  input.AssistantAPIKey,
+		ID:          input.ID,
+		ProfileType: profileType,
+		Timezone:    input.Timezone,
 	}
 
 	if err := app.Repositories.UserProfile.Upsert(ctx, p); err != nil {
@@ -88,7 +85,7 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 
 	ensurePersonalSchool(ctx, app, *updated, displayName)
 
-	return &SyncOutput{Data: toProfileData(*updated, displayName, info.Email)}, nil
+	return &SyncOutput{Data: toProfileData(*updated, displayName, info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }
 
 // ensurePersonalSchool gives a teacher the school they administer.

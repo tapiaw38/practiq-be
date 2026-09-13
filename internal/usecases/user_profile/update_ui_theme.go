@@ -8,48 +8,44 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
-	UpdateAssistantConfigUsecase interface {
-		Execute(context.Context, string, bool, UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError)
+	UpdateUIThemeUsecase interface {
+		Execute(context.Context, string, bool, UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError)
 	}
 
-	updateAssistantConfigUsecase struct {
+	updateUIThemeUsecase struct {
 		contextFactory appcontext.Factory
 	}
 
-	UpdateAssistantConfigInput struct {
-		ID               string
-		AssistantBaseURL string `json:"assistant_base_url"`
-		AssistantAPIKey  string `json:"assistant_api_key"`
-		UITheme          string `json:"ui_theme"`
-		BearerToken      string
+	UpdateUIThemeInput struct {
+		ID          string
+		UITheme     string `json:"ui_theme"`
+		BearerToken string
 	}
 
-	UpdateAssistantConfigOutput struct {
+	UpdateUIThemeOutput struct {
 		Data ProfileData `json:"data"`
 	}
 )
 
-func NewUpdateAssistantConfigUsecase(contextFactory appcontext.Factory) UpdateAssistantConfigUsecase {
-	return &updateAssistantConfigUsecase{contextFactory: contextFactory}
+func NewUpdateUIThemeUsecase(contextFactory appcontext.Factory) UpdateUIThemeUsecase {
+	return &updateUIThemeUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateAssistantConfigInput) (*UpdateAssistantConfigOutput, apperrors.ApplicationError) {
+func (u *updateUIThemeUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	// Reuses the assignment-visibility rule: the requester may touch this
 	// profile if it's their own, or they administer a school the target
-	// belongs to. Without this, opening the route beyond superadmin would let
-	// a school admin rewrite any profile's assistant credentials.
+	// belongs to.
 	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.ID); appErr != nil {
 		return nil, appErr
 	}
 
-	baseURL := strings.TrimSpace(input.AssistantBaseURL)
-	apiKey := strings.TrimSpace(input.AssistantAPIKey)
 	uiTheme := strings.TrimSpace(input.UITheme)
 	if uiTheme == "" {
 		uiTheme = "primary"
@@ -58,7 +54,7 @@ func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, requesterID 
 		return nil, apperrors.NewBadRequestError("ui_theme must be primary or secondary")
 	}
 
-	if err := app.Repositories.UserProfile.UpdateAssistantConfig(ctx, input.ID, baseURL, apiKey, uiTheme); err != nil {
+	if err := app.Repositories.UserProfile.UpdateUITheme(ctx, input.ID, uiTheme); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileSyncError, err)
 	}
 
@@ -76,5 +72,5 @@ func (u *updateAssistantConfigUsecase) Execute(ctx context.Context, requesterID 
 	}
 	info := names[input.ID]
 
-	return &UpdateAssistantConfigOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email)}, nil
+	return &UpdateUIThemeOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }

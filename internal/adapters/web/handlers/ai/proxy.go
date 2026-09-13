@@ -8,6 +8,7 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/http"
+	"net/textproto"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -68,10 +69,21 @@ func proxyToAssistant(uc ucAI.ProxyUsecase, pathBuilder func(*gin.Context) strin
 
 const tutorInstruction = `INSTRUCCIONES OBLIGATORIAS DEL ASISTENTE PARA PRACTIQ:
 Ayuda al alumno a aprender, no a copiar respuestas. No des respuestas finales ni resuelvas completamente ejercicios evaluables. Da una pista, explicación breve, pregunta guía o siguiente paso.
-No reveles ni cites respuestas correctas, correcciones, feedback ni resultados previos presentes en contexto o imagen. Usa contexto estructurado como fuente principal; usa imagen manuscrita sólo como apoyo.
+No cites respuestas correctas, correcciones ni feedback previos que vengan en el contexto o en la imagen.
 Si alumno insiste en resultado final, recházalo con amabilidad y guía el procedimiento. Responde en español.
 
 Mensaje del alumno:`
+
+// Added only when the message carries the student's page, because that image
+// is the whole answer in a handwritten exercise and the conversation it
+// arrives in usually holds an earlier verdict about an earlier version of it.
+//
+// A student who writes a wrong answer, asks for a review, erases it and fixes
+// it was being told "incorrecta" a second time: same wording, no fresh
+// context to notice, and its own confident verdict sitting in the history.
+// The image is the only thing that changed, so it has to be what decides.
+const attachedWorkInstruction = `La imagen adjunta es el estado ACTUAL de la hoja del alumno y reemplaza cualquier imagen o veredicto anterior de esta conversación. El alumno pudo haber borrado y corregido desde tu última respuesta.
+Evalúa únicamente lo que ves en esta imagen, partiendo de cero, sin dar por válido ningún juicio previo tuyo. En ejercicios manuscritos la respuesta está solamente en la imagen: es la fuente principal.`
 
 func enrichTutorMessage(contentType string, body []byte) (string, []byte, error) {
 	mediaType, params, err := mime.ParseMediaType(contentType)
@@ -84,9 +96,19 @@ func enrichTutorMessage(contentType string, body []byte) (string, []byte, error)
 		return "", nil, io.ErrUnexpectedEOF
 	}
 
+	// Buffered rather than streamed because the instruction depends on whether
+	// an image is attached, and the parts arrive in whatever order the browser
+	// built the form — "content" is usually first, the image after it.
+	type formPart struct {
+		header textproto.MIMEHeader
+		name   string
+		file   string
+		data   []byte
+	}
+
 	reader := multipart.NewReader(bytes.NewReader(body), boundary)
-	var rewritten bytes.Buffer
-	writer := multipart.NewWriter(&rewritten)
+	parts := make([]formPart, 0, 8)
+	hasImage := false
 
 	for {
 		part, partErr := reader.NextPart()
@@ -97,28 +119,41 @@ func enrichTutorMessage(contentType string, body []byte) (string, []byte, error)
 			return "", nil, partErr
 		}
 
-		destination, createErr := writer.CreatePart(part.Header)
+		data, readErr := io.ReadAll(part)
+		if readErr != nil {
+			return "", nil, readErr
+		}
+		if part.FormName() == "image_content" && len(data) > 0 {
+			hasImage = true
+		}
+		parts = append(parts, formPart{header: part.Header, name: part.FormName(), file: part.FileName(), data: data})
+	}
+
+	instruction := tutorInstruction
+	if hasImage {
+		instruction = tutorInstruction + "\n" + attachedWorkInstruction
+	}
+
+	var rewritten bytes.Buffer
+	writer := multipart.NewWriter(&rewritten)
+
+	for _, part := range parts {
+		destination, createErr := writer.CreatePart(part.header)
 		if createErr != nil {
 			return "", nil, createErr
 		}
 
-		if part.FormName() == "content" && part.FileName() == "" {
-			content, readErr := io.ReadAll(part)
-			if readErr != nil {
-				return "", nil, readErr
-			}
-			message := strings.TrimSpace(string(content))
+		payload := part.data
+		if part.name == "content" && part.file == "" {
+			message := strings.TrimSpace(string(part.data))
 			if !strings.Contains(message, "POLITICA OBLIGATORIA:") && !strings.Contains(message, "INSTRUCCIONES OBLIGATORIAS DEL ASISTENTE PARA PRACTIQ:") {
-				message = tutorInstruction + "\n" + message
+				message = instruction + "\n" + message
 			}
-			if _, writeErr := io.WriteString(destination, message); writeErr != nil {
-				return "", nil, writeErr
-			}
-			continue
+			payload = []byte(message)
 		}
 
-		if _, copyErr := io.Copy(destination, part); copyErr != nil {
-			return "", nil, copyErr
+		if _, writeErr := destination.Write(payload); writeErr != nil {
+			return "", nil, writeErr
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -33,20 +34,9 @@ func NewProxyUsecase(contextFactory appcontext.Factory) ProxyUsecase {
 func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*assistant.ProxyResponse, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	profile, err := app.Repositories.UserProfile.Get(ctx, input.UserID)
-	if err != nil {
-		return nil, apperrors.NewInternalError(err)
-	}
-	if profile == nil {
-		return nil, apperrors.NewNotFoundError("profile not found")
-	}
-
-	cfg := assistant.Config{
-		BaseURL: profile.AssistantBaseURL,
-		APIKey:  profile.AssistantAPIKey,
-	}
+	cfg := assistantcfg.Resolve(ctx, app)
 	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
-		return nil, apperrors.NewBadRequestError("assistant is not configured for this profile")
+		return nil, apperrors.NewBadRequestError("the assistant is not configured for this platform")
 	}
 
 	response, proxyErr := app.Integrations.AssistantGateway.Proxy(ctx, cfg, input.Method, input.Path, input.ContentType, input.Body)

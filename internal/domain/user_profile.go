@@ -11,9 +11,7 @@ type UserProfile struct {
 	AcademicStatus string
 	// Timezone is the IANA zone the student's day is measured in, reported by
 	// the browser. Empty falls back to DefaultTimezone.
-	Timezone         string
-	AssistantBaseURL string
-	AssistantAPIKey  string
-	UITheme          string
-	CreatedAt        time.Time
+	Timezone  string
+	UITheme   string
+	CreatedAt time.Time
 }

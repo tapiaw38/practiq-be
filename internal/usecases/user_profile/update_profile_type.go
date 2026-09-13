@@ -7,6 +7,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -49,5 +50,5 @@ func (u *updateProfileTypeUsecase) Execute(ctx context.Context, id, profileType,
 		return nil, appErr
 	}
 	info := names[id]
-	return &UpdateProfileTypeOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email)}, nil
+	return &UpdateProfileTypeOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }

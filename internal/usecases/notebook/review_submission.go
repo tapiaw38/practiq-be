@@ -6,9 +6,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 	"github.com/tapiaw38/practiq-be/internal/usecases/datauri"
 )
 
@@ -47,16 +47,7 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		return nil, fmt.Errorf("page not found")
 	}
 
-	profile, _ := app.Repositories.UserProfile.Get(ctx, submission.StudentID)
-	assistantCfg := assistant.Config{}
-	if profile != nil {
-		assistantCfg.BaseURL = profile.AssistantBaseURL
-		assistantCfg.APIKey = profile.AssistantAPIKey
-	}
-
-	if app.Integrations.AssistantGateway != nil && !app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
-		assistantCfg = teacherAssistantConfig(ctx, app, submission.TeacherID)
-	}
+	assistantCfg := assistantcfg.Resolve(ctx, app)
 	if app.Integrations.AssistantGateway == nil || !app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
 		return nil, fmt.Errorf("assistant service not configured")
 	}

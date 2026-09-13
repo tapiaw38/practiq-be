@@ -5,9 +5,9 @@ import (
 	"log"
 	"strings"
 
-	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 func pageHasImageStatement(contentData string) bool {
@@ -26,7 +26,7 @@ func ensurePageStatement(ctx context.Context, app *appcontext.Context, teacherID
 		return false
 	}
 
-	cfg := teacherAssistantConfig(ctx, app, teacherID)
+	cfg := assistantcfg.Resolve(ctx, app)
 	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return false
 	}
@@ -57,16 +57,6 @@ func ensurePageStatement(ctx context.Context, app *appcontext.Context, teacherID
 	return true
 }
 
-func teacherAssistantConfig(ctx context.Context, app *appcontext.Context, teacherID string) assistant.Config {
-	cfg := assistant.Config{}
-	profile, _ := app.Repositories.UserProfile.Get(ctx, teacherID)
-	if profile != nil {
-		cfg.BaseURL = profile.AssistantBaseURL
-		cfg.APIKey = profile.AssistantAPIKey
-	}
-	return cfg
-}
-
 func transcribePageStatement(ctx context.Context, app *appcontext.Context, teacherID, contentData string, page domain.NotebookPage) string {
 	if !pageHasImageStatement(contentData) {
 		return ""
@@ -75,7 +65,7 @@ func transcribePageStatement(ctx context.Context, app *appcontext.Context, teach
 		return ""
 	}
 
-	cfg := teacherAssistantConfig(ctx, app, teacherID)
+	cfg := assistantcfg.Resolve(ctx, app)
 	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		return ""
 	}

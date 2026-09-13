@@ -7,6 +7,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -44,5 +45,5 @@ func (u *getUsecase) Execute(ctx context.Context, id, bearerToken string) (*GetO
 	}
 	info := names[id]
 
-	return &GetOutput{Data: toProfileData(*p, identity.FullName(info, id), info.Email)}, nil
+	return &GetOutput{Data: toProfileData(*p, identity.FullName(info, id), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }

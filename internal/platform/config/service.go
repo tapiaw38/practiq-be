@@ -27,6 +27,7 @@ func InitConfigService() {
 			PaymentsURL:          getEnv("PAYMENTS_URL", ""),
 			PaymentsAPIKey:       getEnv("PAYMENTS_API_KEY", ""),
 			MercadoPagoPublicKey: getEnv("MP_PUBLIC_KEY", ""),
+			GillieConfigSecret:   getEnv("GILLIE_CONFIG_SECRET", jwtSecret),
 		},
 		DatabaseConfig: DatabaseConfig{
 			DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:54323/practiq-db?sslmode=disable"),

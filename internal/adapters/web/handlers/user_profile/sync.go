@@ -14,14 +14,10 @@ type syncInput struct {
 	ProfileType string `json:"profile_type"`
 	// Timezone is the IANA zone the browser reports. Empty leaves whatever is
 	// stored: the streak is measured with it and most clients do not send one.
-	Timezone         string `json:"timezone"`
-	AssistantBaseURL string `json:"assistant_base_url"`
-	AssistantAPIKey  string `json:"assistant_api_key"`
+	Timezone string `json:"timezone"`
 }
-type assistantConfigInput struct {
-	AssistantBaseURL string `json:"assistant_base_url"`
-	AssistantAPIKey  string `json:"assistant_api_key"`
-	UITheme          string `json:"ui_theme"`
+type uiThemeInput struct {
+	UITheme string `json:"ui_theme"`
 }
 type academicStatusInput struct {
 	AcademicStatus string `json:"academic_status" binding:"required"`
@@ -38,12 +34,10 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 		userID := middlewares.GetUserID(c)
 
 		output, appErr := uc.Execute(c, ucProfile.SyncInput{
-			ID:               userID,
-			ProfileType:      input.ProfileType,
-			Timezone:         input.Timezone,
-			AssistantBaseURL: input.AssistantBaseURL,
-			AssistantAPIKey:  input.AssistantAPIKey,
-			BearerToken:      c.GetHeader("Authorization"),
+			ID:          userID,
+			ProfileType: input.ProfileType,
+			Timezone:    input.Timezone,
+			BearerToken: c.GetHeader("Authorization"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

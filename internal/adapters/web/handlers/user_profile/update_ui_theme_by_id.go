@@ -9,9 +9,9 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
-func NewUpdateAssistantConfigByIDHandler(uc ucProfile.UpdateAssistantConfigUsecase) gin.HandlerFunc {
+func NewUpdateUIThemeByIDHandler(uc ucProfile.UpdateUIThemeUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var input assistantConfigInput
+		var input uiThemeInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -23,12 +23,10 @@ func NewUpdateAssistantConfigByIDHandler(uc ucProfile.UpdateAssistantConfigUseca
 			return
 		}
 
-		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), ucProfile.UpdateAssistantConfigInput{
-			ID:               profileID,
-			AssistantBaseURL: input.AssistantBaseURL,
-			AssistantAPIKey:  input.AssistantAPIKey,
-			UITheme:          input.UITheme,
-			BearerToken:      c.GetHeader("Authorization"),
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), ucProfile.UpdateUIThemeInput{
+			ID:          profileID,
+			UITheme:     input.UITheme,
+			BearerToken: c.GetHeader("Authorization"),
 		})
 		if appErr != nil {
 			appErr.Log(c)

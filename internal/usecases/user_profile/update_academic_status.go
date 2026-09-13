@@ -7,6 +7,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -52,5 +53,5 @@ func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status, b
 	}
 	info := names[id]
 
-	return &UpdateAcademicStatusOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email)}, nil
+	return &UpdateAcademicStatusOutput{Data: toProfileData(*profile, identity.FullName(info, id), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }

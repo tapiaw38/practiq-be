@@ -8,6 +8,7 @@ import (
 	courseprogress "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/exercise"
+	gilliesettings "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/gillie_settings"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/grade"
 	learningstrategy "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/material"
@@ -49,6 +50,7 @@ type Repositories struct {
 	SubmitJob                submitjob.Repository
 	Notification             notification.Repository
 	SiteContact              sitecontact.Repository
+	GillieSettings           gilliesettings.Repository
 }
 
 type Factory func() *Repositories
@@ -78,6 +80,7 @@ func NewFactory(ds *datasources.Datasources) func() *Repositories {
 			SubmitJob:                submitjob.NewRepository(ds.DB),
 			Notification:             notification.NewRepository(ds.DB),
 			SiteContact:              sitecontact.NewRepository(ds.DB),
+			GillieSettings:           gilliesettings.NewRepository(ds.DB),
 		}
 	}
 }

@@ -16,6 +16,10 @@ type (
 		// details into a token without them passing through us. It is public
 		// by design; the secret half never leaves the payments service.
 		MercadoPagoPublicKey string
+		// GillieConfigSecret encrypts the Gillie API key a superadmin stores.
+		// The credentials themselves live in the database and nowhere else;
+		// this is only the key that makes them readable.
+		GillieConfigSecret string
 	}
 
 	DatabaseConfig struct {

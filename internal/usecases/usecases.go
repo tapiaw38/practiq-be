@@ -136,11 +136,11 @@ type AIUsecases struct {
 }
 
 type ProfileUsecases struct {
-	Sync                  ucProfile.SyncUsecase
-	Get                   ucProfile.GetUsecase
-	UpdateAssistantConfig ucProfile.UpdateAssistantConfigUsecase
-	UpdateAcademicStatus  ucProfile.UpdateAcademicStatusUsecase
-	UpdateProfileType     ucProfile.UpdateProfileTypeUsecase
+	Sync                 ucProfile.SyncUsecase
+	Get                  ucProfile.GetUsecase
+	UpdateUITheme        ucProfile.UpdateUIThemeUsecase
+	UpdateAcademicStatus ucProfile.UpdateAcademicStatusUsecase
+	UpdateProfileType    ucProfile.UpdateProfileTypeUsecase
 }
 
 type NotebookUsecases struct {
@@ -335,11 +335,11 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			GenerateCuriosities: ucAI.NewGenerateCuriositiesUsecase(contextFactory),
 		},
 		Profile: ProfileUsecases{
-			Sync:                  ucProfile.NewSyncUsecase(contextFactory),
-			Get:                   ucProfile.NewGetUsecase(contextFactory),
-			UpdateAssistantConfig: ucProfile.NewUpdateAssistantConfigUsecase(contextFactory),
-			UpdateAcademicStatus:  ucProfile.NewUpdateAcademicStatusUsecase(contextFactory),
-			UpdateProfileType:     ucProfile.NewUpdateProfileTypeUsecase(contextFactory),
+			Sync:                 ucProfile.NewSyncUsecase(contextFactory),
+			Get:                  ucProfile.NewGetUsecase(contextFactory),
+			UpdateUITheme:        ucProfile.NewUpdateUIThemeUsecase(contextFactory),
+			UpdateAcademicStatus: ucProfile.NewUpdateAcademicStatusUsecase(contextFactory),
+			UpdateProfileType:    ucProfile.NewUpdateProfileTypeUsecase(contextFactory),
 		},
 		Notebook: NotebookUsecases{
 			Create:           ucNB.NewCreateUsecase(contextFactory),

@@ -131,6 +131,12 @@ func validateAssistantURL(rawURL string) error {
 	})
 }
 
+// ValidateBaseURL lets the admin panel refuse a URL at the moment it is set
+// with the same rule every call applies, instead of at the first evaluation.
+func ValidateBaseURL(rawURL string) error {
+	return validateAssistantURL(rawURL)
+}
+
 func readAssistantResponseBody(body io.Reader) ([]byte, error) {
 	responseBody, err := io.ReadAll(io.LimitReader(body, maxAssistantResponseBytes+1))
 	if err != nil {

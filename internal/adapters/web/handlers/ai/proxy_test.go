@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime"
 	"mime/multipart"
+	"strings"
 	"testing"
 )
 
@@ -108,4 +109,96 @@ func readMultipartValues(t *testing.T, contentType string, body []byte) map[stri
 		}
 		values[part.FormName()] = string(content)
 	}
+}
+
+func TestEnrichTutorMessageTellsTheModelToRejudgeAttachedWork(t *testing.T) {
+	// The exact shape a "Revisá" sends: the student's page attached, and the
+	// same wording as the previous review, whose "incorrecta" is still in the
+	// conversation. Without this instruction the model repeats that verdict
+	// even after the student erased and fixed the answer.
+	body, contentType := multipartWithImage(t,
+		map[string]string{"content": "Revisá mi respuesta actual y ayudame a mejorarla."},
+		"image_content", "practice-1.jpg", []byte("fake-png-bytes"),
+	)
+
+	rewrittenType, rewrittenBody, err := enrichTutorMessage(contentType, body)
+	if err != nil {
+		t.Fatalf("enrichTutorMessage() error = %v", err)
+	}
+
+	values := readMultipartValues(t, rewrittenType, rewrittenBody)
+	if !strings.Contains(values["content"], attachedWorkInstruction) {
+		t.Fatalf("content = %q, want the attached-work instruction", values["content"])
+	}
+	if values["image_content"] != "fake-png-bytes" {
+		t.Fatalf("image_content = %q, want the attachment forwarded untouched", values["image_content"])
+	}
+}
+
+func TestEnrichTutorMessageLeavesTextOnlyMessagesAlone(t *testing.T) {
+	body, contentType := multipartBody(t, map[string]string{
+		"content": "Dame una pista sin revelar la respuesta.",
+	})
+
+	rewrittenType, rewrittenBody, err := enrichTutorMessage(contentType, body)
+	if err != nil {
+		t.Fatalf("enrichTutorMessage() error = %v", err)
+	}
+
+	values := readMultipartValues(t, rewrittenType, rewrittenBody)
+	if strings.Contains(values["content"], attachedWorkInstruction) {
+		t.Fatal("a message with no attachment should not talk about an attached image")
+	}
+}
+
+func TestEnrichTutorMessageHandlesImageBeforeContent(t *testing.T) {
+	// The instruction depends on a part that may arrive after the one it
+	// changes, which is why the parts are buffered before being rewritten.
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("image_content", "page.png")
+	if err != nil {
+		t.Fatalf("CreateFormFile() error = %v", err)
+	}
+	if _, err := file.Write([]byte("bytes")); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := writer.WriteField("content", "Revisá mi respuesta actual y ayudame a mejorarla."); err != nil {
+		t.Fatalf("WriteField() error = %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+
+	rewrittenType, rewrittenBody, err := enrichTutorMessage(writer.FormDataContentType(), body.Bytes())
+	if err != nil {
+		t.Fatalf("enrichTutorMessage() error = %v", err)
+	}
+
+	values := readMultipartValues(t, rewrittenType, rewrittenBody)
+	if !strings.Contains(values["content"], attachedWorkInstruction) {
+		t.Fatal("the image was not noticed because it arrived after the content part")
+	}
+}
+
+func multipartWithImage(t *testing.T, fields map[string]string, fileField, filename string, data []byte) ([]byte, string) {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	for name, value := range fields {
+		if err := writer.WriteField(name, value); err != nil {
+			t.Fatalf("WriteField() error = %v", err)
+		}
+	}
+	file, err := writer.CreateFormFile(fileField, filename)
+	if err != nil {
+		t.Fatalf("CreateFormFile() error = %v", err)
+	}
+	if _, err := file.Write(data); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("Close() error = %v", err)
+	}
+	return body.Bytes(), writer.FormDataContentType()
 }

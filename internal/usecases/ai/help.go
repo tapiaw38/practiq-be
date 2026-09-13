@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
-	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 var mockResponses = map[string][]string{
@@ -126,8 +126,8 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 		log.Printf("[ai_help] warning: failed to get user profile student_id=%s err=%v", input.StudentID, err)
 		return getMockResponse(helpType)
 	}
-	if profile == nil || profile.AssistantBaseURL == "" {
-		log.Printf("[ai_help] warning: assistant not configured for student_id=%s", input.StudentID)
+	if profile == nil {
+		log.Printf("[ai_help] warning: no profile for student_id=%s", input.StudentID)
 		return getMockResponse(helpType)
 	}
 
@@ -154,10 +154,7 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 	}
 	prompt := buildHelpPrompt(helpType, input.Question, input.StudentAnswer, exercise, gradeName, history)
 
-	cfg := assistant.Config{
-		BaseURL: profile.AssistantBaseURL,
-		APIKey:  profile.AssistantAPIKey,
-	}
+	cfg := assistantcfg.Resolve(ctx, app)
 
 	aiResponse, err := app.Integrations.AssistantGateway.AskHelp(ctx, cfg, prompt)
 	if err != nil {

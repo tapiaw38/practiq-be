@@ -10,6 +10,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
 type (
@@ -76,17 +77,9 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		AnswerText: input.AnswerText,
 	}
 
-	profile, _ := app.Repositories.UserProfile.Get(ctx, input.StudentID)
-	assistantCfg := assistant.Config{}
-	if profile != nil {
-		assistantCfg.BaseURL = profile.AssistantBaseURL
-		assistantCfg.APIKey = profile.AssistantAPIKey
-	}
+	assistantCfg := assistantcfg.Resolve(ctx, app)
 
 	statementReady := ensurePageStatement(ctx, app, notebook.TeacherID, page)
-	if app.Integrations.AssistantGateway != nil && !app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
-		assistantCfg = teacherAssistantConfig(ctx, app, notebook.TeacherID)
-	}
 
 	// Whether a teacher is needed is decided at the end, from what the assistant
 	// managed to do. It is read here because the OCR path rewrites canvasForOCR.

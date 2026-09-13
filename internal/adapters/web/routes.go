@@ -2,6 +2,7 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
+	gilliesettingsRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/gillie_settings"
 	sitecontactRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/site_contact"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	userprofileRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
@@ -12,6 +13,7 @@ import (
 	handlerCP "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/course_progress"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/enrollment"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/exercise"
+	gilliesettings "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/gillie_settings"
 	handlerGrade "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/grade"
 	handlerLS "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
@@ -36,7 +38,7 @@ import (
 	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, revoked *revocation.Checker) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, gillie gilliesettingsRepo.Repository, revoked *revocation.Checker) {
 	// Landing catalogue. It deliberately exposes only active, sellable plans;
 	// everything that identifies a teacher or manages a subscription remains
 	// behind the authenticated API group below.
@@ -52,16 +54,21 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
 	api.GET("/profile", userprofile.NewGetHandler(uc.Profile.Get))
 	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
-	api.PUT("/profile/assistant-config", userprofile.NewUpdateAssistantConfigHandler(uc.Profile.UpdateAssistantConfig))
+	api.PUT("/profile/ui-theme", userprofile.NewUpdateUIThemeHandler(uc.Profile.UpdateUITheme))
 	adminOnly := api.Group("/")
 	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
 	adminOnly.GET("/site-contact", sitecontact.Get(contacts))
 	adminOnly.PUT("/site-contact", sitecontact.Update(contacts))
+	// One assistant for the whole platform, set by the superadmin. The key is
+	// stored encrypted and never comes back out: GET answers with its last four
+	// characters, which is all anyone needs to tell two keys apart.
+	adminOnly.GET("/gillie-settings", gilliesettings.Get(gillie))
+	adminOnly.PUT("/gillie-settings", gilliesettings.Update(gillie))
 	teacherOnly := api.Group("/")
 	teacherOnly.Use(middlewares.RequireTeacher())
 	// School-scoped: school.EnsureCanViewAssignmentsFor in the usecase, same
 	// rule as teacher-student assignment above.
-	teacherOnly.PUT("/profile/:id/assistant-config", userprofile.NewUpdateAssistantConfigByIDHandler(uc.Profile.UpdateAssistantConfig))
+	teacherOnly.PUT("/profile/:id/ui-theme", userprofile.NewUpdateUIThemeByIDHandler(uc.Profile.UpdateUITheme))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
 
@@ -132,6 +139,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
 
 	// Exercises
+	teacherOnly.POST("/topics/:id/exercise-drafts/ai", ai.NewExerciseDraftsHandler(uc.AI.Proxy, uc.Exercise.List))
 	teacherOnly.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
 	api.GET("/topics/:id/exercises", exercise.NewListHandler(uc.Exercise.List))
 	api.GET("/exercises/:id/statement-image", exercise.NewStatementImageHandler(uc.Exercise.StatementImage))
