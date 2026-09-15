@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -42,8 +43,8 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, apperrors.NewNotFoundError("notebook not found")
 	}
 
-	if !isSuperAdmin && nb.TeacherID != requesterID {
-		return nil, apperrors.NewForbiddenError()
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, nb.CourseID); appErr != nil {
+		return nil, appErr
 	}
 
 	if err := app.Repositories.Notebook.Update(ctx, id, domain.Notebook{

@@ -22,8 +22,9 @@ func NewGenerateCuriositiesHandler(uc ucAI.GenerateCuriositiesUsecase) gin.Handl
 		}
 
 		output, appErr := uc.Execute(c, ucAI.GenerateCuriositiesInput{
-			UserID:   userID,
-			CourseID: input.CourseID,
+			UserID:       userID,
+			IsSuperAdmin: middlewares.IsSuperAdmin(c),
+			CourseID:     input.CourseID,
 		})
 		if appErr != nil {
 			appErr.Log(c)

@@ -32,9 +32,25 @@ func OwnedSchoolID(ctx context.Context, app *appcontext.Context, userID string) 
 	return "", apperrors.NewBadRequestError("you do not administer a school")
 }
 
-func OwnedSchoolIDSelected(ctx context.Context, app *appcontext.Context, userID, schoolID string) (string, apperrors.ApplicationError) {
+// OwnedSchoolIDSelected is OwnedSchoolID for a caller who picked a school.
+//
+// A superadmin passes on the school they selected, as everywhere else: they
+// administer no school by membership, so without this they could create a
+// course in an institution but not the grade or subject that course needs. They
+// are still refused a school that is not active, and still have to select one —
+// there is no sensible default for an operator who belongs to none.
+func OwnedSchoolIDSelected(ctx context.Context, app *appcontext.Context, userID string, isSuperAdmin bool, schoolID string) (string, apperrors.ApplicationError) {
 	if schoolID == "" {
+		if isSuperAdmin {
+			return "", apperrors.NewBadRequestError("select a school first")
+		}
 		return OwnedSchoolID(ctx, app, userID)
+	}
+	if isSuperAdmin {
+		if appErr := RequireActive(ctx, app, schoolID); appErr != nil {
+			return "", appErr
+		}
+		return schoolID, nil
 	}
 	members, err := app.Repositories.School.ListForUser(ctx, userID)
 	if err != nil {

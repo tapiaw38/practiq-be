@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -50,17 +51,8 @@ func (u *assignToCourseUsecase) Execute(ctx context.Context, requesterID, course
 		return nil, apperrors.NewNotFoundError("learning strategy not found")
 	}
 
-	// Verify course exists and check ownership
-	course, err := app.Repositories.Course.Get(ctx, courseID)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-	}
-	if course == nil {
-		return nil, apperrors.NewNotFoundError("course not found")
-	}
-
-	if !isSuperAdmin && course.TeacherID != requesterID {
-		return nil, apperrors.NewForbiddenError()
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID); appErr != nil {
+		return nil, appErr
 	}
 
 	config := input.Config

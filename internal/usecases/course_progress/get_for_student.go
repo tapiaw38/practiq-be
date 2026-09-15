@@ -6,6 +6,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -38,12 +39,8 @@ func (u *getForStudentUsecase) Execute(ctx context.Context, requesterID, student
 			return nil, apperrors.NewForbiddenError()
 		}
 
-		course, err := app.Repositories.Course.Get(ctx, courseID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil || course.TeacherID != requesterID {
-			return nil, apperrors.NewForbiddenError()
+		if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID); appErr != nil {
+			return nil, appErr
 		}
 	}
 

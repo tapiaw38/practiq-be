@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 // requesterCanReadExercise allows the course's teacher and anyone taking the
@@ -57,18 +58,6 @@ func requesterCanWriteTopic(ctx context.Context, app *appcontext.Context, reques
 }
 
 func requesterCanWriteCourse(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) apperrors.ApplicationError {
-	if isSuperAdmin {
-		return nil
-	}
-	course, err := app.Repositories.Course.Get(ctx, courseID)
-	if err != nil {
-		return apperrors.NewApplicationError(mappings.CourseGetError, err)
-	}
-	if course == nil {
-		return apperrors.NewNotFoundError("course not found")
-	}
-	if course.TeacherID != requesterID {
-		return apperrors.NewForbiddenError()
-	}
-	return nil
+	_, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID)
+	return appErr
 }

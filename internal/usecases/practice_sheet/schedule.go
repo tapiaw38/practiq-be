@@ -11,21 +11,17 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 const sheetTypeLevelTest = "level_test"
 
-// isCourseTeacher reports whether the requester owns the course. Teachers and
-// admins bypass the schedule so they can review a test before its date.
+// isCourseTeacher reports whether the requester manages the course. The
+// course's teacher, the school's admin and a superadmin bypass the schedule so
+// they can review a test before its date.
 func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) bool {
-	if isSuperAdmin {
-		return true
-	}
-	course, err := app.Repositories.Course.Get(ctx, courseID)
-	if err != nil || course == nil {
-		return false
-	}
-	return course.TeacherID == requesterID
+	_, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID)
+	return appErr == nil
 }
 
 // ensureSheetIsOpen gates a scheduled level test to its availability window.

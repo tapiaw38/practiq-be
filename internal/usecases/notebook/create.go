@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -34,15 +35,9 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 
 func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
-	course, err := app.Repositories.Course.Get(ctx, input.CourseID)
-	if err != nil {
-		return nil, apperrors.NewApplicationError(mappings.NotebookGetError, err)
-	}
-	if course == nil {
-		return nil, apperrors.NewNotFoundError("course not found")
-	}
-	if !isSuperAdmin && course.TeacherID != requesterID {
-		return nil, apperrors.NewForbiddenError()
+	course, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID)
+	if appErr != nil {
+		return nil, appErr
 	}
 
 	// Authorization on update/delete/pages and the submission queue all filter

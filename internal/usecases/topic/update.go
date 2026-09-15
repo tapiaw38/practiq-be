@@ -45,17 +45,8 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, apperrors.NewNotFoundError("topic not found")
 	}
 
-	if !isSuperAdmin {
-		course, err := app.Repositories.Course.Get(ctx, topic.CourseID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil {
-			return nil, apperrors.NewNotFoundError("course not found")
-		}
-		if course.TeacherID != requesterID {
-			return nil, apperrors.NewForbiddenError()
-		}
+	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isSuperAdmin, topic.CourseID); appErr != nil {
+		return nil, appErr
 	}
 
 	if err := app.Repositories.Topic.Update(ctx, id, domain.Topic{

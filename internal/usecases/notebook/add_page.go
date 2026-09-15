@@ -9,6 +9,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/usecases/datauri"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -45,8 +46,8 @@ func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSupe
 	if notebook == nil {
 		return nil, apperrors.NewNotFoundError("notebook not found")
 	}
-	if !isSuperAdmin && notebook.TeacherID != requesterID {
-		return nil, apperrors.NewForbiddenError()
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, notebook.CourseID); appErr != nil {
+		return nil, appErr
 	}
 
 	contentData := input.ContentData

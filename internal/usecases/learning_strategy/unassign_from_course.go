@@ -6,6 +6,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -33,17 +34,8 @@ func (u *unassignFromCourseUsecase) Execute(ctx context.Context, requesterID, id
 		return apperrors.NewNotFoundError("course learning strategy assignment not found")
 	}
 
-	if !isSuperAdmin {
-		course, err := app.Repositories.Course.Get(ctx, existing.CourseID)
-		if err != nil {
-			return apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil {
-			return apperrors.NewNotFoundError("course not found")
-		}
-		if course.TeacherID != requesterID {
-			return apperrors.NewForbiddenError()
-		}
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, existing.CourseID); appErr != nil {
+		return appErr
 	}
 
 	if err := app.Repositories.LearningStrategy.UnassignFromCourse(ctx, id); err != nil {

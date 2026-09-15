@@ -7,6 +7,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -35,8 +36,11 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		return nil, nil
 	}
 
+	_, manageErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, nb.CourseID)
+	manages := manageErr == nil
+
 	if studentID == "" {
-		if !isSuperAdmin && nb.TeacherID != requesterID {
+		if !manages {
 			hasAccess, _ := studentHasNotebookCourseAccess(ctx, app, requesterID, nb.CourseID)
 			if hasAccess {
 				studentID = requesterID
@@ -59,7 +63,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 			if err != nil {
 				return nil, apperrors.NewApplicationError(mappings.AssignmentListError, err)
 			}
-			if !hasStudentAccess || nb.TeacherID != requesterID {
+			if !hasStudentAccess || !manages {
 				return nil, apperrors.NewForbiddenError()
 			}
 		}

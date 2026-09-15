@@ -11,6 +11,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -39,12 +40,8 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSu
 			return nil, apperrors.NewForbiddenError()
 		}
 		if filter.CourseID != "" {
-			course, err := app.Repositories.Course.Get(ctx, filter.CourseID)
-			if err != nil {
-				return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-			}
-			if course == nil || course.TeacherID != teacherID {
-				return nil, apperrors.NewForbiddenError()
+			if _, appErr := school.EnsureCanManageCourse(ctx, app, teacherID, isSuperAdmin, filter.CourseID); appErr != nil {
+				return nil, appErr
 			}
 		}
 	}

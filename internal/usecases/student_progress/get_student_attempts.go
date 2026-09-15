@@ -6,6 +6,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -51,14 +52,10 @@ func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID str
 		if sheet == nil {
 			return nil, apperrors.NewNotFoundError("practice sheet not found")
 		}
-		// Course.Get filters out soft-deleted courses, so a nil course here is
-		// also the deleted-course case.
-		course, err := app.Repositories.Course.Get(ctx, sheet.CourseID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil || course.TeacherID != requesterID {
-			return nil, apperrors.NewForbiddenError()
+		// EnsureCanManageCourse's Get filters out soft-deleted courses, so a
+		// not-found error here is also the deleted-course case.
+		if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, sheet.CourseID); appErr != nil {
+			return nil, appErr
 		}
 	}
 

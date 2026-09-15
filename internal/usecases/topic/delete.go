@@ -34,17 +34,8 @@ func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return apperrors.NewNotFoundError("topic not found")
 	}
 
-	if !isSuperAdmin {
-		course, err := app.Repositories.Course.Get(ctx, topic.CourseID)
-		if err != nil {
-			return apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil {
-			return apperrors.NewNotFoundError("course not found")
-		}
-		if course.TeacherID != requesterID {
-			return apperrors.NewForbiddenError()
-		}
+	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isSuperAdmin, topic.CourseID); appErr != nil {
+		return appErr
 	}
 
 	if err := app.Repositories.Topic.Delete(ctx, id); err != nil {

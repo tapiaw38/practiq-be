@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -44,17 +45,8 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if !isSuperAdmin {
-		course, err := app.Repositories.Course.Get(ctx, input.CourseID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.CourseNotFoundError, err)
-		}
-		if course == nil {
-			return nil, apperrors.NewNotFoundError("course not found")
-		}
-		if course.TeacherID != requesterID {
-			return nil, apperrors.NewForbiddenError()
-		}
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID); appErr != nil {
+		return nil, appErr
 	}
 
 	level := input.Level

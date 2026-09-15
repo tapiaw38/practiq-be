@@ -48,25 +48,8 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, apperrors.NewNotFoundError("exercise not found")
 	}
 
-	if !isSuperAdmin {
-		topic, err := app.Repositories.Topic.Get(ctx, exercise.TopicID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.TopicGetError, err)
-		}
-		if topic == nil {
-			return nil, apperrors.NewNotFoundError("topic not found")
-		}
-
-		course, err := app.Repositories.Course.Get(ctx, topic.CourseID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil {
-			return nil, apperrors.NewNotFoundError("course not found")
-		}
-		if course.TeacherID != requesterID {
-			return nil, apperrors.NewForbiddenError()
-		}
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, exercise.TopicID); appErr != nil {
+		return nil, appErr
 	}
 
 	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata, input.CorrectAnswer); appErr != nil {

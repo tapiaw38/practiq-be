@@ -11,6 +11,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 var defaultCuriosities = []string{
@@ -31,8 +32,9 @@ type (
 	}
 
 	GenerateCuriositiesInput struct {
-		UserID   string
-		CourseID string `json:"course_id" binding:"required"`
+		UserID       string
+		IsSuperAdmin bool
+		CourseID     string `json:"course_id" binding:"required"`
 	}
 
 	GenerateCuriositiesOutput struct {
@@ -60,7 +62,9 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
 
-	if course.TeacherID != input.UserID {
+	_, manageErr := school.EnsureCanManageCourse(ctx, app, input.UserID, input.IsSuperAdmin, input.CourseID)
+	manages := manageErr == nil
+	if !manages {
 		hasAccess, err := userHasCourseAccess(ctx, app, input.UserID, input.CourseID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
@@ -114,7 +118,7 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		return u.fallbackResponse(input.CourseID), nil
 	}
 
-	if course.TeacherID == input.UserID {
+	if manages {
 		if err := app.Repositories.CourseCuriosities.Upsert(ctx, domain.CourseCuriosities{
 			CourseID:    input.CourseID,
 			Curiosities: curiosities,

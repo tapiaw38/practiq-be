@@ -8,6 +8,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -40,18 +41,10 @@ func NewListStudentsUsecase(contextFactory appcontext.Factory) ListStudentsUseca
 func (u *listStudentsUsecase) Execute(ctx context.Context, input ListStudentsInput) (*ListStudentsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// El padrón de un curso es dato de terceros: lo ve quien dicta ese curso.
-	if !input.IsSuperAdmin {
-		course, err := app.Repositories.Course.Get(ctx, input.CourseID)
-		if err != nil {
-			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
-		}
-		if course == nil {
-			return nil, apperrors.NewNotFoundError("course not found")
-		}
-		if course.TeacherID != input.RequesterID {
-			return nil, apperrors.NewForbiddenError()
-		}
+	// El padrón de un curso es dato de terceros: lo ve quien dicta ese curso, el
+	// admin de su escuela, o un superadmin.
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, input.RequesterID, input.IsSuperAdmin, input.CourseID); appErr != nil {
+		return nil, appErr
 	}
 
 	filter := enrollmentRepo.ListFilter{
