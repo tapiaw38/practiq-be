@@ -94,6 +94,17 @@ func NewBadRequestError(msg string) ApplicationError {
 	}, nil)
 }
 
+// NewConflictError answers a request the database refused because it would
+// duplicate something that must stay unique. It is 409 and not 400: the body
+// was well formed, it just lost a race with a row that already exists.
+func NewConflictError(msg string) ApplicationError {
+	return NewApplicationError(mappings.ErrorDetails{
+		InternalCode: "common:conflict",
+		StatusCode:   409,
+		Message:      msg,
+	}, nil)
+}
+
 func NewNotFoundError(msg string) ApplicationError {
 	return NewApplicationError(mappings.ErrorDetails{
 		InternalCode: "common:not-found",

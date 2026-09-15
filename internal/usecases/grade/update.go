@@ -8,6 +8,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/pgerr"
 	schoolUC "github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
@@ -62,6 +63,9 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		Description: input.Description,
 		VisualTheme: visualTheme,
 	}); err != nil {
+		if pgerr.IsUniqueViolation(err, gradeNameConstraint) {
+			return nil, apperrors.NewConflictError("ya existe un grado con ese nombre en esta escuela")
+		}
 		return nil, apperrors.NewApplicationError(mappings.GradeUpdateError, err)
 	}
 

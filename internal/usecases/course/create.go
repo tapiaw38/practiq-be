@@ -2,6 +2,7 @@ package course
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 
@@ -11,6 +12,24 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
+
+// mismatch reports a grade or subject that belongs to another school.
+//
+// The ids travel as the original message so the log says which row and which
+// two schools disagreed. Without them this refusal was indistinguishable in
+// the log from the missing-header case above, which is what made a real
+// 400 in production impossible to tell apart from a client that simply had
+// no school selected.
+func mismatch(kind, id, rowSchool, selectedSchool string) apperrors.ApplicationError {
+	return apperrors.NewApplicationError(
+		mappings.ErrorDetails{
+			InternalCode: "common:bad-request",
+			StatusCode:   400,
+			Message:      kind + " does not belong to active school",
+		},
+		fmt.Errorf("%s %s belongs to school %q, request selected %q", kind, id, rowSchool, selectedSchool),
+	)
+}
 
 type (
 	CreateUsecase interface {
@@ -54,19 +73,33 @@ func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input Creat
 	if strings.TrimSpace(input.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
 	}
+	// Three different failures used to answer with one message here, and the
+	// one that actually happens most reads as the most misleading: with no
+	// school selected, SchoolID is empty, every grade compares unequal to it,
+	// and the caller is told their grade belongs elsewhere when the request
+	// simply never said where "here" is.
+	if strings.TrimSpace(input.SchoolID) == "" {
+		return nil, apperrors.NewBadRequestError("seleccioná una escuela antes de crear un curso")
+	}
 	grade, err := app.Repositories.Grade.Get(ctx, input.GradeID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeGetError, err)
 	}
-	if grade == nil || grade.SchoolID != input.SchoolID {
-		return nil, apperrors.NewBadRequestError("grade does not belong to active school")
+	if grade == nil {
+		return nil, apperrors.NewNotFoundError("grade not found")
+	}
+	if grade.SchoolID != input.SchoolID {
+		return nil, mismatch("grade", input.GradeID, grade.SchoolID, input.SchoolID)
 	}
 	subject, err := app.Repositories.Subject.Get(ctx, input.SubjectID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SubjectGetError, err)
 	}
-	if subject == nil || subject.SchoolID != input.SchoolID {
-		return nil, apperrors.NewBadRequestError("subject does not belong to active school")
+	if subject == nil {
+		return nil, apperrors.NewNotFoundError("subject not found")
+	}
+	if subject.SchoolID != input.SchoolID {
+		return nil, mismatch("subject", input.SubjectID, subject.SchoolID, input.SchoolID)
 	}
 	if appErr := school.EnsureAdministers(ctx, app, input.TeacherID, input.IsSuperAdmin, input.SchoolID); appErr != nil {
 		return nil, appErr

@@ -8,8 +8,13 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/pgerr"
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
+
+// gradeNameConstraint is the unique index from migration 000041. Naming it
+// here keeps the answer tied to the one rule it reports on.
+const gradeNameConstraint = "idx_grades_school_name"
 
 type (
 	CreateUsecase interface {
@@ -64,6 +69,9 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Create
 		CreatedBy:   input.CreatedBy,
 	})
 	if err != nil {
+		if pgerr.IsUniqueViolation(err, gradeNameConstraint) {
+			return nil, apperrors.NewConflictError("ya existe un grado con ese nombre en esta escuela")
+		}
 		return nil, apperrors.NewApplicationError(mappings.GradeCreateError, err)
 	}
 
