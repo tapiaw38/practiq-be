@@ -25,6 +25,7 @@ type (
 		Create(ctx context.Context, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
 		Update(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
 		Close(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in CloseInput) (*SchoolOutput, apperrors.ApplicationError)
+		Suspend(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError)
 		Reopen(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError)
 		Archive(ctx context.Context, isSuperAdmin bool, id, bearerToken string) (*ArchiveOutput, apperrors.ApplicationError)
 		// Mine is what the asking user belongs to, for the school selector.
@@ -46,6 +47,9 @@ type (
 		// institution; a personal school is always subscription-billed.
 		Kind    string `json:"kind"`
 		Billing string `json:"billing"`
+		// AdminUserID is required when a platform operator creates an
+		// institution: there must never be an institution without an admin.
+		AdminUserID string `json:"admin_user_id"`
 	}
 
 	MemberInput struct {
@@ -182,10 +186,30 @@ func (u *manageUsecase) Create(ctx context.Context, in SchoolInput) (*SchoolOutp
 		// subscription would cap it at the free plan on its first student.
 		billing = domain.SchoolBillingDirect
 	}
+	if kind != domain.SchoolKindInstitution {
+		return nil, apperrors.NewBadRequestError("only institutions can be created here")
+	}
+	if billing != domain.SchoolBillingDirect && billing != domain.SchoolBillingSubscription {
+		return nil, apperrors.NewBadRequestError("billing must be direct or subscription")
+	}
+	adminID := strings.TrimSpace(in.AdminUserID)
+	if adminID == "" {
+		return nil, apperrors.NewBadRequestError("an institution needs its first administrator")
+	}
+	profile, err := app.Repositories.UserProfile.Get(ctx, adminID)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
+	}
+	if profile == nil {
+		return nil, apperrors.NewNotFoundError("the administrator has no Practiq profile yet")
+	}
+	if profile.ProfileType != "teacher" {
+		return nil, apperrors.NewBadRequestError("the first administrator must have a teacher profile")
+	}
 
-	id, err := app.Repositories.School.Create(ctx, domain.School{
+	id, err := app.Repositories.School.CreateWithAdmin(ctx, domain.School{
 		Name: name, Kind: kind, Billing: billing,
-	})
+	}, adminID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
@@ -199,16 +223,55 @@ func (u *manageUsecase) Update(ctx context.Context, requesterID string, isSuperA
 		return nil, appErr
 	}
 
+	current, err := app.Repositories.School.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	if current == nil {
+		return nil, apperrors.NewNotFoundError("school not found")
+	}
 	update := domain.School{Name: strings.TrimSpace(in.Name)}
 	if isSuperAdmin {
 		// What a school costs and what it allows are the operator's to change.
 		// An admin renaming their own school must not be able to move it onto
 		// direct billing and stop paying.
-		update.Kind = in.Kind
-		update.Billing = in.Billing
+		if current.Kind == domain.SchoolKindInstitution {
+			update.Kind = in.Kind
+			update.Billing = in.Billing
+			if update.Kind != "" && update.Kind != domain.SchoolKindInstitution {
+				return nil, apperrors.NewBadRequestError("an institution cannot become a personal school")
+			}
+			if update.Billing != "" && update.Billing != domain.SchoolBillingDirect && update.Billing != domain.SchoolBillingSubscription {
+				return nil, apperrors.NewBadRequestError("billing must be direct or subscription")
+			}
+		}
 	}
 
 	if err := app.Repositories.School.Update(ctx, id, update); err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	return u.read(ctx, app, id, "")
+}
+
+// Suspend is a reversible operational pause. Unlike Close, it does not mark
+// the institution as ended or require name confirmation; both states remove
+// it from member scope until Reopen makes it active again.
+func (u *manageUsecase) Suspend(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError) {
+	if !isSuperAdmin {
+		return nil, apperrors.NewForbiddenError()
+	}
+	app := u.contextFactory()
+	school, err := app.Repositories.School.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	if school == nil {
+		return nil, apperrors.NewNotFoundError("school not found")
+	}
+	if school.Status == domain.SchoolStatusClosed {
+		return nil, apperrors.NewBadRequestError("a closed school must be reopened, not suspended")
+	}
+	if err := app.Repositories.School.Suspend(ctx, id); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 	return u.read(ctx, app, id, "")
@@ -320,11 +383,34 @@ func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSup
 	if school.Kind == domain.SchoolKindPersonal && role != domain.SchoolRoleStudent {
 		return apperrors.NewForbiddenError()
 	}
+	// An upsert may demote the only administrator. Reject it before changing
+	// the row, exactly as RemoveMember does.
+	members, err := app.Repositories.School.ListMembers(ctx, schoolID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
+	}
+	wasActiveStudent := false
+	for _, member := range members {
+		if member.UserID != in.UserID {
+			continue
+		}
+		wasActiveStudent = member.Role == domain.SchoolRoleStudent && member.Active
+		if member.Role == domain.SchoolRoleAdmin && member.Active && role != domain.SchoolRoleAdmin {
+			admins, countErr := app.Repositories.School.CountActiveAdmins(ctx, schoolID)
+			if countErr != nil {
+				return apperrors.NewApplicationError(mappings.SchoolLookupError, countErr)
+			}
+			if admins <= 1 {
+				return apperrors.NewBadRequestError("an active school needs at least one admin")
+			}
+		}
+		break
+	}
 
 	// The same limit every other way in goes through. This one was open: the
 	// "Usuarios" panel adds a student straight to the school, so without it a
 	// teacher could pass their plan from the one screen built for it.
-	if role == domain.SchoolRoleStudent {
+	if role == domain.SchoolRoleStudent && !wasActiveStudent {
 		if appErr := subscription.EnsureCanAddStudent(ctx, app, schoolID, requesterID, in.UserID); appErr != nil {
 			return appErr
 		}
@@ -341,6 +427,9 @@ func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSup
 	}
 	if profile == nil {
 		return apperrors.NewNotFoundError("that person has no Practiq profile yet — they have to sign in once before joining a school")
+	}
+	if role != domain.SchoolRoleStudent && profile.ProfileType != "teacher" {
+		return apperrors.NewBadRequestError("an administrator or teacher must have a teacher profile")
 	}
 
 	if err := app.Repositories.School.AddMember(ctx, domain.SchoolMember{

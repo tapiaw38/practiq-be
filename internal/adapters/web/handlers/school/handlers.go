@@ -86,6 +86,18 @@ func NewCloseHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	}
 }
 
+func NewSuspendHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		output, appErr := uc.Suspend(c, middlewares.IsSuperAdmin(c), c.Param("id"))
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, output)
+	}
+}
+
 func NewReopenHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		output, appErr := uc.Reopen(c, middlewares.IsSuperAdmin(c), c.Param("id"))

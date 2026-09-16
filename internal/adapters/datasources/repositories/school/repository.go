@@ -9,6 +9,7 @@ import (
 
 type Repository interface {
 	Create(context.Context, domain.School) (string, error)
+	CreateWithAdmin(context.Context, domain.School, string) (string, error)
 	// GetPersonal returns the school a teacher owns, or nil. Personal schools
 	// are the only ones with a single owner, so this is the only lookup that
 	// can be answered by user alone.
@@ -22,6 +23,7 @@ type Repository interface {
 	List(ctx context.Context) ([]domain.School, error)
 	Update(ctx context.Context, id string, s domain.School) error
 	Close(ctx context.Context, id, closedBy, reason string) error
+	Suspend(ctx context.Context, id string) error
 	Reopen(ctx context.Context, id string) error
 	CountActiveAdmins(ctx context.Context, schoolID string) (int, error)
 	RemoveMember(ctx context.Context, schoolID, userID string) error

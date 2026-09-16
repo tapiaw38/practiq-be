@@ -55,6 +55,14 @@ func (r *repository) Close(ctx context.Context, id, closedBy, reason string) err
 	return err
 }
 
+func (r *repository) Suspend(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE schools SET status = 'suspended', updated_at = NOW()
+		WHERE id = $1 AND status = 'active'
+	`, id)
+	return err
+}
+
 func (r *repository) Reopen(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE schools SET status = 'active', closed_at = NULL, closed_by = NULL,
