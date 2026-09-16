@@ -15,6 +15,11 @@ func (r *repository) listByFilter(ctx context.Context, studentID, courseID strin
 		LEFT JOIN topics t ON t.id = stp.topic_id
 		LEFT JOIN courses c ON c.id = t.course_id
 		WHERE stp.student_id = $1 AND (c.id IS NULL OR c.deleted_at IS NULL)
+		  AND (
+		    c.id IS NULL
+		    OR EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = stp.student_id)
+		    OR EXISTS (SELECT 1 FROM grade_memberships gm WHERE gm.grade_id = c.grade_id AND gm.user_id = stp.student_id)
+		  )
 	`
 	args := []interface{}{studentID}
 	if courseID != "" {
