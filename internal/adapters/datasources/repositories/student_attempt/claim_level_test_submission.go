@@ -11,6 +11,11 @@ import "context"
 // limits existed. The cap is part of the same statement for the same reason
 // the insert is: two jobs reading the count and then updating it would both
 // see room for one more.
+//
+// Clearing started_at closes the student's window: the next attempt starts its
+// own when they open the test again. Sharing one window across attempts made
+// the later ones unusable, since a second attempt would begin with whatever
+// time the first had left -- often none.
 func (r *repository) ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string, maxAttempts int) (bool, error) {
 	if maxAttempts < 1 {
 		maxAttempts = 1
@@ -20,7 +25,8 @@ func (r *repository) ClaimLevelTestSubmission(ctx context.Context, studentID, sh
 		VALUES ($1::uuid, $2, 1)
 		ON CONFLICT (practice_sheet_id, student_id) DO UPDATE
 		SET attempts = level_test_submissions.attempts + 1,
-		    submitted_at = NOW()
+		    submitted_at = NOW(),
+		    started_at = NULL
 		WHERE level_test_submissions.attempts < $3
 	`, sheetID, studentID, maxAttempts)
 	if err != nil {
