@@ -85,7 +85,7 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.UploadUnsupportedTypeError, err)
 	}
-	if folder == "exercises" && kind != storage.FileKindImage && kind != storage.FileKindAudio {
+	if folder == "exercises" && !allowedAsStatementMaterial(kind) {
 		return nil, apperrors.NewApplicationError(mappings.UploadUnsupportedTypeError, storage.ErrUnsupportedFileType)
 	}
 
@@ -108,4 +108,18 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 		Kind:        string(kind),
 		Size:        int64(len(body)),
 	}}, nil
+}
+
+// allowedAsStatementMaterial says what an exercise's statement may carry.
+//
+// Video is the one kind left out: nothing renders it beside the statement and
+// no assistant channel reads it, so accepting one would store a file the
+// student is shown a bare link to and the assistant silently ignores.
+func allowedAsStatementMaterial(kind storage.FileKind) bool {
+	switch kind {
+	case storage.FileKindImage, storage.FileKindAudio, storage.FileKindPDF, storage.FileKindDocument:
+		return true
+	default:
+		return false
+	}
 }
