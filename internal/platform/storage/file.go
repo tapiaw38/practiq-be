@@ -138,8 +138,8 @@ func (s *S3ImageStorage) UploadFile(ctx context.Context, folder, userID, filenam
 	if err != nil {
 		return "", err
 	}
-	if folder == "exercises" && kind != FileKindImage && kind != FileKindAudio {
-		return "", fmt.Errorf("%w: exercise media must be image or audio", ErrUnsupportedFileType)
+	if folder == "exercises" && !AllowedAsStatementMaterial(kind) {
+		return "", fmt.Errorf("%w: an exercise's material may be an image, audio, a PDF or a document", ErrUnsupportedFileType)
 	}
 
 	// The extension always comes from the verified content type, never from the
@@ -183,4 +183,22 @@ func (s *S3ImageStorage) FetchFile(ctx context.Context, url string) ([]byte, str
 
 func (NoopImageStorage) FetchFile(ctx context.Context, url string) ([]byte, string, error) {
 	return nil, "", errors.New("file storage is not configured")
+}
+
+// AllowedAsStatementMaterial says what an exercise's statement may carry.
+//
+// It lives here, beside FileKind, because the rule was written twice -- once
+// in the upload usecase and once in this package -- and widening it to accept
+// documents in only the first left every PDF answering 415 from the second.
+//
+// Video is the one kind left out: nothing renders it beside the statement and
+// no assistant channel reads it, so it would store a file the student is shown
+// a bare link to and the assistant ignores.
+func AllowedAsStatementMaterial(kind FileKind) bool {
+	switch kind {
+	case FileKindImage, FileKindAudio, FileKindPDF, FileKindDocument:
+		return true
+	default:
+		return false
+	}
 }

@@ -125,3 +125,42 @@ func TestResolveContentTypeRejectsMismatchedBytes(t *testing.T) {
 		}
 	})
 }
+
+// A statement's material used to be images and audio only, so a teacher whose
+// exercise came on a PDF had to screenshot it. The rule was written twice and
+// widening one copy left every upload answering 415 from the other, which is
+// why it now lives in one place and is pinned here.
+func TestAllowedAsStatementMaterial(t *testing.T) {
+	for _, tc := range []struct {
+		kind FileKind
+		want bool
+	}{
+		{FileKindImage, true},
+		{FileKindAudio, true},
+		{FileKindPDF, true},
+		{FileKindDocument, true},
+		{FileKindVideo, false},
+	} {
+		if got := AllowedAsStatementMaterial(tc.kind); got != tc.want {
+			t.Errorf("AllowedAsStatementMaterial(%q) = %v, want %v", tc.kind, got, tc.want)
+		}
+	}
+}
+
+// The rule runs on the kind the bytes resolve to, not on what the client
+// declared, so a renamed binary cannot walk in behind a PDF's content type.
+func TestStatementMaterialFollowsTheResolvedKind(t *testing.T) {
+	pdf := []byte("%PDF-1.4\n and enough trailing bytes for sniffing to work")
+
+	_, kind, _, err := ResolveContentType("application/pdf", pdf)
+	if err != nil {
+		t.Fatalf("ResolveContentType() error = %v", err)
+	}
+	if !AllowedAsStatementMaterial(kind) {
+		t.Fatalf("a PDF resolved to %q, which a statement refuses", kind)
+	}
+
+	if _, _, _, err := ResolveContentType("application/pdf", []byte("\x89PNG\r\n\x1a\n fake png bytes")); err == nil {
+		t.Fatal("PNG bytes declared as application/pdf were accepted")
+	}
+}
