@@ -16,7 +16,14 @@ func NewListHandler(uc ucCourse.ListUsecase) gin.HandlerFunc {
 
 		input := ucCourse.ListInput{}
 		if role == "teacher" {
-			input.TeacherID = userID
+			// A platform superadmin opening a school is operating it, not
+			// teaching in it. Narrowing to the courses they own left them
+			// looking at an empty school and re-creating by hand what was
+			// already there. The school header still bounds the answer, the
+			// same way it already does for grades and subjects.
+			if !middlewares.IsSuperAdmin(c) {
+				input.TeacherID = userID
+			}
 		} else {
 			input.StudentID = userID
 		}
