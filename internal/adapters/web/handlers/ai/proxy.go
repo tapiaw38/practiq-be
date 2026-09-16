@@ -218,6 +218,9 @@ func logAssistantProxyBody(c *gin.Context, body []byte) {
 	audioCount := 0
 	audioBytes := int64(0)
 	audioNames := []string{}
+	docCount := 0
+	docBytes := int64(0)
+	docNames := []string{}
 	if req.MultipartForm != nil {
 		for field, files := range req.MultipartForm.File {
 			for _, file := range files {
@@ -230,6 +233,10 @@ func logAssistantProxyBody(c *gin.Context, body []byte) {
 					audioCount++
 					audioBytes += file.Size
 					audioNames = append(audioNames, file.Filename)
+				case "document_content":
+					docCount++
+					docBytes += file.Size
+					docNames = append(docNames, file.Filename)
 				default:
 					continue
 				}
@@ -237,7 +244,7 @@ func logAssistantProxyBody(c *gin.Context, body []byte) {
 		}
 	}
 
-	log.Printf("[assistant_proxy] method=%s path=%s content_type=%q body_bytes=%d image_count=%d image_bytes=%d image_names=%v audio_count=%d audio_bytes=%d audio_names=%v",
+	log.Printf("[assistant_proxy] method=%s path=%s content_type=%q body_bytes=%d image_count=%d image_bytes=%d image_names=%v audio_count=%d audio_bytes=%d audio_names=%v doc_count=%d doc_bytes=%d doc_names=%v",
 		c.Request.Method,
 		c.Request.URL.RequestURI(),
 		contentType,
@@ -248,6 +255,9 @@ func logAssistantProxyBody(c *gin.Context, body []byte) {
 		audioCount,
 		audioBytes,
 		audioNames,
+		docCount,
+		docBytes,
+		docNames,
 	)
 }
 
