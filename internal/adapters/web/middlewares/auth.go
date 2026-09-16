@@ -45,6 +45,22 @@ func AuthMiddleware(checker *revocation.Checker) gin.HandlerFunc {
 
 		c.Set("userID", claims.UserID)
 		c.Set("roles", claims.Roles)
+		c.Set("readOnlyImpersonation", claims.ReadOnly)
+		c.Set("impersonatorID", claims.ImpersonatorID)
+		c.Next()
+	}
+}
+
+// RejectReadOnlyImpersonation makes read-only a server guarantee, not a UI
+// convention. GET/HEAD/OPTIONS remain available so the real user experience
+// can be inspected; every state-changing request is refused.
+func RejectReadOnlyImpersonation() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		readOnly, _ := c.Get("readOnlyImpersonation")
+		if enabled, _ := readOnly.(bool); enabled && c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead && c.Request.Method != http.MethodOptions {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"code": "common:read-only", "message": "impersonation session is read-only"})
+			return
+		}
 		c.Next()
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/exercise"
 	gilliesettings "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/gillie_settings"
 	handlerGrade "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/grade"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/impersonation"
 	handlerLS "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/learning_strategy"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/material"
 	handlerNB "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/notebook"
@@ -31,6 +32,7 @@ import (
 	handlerTopic "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/topic"
 	handlerUpload "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/upload"
 	userprofile "github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/user_profile"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/authapi"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/revocation"
@@ -38,7 +40,7 @@ import (
 	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, gillie gilliesettingsRepo.Repository, revoked *revocation.Checker) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, gillie gilliesettingsRepo.Repository, authAPI authapi.Client, revoked *revocation.Checker) {
 	// Landing catalogue. It deliberately exposes only active, sellable plans;
 	// everything that identifies a teacher or manages a subscription remains
 	// behind the authenticated API group below.
@@ -49,6 +51,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware(revoked))
 	api.Use(middlewares.LoadProfileType(userProfiles))
+	api.Use(middlewares.RejectReadOnlyImpersonation())
 
 	// Profile
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
@@ -72,6 +75,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.GET("/profile/find-by-email", userprofile.NewFindByEmailHandler(uc.Profile.FindByEmail))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
+	adminOnly.POST("/impersonation", impersonation.Start(userProfiles, authAPI))
 
 	// Courses. Los use cases validan que el curso sea del profesor; el grupo
 	// evita además que un alumno llegue siquiera a intentarlo.
