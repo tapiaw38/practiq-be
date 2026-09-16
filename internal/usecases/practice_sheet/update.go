@@ -21,14 +21,16 @@ type (
 	}
 
 	UpdateInput struct {
-		Title          string
-		TopicID        string
-		Level          int
-		SheetType      string
-		TestStyle      string
-		ScheduledAt    *time.Time
-		AvailableUntil *time.Time
-		ExerciseIDs    []string
+		Title            string
+		TopicID          string
+		Level            int
+		SheetType        string
+		TestStyle        string
+		ScheduledAt      *time.Time
+		AvailableUntil   *time.Time
+		MaxAttempts      *int
+		TimeLimitMinutes *int
+		ExerciseIDs      []string
 	}
 
 	UpdateOutput struct {
@@ -76,13 +78,15 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	}
 
 	if err := app.Repositories.PracticeSheet.Update(ctx, id, domain.PracticeSheet{
-		Title:          input.Title,
-		TopicID:        input.TopicID,
-		Level:          level,
-		SheetType:      input.SheetType,
-		TestStyle:      input.TestStyle,
-		ScheduledAt:    scheduledAt,
-		AvailableUntil: input.AvailableUntil,
+		Title:            input.Title,
+		TopicID:          input.TopicID,
+		Level:            level,
+		SheetType:        input.SheetType,
+		TestStyle:        input.TestStyle,
+		ScheduledAt:      scheduledAt,
+		MaxAttempts:      input.MaxAttempts,
+		TimeLimitMinutes: input.TimeLimitMinutes,
+		AvailableUntil:   input.AvailableUntil,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
 	}

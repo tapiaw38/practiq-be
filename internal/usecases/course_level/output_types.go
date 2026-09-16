@@ -16,9 +16,13 @@ type (
 		AvailableUntil string `json:"available_until,omitempty"`
 		Exercises      int    `json:"exercises"`
 		Submitted      bool   `json:"submitted"`
-		PendingReview  bool   `json:"pending_review"`
-		Score          *int   `json:"score,omitempty"`
-		Passed         *bool  `json:"passed,omitempty"`
+		// AttemptsUsed and AttemptsAllowed let the student see what is left
+		// before spending one, instead of finding out on the refusal.
+		AttemptsUsed    int   `json:"attempts_used"`
+		AttemptsAllowed int   `json:"attempts_allowed"`
+		PendingReview   bool  `json:"pending_review"`
+		Score           *int  `json:"score,omitempty"`
+		Passed          *bool `json:"passed,omitempty"`
 	}
 
 	NotebookData struct {

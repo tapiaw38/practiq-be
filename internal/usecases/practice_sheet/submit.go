@@ -2,6 +2,7 @@ package practicesheet
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -74,12 +75,19 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		if appErr := validateLevelTestAttempts(ps.Exercises, input.Attempts); appErr != nil {
 			return nil, appErr
 		}
-		claimed, claimErr := app.Repositories.StudentAttempt.ClaimLevelTestSubmission(ctx, studentID, sheetID)
+		if appErr := ensureWithinTimeLimit(ctx, app, *ps, studentID); appErr != nil {
+			return nil, appErr
+		}
+		allowed := ps.AttemptsAllowed()
+		claimed, claimErr := app.Repositories.StudentAttempt.ClaimLevelTestSubmission(ctx, studentID, sheetID, allowed)
 		if claimErr != nil {
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, claimErr)
 		}
 		if !claimed {
-			return nil, apperrors.NewBadRequestError("this level test was already submitted")
+			if allowed == 1 {
+				return nil, apperrors.NewBadRequestError("this level test was already submitted")
+			}
+			return nil, apperrors.NewBadRequestError(fmt.Sprintf("no attempts left: this level test allows %d", allowed))
 		}
 	}
 
@@ -667,4 +675,27 @@ func calcStreak(current *domain.StudentTopicProgress, loc *time.Location) int {
 	default:
 		return 1
 	}
+}
+
+// ensureWithinTimeLimit refuses a submission that arrives after the student's
+// own deadline.
+//
+// The clock runs from when they opened the test, not from the sheet's
+// schedule: two students starting at different moments each get the full time.
+// A limit added after someone already opened the test does not apply to them,
+// since there is no start to count from and inventing one would cut short a
+// test they are in the middle of.
+func ensureWithinTimeLimit(ctx context.Context, app *appcontext.Context, ps domain.PracticeSheet, studentID string) apperrors.ApplicationError {
+	if ps.TimeLimitMinutes == nil {
+		return nil
+	}
+	_, startedAt, err := app.Repositories.StudentAttempt.LevelTestProgress(ctx, studentID, ps.ID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
+	}
+	deadline := ps.Deadline(startedAt)
+	if deadline == nil || !time.Now().After(*deadline) {
+		return nil
+	}
+	return apperrors.NewBadRequestError(fmt.Sprintf("time is up: this level test allows %d minutes", *ps.TimeLimitMinutes))
 }

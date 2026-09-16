@@ -18,6 +18,10 @@ type createInput struct {
 	ExerciseIDs []string `json:"exercise_ids"`
 	// ScheduledAt is RFC 3339; empty clears the schedule.
 	ScheduledAt string `json:"scheduled_at"`
+	// MaxAttempts and TimeLimitMinutes are null or absent for "no limit", so
+	// clearing one is the same request as never setting it.
+	MaxAttempts      *int `json:"max_attempts"`
+	TimeLimitMinutes *int `json:"time_limit_minutes"`
 	// AvailableUntil is RFC 3339; empty leaves the window open.
 	AvailableUntil string `json:"available_until"`
 }
@@ -67,16 +71,18 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, ucPS.CreateInput{
-			CourseID:       courseID,
-			SheetType:      input.SheetType,
-			TestStyle:      input.TestStyle,
-			TopicID:        input.TopicID,
-			StrategyID:     input.StrategyID,
-			Title:          input.Title,
-			Level:          input.Level,
-			ExerciseIDs:    input.ExerciseIDs,
-			ScheduledAt:    scheduledAt,
-			AvailableUntil: availableUntil,
+			CourseID:         courseID,
+			SheetType:        input.SheetType,
+			TestStyle:        input.TestStyle,
+			TopicID:          input.TopicID,
+			StrategyID:       input.StrategyID,
+			Title:            input.Title,
+			Level:            input.Level,
+			ExerciseIDs:      input.ExerciseIDs,
+			ScheduledAt:      scheduledAt,
+			MaxAttempts:      positiveOrNil(input.MaxAttempts),
+			TimeLimitMinutes: positiveOrNil(input.TimeLimitMinutes),
+			AvailableUntil:   availableUntil,
 		})
 		if appErr != nil {
 			appErr.Log(c)
@@ -86,4 +92,14 @@ func NewCreateHandler(uc ucPS.CreateUsecase) gin.HandlerFunc {
 
 		c.JSON(http.StatusCreated, output)
 	}
+}
+
+// positiveOrNil reads a limit the way the form sends it. A blank field arrives
+// as 0 rather than absent, and a zero limit would mean "nobody may submit",
+// which is never what clearing a field asks for.
+func positiveOrNil(value *int) *int {
+	if value == nil || *value <= 0 {
+		return nil
+	}
+	return value
 }

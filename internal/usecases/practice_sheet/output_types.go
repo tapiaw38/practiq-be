@@ -52,10 +52,19 @@ type (
 		// ScheduledAt is empty when the sheet can be taken at any time.
 		ScheduledAt string `json:"scheduled_at,omitempty"`
 		// AvailableUntil closes the window; empty means it stays open.
-		AvailableUntil string              `json:"available_until,omitempty"`
-		CreatedBy      string              `json:"created_by"`
-		CreatedAt      string              `json:"created_at"`
-		Exercises      []SheetExerciseData `json:"exercises"`
+		AvailableUntil string `json:"available_until,omitempty"`
+		// MaxAttempts and TimeLimitMinutes are what the teacher set; null in
+		// both cases means no limit, which is how the form reads them back.
+		MaxAttempts      *int `json:"max_attempts"`
+		TimeLimitMinutes *int `json:"time_limit_minutes"`
+		// AttemptsUsed and Deadline are the asking student's own standing, so
+		// the page can show what is left rather than announce it on refusal.
+		AttemptsUsed    int                 `json:"attempts_used,omitempty"`
+		AttemptsAllowed int                 `json:"attempts_allowed,omitempty"`
+		Deadline        string              `json:"deadline,omitempty"`
+		CreatedBy       string              `json:"created_by"`
+		CreatedAt       string              `json:"created_at"`
+		Exercises       []SheetExerciseData `json:"exercises"`
 	}
 
 	ExerciseResultData struct {
@@ -167,6 +176,9 @@ func sheetScalars(ps domain.PracticeSheet) PracticeSheetData {
 		TestStyle:  testStyle,
 		CreatedBy:  ps.CreatedBy,
 		CreatedAt:  ps.CreatedAt.Format(timeFormat),
+
+		MaxAttempts:      ps.MaxAttempts,
+		TimeLimitMinutes: ps.TimeLimitMinutes,
 	}
 	if ps.ScheduledAt != nil {
 		data.ScheduledAt = ps.ScheduledAt.UTC().Format(timeFormat)

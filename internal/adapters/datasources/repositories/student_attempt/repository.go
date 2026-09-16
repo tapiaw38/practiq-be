@@ -12,9 +12,15 @@ type Repository interface {
 	Create(context.Context, domain.StudentAttempt) (string, error)
 	// ClaimLevelTestSubmission atomically reserves a student's one submission
 	// for a level test. False means it was already submitted.
-	ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string) (bool, error)
-	// HasLevelTestSubmission reports whether student already submitted test.
-	HasLevelTestSubmission(ctx context.Context, studentID, sheetID string) (bool, error)
+	ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string, maxAttempts int) (bool, error)
+	// LevelTestProgress reports how many times the student has submitted this
+	// test and when they first opened it. A student who never opened it has
+	// zero attempts and no start.
+	LevelTestProgress(ctx context.Context, studentID, sheetID string) (int, *time.Time, error)
+	// MarkLevelTestStarted records when the student first opened the test,
+	// which is when a time limit starts running. Calling it again keeps the
+	// original moment: reopening the page must not buy more time.
+	MarkLevelTestStarted(ctx context.Context, studentID, sheetID string) error
 	// ReleaseLevelTestSubmission undoes a claim whose submission never landed.
 	ReleaseLevelTestSubmission(ctx context.Context, studentID, sheetID string) error
 	// DeleteBySheet removes an incomplete level-test submission before releasing

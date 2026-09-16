@@ -16,9 +16,16 @@ type PracticeSheet struct {
 	// AvailableUntil closes the window opened by ScheduledAt. nil means the
 	// sheet stays open once it opens.
 	AvailableUntil *time.Time
-	CreatedBy      string
-	CreatedAt      time.Time
-	Exercises      []PracticeSheetExercise
+	// MaxAttempts is how many times a student may submit. nil leaves the rule
+	// each sheet type already had: a level test allows one, a practice is not
+	// counted at all.
+	MaxAttempts *int
+	// TimeLimitMinutes runs from when the student first opens the sheet. nil
+	// means they may take as long as they need.
+	TimeLimitMinutes *int
+	CreatedBy        string
+	CreatedAt        time.Time
+	Exercises        []PracticeSheetExercise
 }
 
 type PracticeSheetExercise struct {
@@ -108,4 +115,30 @@ type AttemptContext struct {
 	SheetType       string
 	SheetTopicID    string
 	ExerciseTopicID string
+}
+
+// AttemptsAllowed is how many times a student may submit this sheet.
+//
+// A practice is not counted at all: it exists to be repeated. A level test
+// without an explicit limit allows the single attempt it allowed before the
+// column existed, so a test created earlier keeps behaving the way its teacher
+// set it up.
+func (p PracticeSheet) AttemptsAllowed() int {
+	if p.SheetType != "level_test" {
+		return 0
+	}
+	if p.MaxAttempts != nil && *p.MaxAttempts > 0 {
+		return *p.MaxAttempts
+	}
+	return 1
+}
+
+// Deadline is when a student who started at startedAt runs out of time, or nil
+// when the sheet sets no limit.
+func (p PracticeSheet) Deadline(startedAt *time.Time) *time.Time {
+	if p.TimeLimitMinutes == nil || *p.TimeLimitMinutes <= 0 || startedAt == nil {
+		return nil
+	}
+	deadline := startedAt.Add(time.Duration(*p.TimeLimitMinutes) * time.Minute)
+	return &deadline
 }

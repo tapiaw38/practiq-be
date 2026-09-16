@@ -93,11 +93,17 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		}
 		sd := toSheetData(s)
 		if s.SheetType == "level_test" && requesterID != "" {
-			submitted, statusErr := app.Repositories.StudentAttempt.HasLevelTestSubmission(ctx, requesterID, s.ID)
+			attempts, _, statusErr := app.Repositories.StudentAttempt.LevelTestProgress(ctx, requesterID, s.ID)
 			if statusErr != nil {
 				return nil, apperrors.NewApplicationError(mappings.InternalServerError, statusErr)
 			}
-			sd.Submitted = submitted
+			// "Submitted" is what closes the test on screen, so it now means
+			// "no attempts left" rather than "sent once": a test that allows
+			// three stays open until the third.
+			submitted := attempts > 0
+			sd.AttemptsUsed = attempts
+			sd.AttemptsAllowed = s.AttemptsAllowed()
+			sd.Submitted = attempts >= sd.AttemptsAllowed
 			if submitted {
 				outcome, outcomeErr := app.Repositories.StudentAttempt.GetSheetOutcome(ctx, requesterID, s.ID)
 				if outcomeErr != nil {

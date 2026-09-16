@@ -18,6 +18,10 @@ type updateSheetInput struct {
 	ExerciseIDs []string `json:"exercise_ids"`
 	// ScheduledAt is RFC 3339; empty clears the schedule.
 	ScheduledAt string `json:"scheduled_at"`
+	// MaxAttempts and TimeLimitMinutes are null or absent for "no limit", so
+	// clearing one is the same request as never setting it.
+	MaxAttempts      *int `json:"max_attempts"`
+	TimeLimitMinutes *int `json:"time_limit_minutes"`
 	// AvailableUntil is RFC 3339; empty leaves the window open.
 	AvailableUntil string `json:"available_until"`
 }
@@ -68,14 +72,16 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, ucPS.UpdateInput{
-			Title:          input.Title,
-			TopicID:        input.TopicID,
-			Level:          input.Level,
-			SheetType:      input.SheetType,
-			TestStyle:      input.TestStyle,
-			ExerciseIDs:    input.ExerciseIDs,
-			ScheduledAt:    scheduledAt,
-			AvailableUntil: availableUntil,
+			Title:            input.Title,
+			TopicID:          input.TopicID,
+			Level:            input.Level,
+			SheetType:        input.SheetType,
+			TestStyle:        input.TestStyle,
+			ExerciseIDs:      input.ExerciseIDs,
+			ScheduledAt:      scheduledAt,
+			MaxAttempts:      positiveOrNil(input.MaxAttempts),
+			TimeLimitMinutes: positiveOrNil(input.TimeLimitMinutes),
+			AvailableUntil:   availableUntil,
 		})
 		if appErr != nil {
 			appErr.Log(c)
