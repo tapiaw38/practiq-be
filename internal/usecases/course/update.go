@@ -27,6 +27,10 @@ type (
 		Description string `json:"description"`
 		Level       string `json:"level"`
 		Subject     string `json:"subject"`
+		// Status is optional. Empty keeps whatever the course already has: the
+		// edit form does not have to carry the lifecycle to rename a course,
+		// and sending nothing must not silently unpublish it.
+		Status string `json:"status"`
 	}
 
 	UpdateOutput struct {
@@ -52,6 +56,24 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, appErr
 	}
 
+	current, err := app.Repositories.Course.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if current == nil {
+		return nil, apperrors.NewNotFoundError("course not found")
+	}
+
+	status := strings.TrimSpace(input.Status)
+	if status == "" {
+		status = current.Status
+	}
+	switch status {
+	case domain.CourseStatusDraft, domain.CourseStatusPublished, domain.CourseStatusArchived:
+	default:
+		return nil, apperrors.NewBadRequestError("status must be draft, published or archived")
+	}
+
 	if err := app.Repositories.Course.Update(ctx, id, domain.Course{
 		GradeID:     input.GradeID,
 		SubjectID:   input.SubjectID,
@@ -59,6 +81,7 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		Description: input.Description,
 		Level:       input.Level,
 		Subject:     input.Subject,
+		Status:      status,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseUpdateError, err)
 	}

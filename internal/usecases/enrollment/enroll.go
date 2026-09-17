@@ -52,6 +52,12 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 	if appErr := school.RequireActive(ctx, app, course.SchoolID); appErr != nil {
 		return nil, appErr
 	}
+	// A draft is not open yet and an archived course is over. Joining either
+	// would put the student somewhere they cannot work: a draft is invisible
+	// to them, and an archived course takes no more submissions.
+	if !course.AcceptsEnrollment() {
+		return nil, apperrors.NewBadRequestError("this course is not open for enrollment")
+	}
 	if appErr := subscription.EnsureCanAddStudent(ctx, app, course.SchoolID, course.TeacherID, studentID); appErr != nil {
 		return nil, appErr
 	}

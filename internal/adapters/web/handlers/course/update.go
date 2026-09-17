@@ -16,6 +16,8 @@ type updateInput struct {
 	Description string `json:"description"`
 	Level       string `json:"level"`
 	Subject     string `json:"subject"`
+	// Omitted means "leave the lifecycle alone".
+	Status string `json:"status"`
 }
 
 func NewUpdateHandler(uc ucCourse.UpdateUsecase) gin.HandlerFunc {
@@ -37,6 +39,7 @@ func NewUpdateHandler(uc ucCourse.UpdateUsecase) gin.HandlerFunc {
 			Description: input.Description,
 			Level:       input.Level,
 			Subject:     input.Subject,
+			Status:      input.Status,
 		})
 		if appErr != nil {
 			appErr.Log(c)

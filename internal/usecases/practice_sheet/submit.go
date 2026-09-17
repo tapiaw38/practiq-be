@@ -14,6 +14,7 @@ import (
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -67,6 +68,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	}
 	if !hasAccess {
 		return nil, apperrors.NewForbiddenError()
+	}
+	// Reading an archived course is allowed; adding to it is not.
+	if appErr := school.EnsureCourseAcceptsWork(ctx, app, ps.CourseID); appErr != nil {
+		return nil, appErr
 	}
 	if appErr := ensureSheetIsOpen(ctx, app, ps, studentID, false); appErr != nil {
 		return nil, appErr

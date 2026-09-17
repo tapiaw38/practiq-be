@@ -11,6 +11,7 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
 type (
@@ -60,6 +61,11 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	}
 	if !hasAccess {
 		return fmt.Errorf("forbidden")
+	}
+	// Same rule as practice: an archived course stays readable but takes no
+	// more work.
+	if appErr := school.EnsureCourseAcceptsWork(ctx, app, notebook.CourseID); appErr != nil {
+		return fmt.Errorf("this course is closed: it no longer accepts submissions")
 	}
 
 	// Get course for grade context

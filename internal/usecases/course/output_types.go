@@ -15,6 +15,7 @@ type (
 		Description string `json:"description"`
 		Level       string `json:"level"`
 		Subject     string `json:"subject"`
+		Status      string `json:"status"`
 		CreatedAt   string `json:"created_at"`
 	}
 )
@@ -32,6 +33,7 @@ func toCourseData(c domain.Course) CourseData {
 		Description: c.Description,
 		Level:       c.Level,
 		Subject:     c.Subject,
+		Status:      c.Status,
 		CreatedAt:   c.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 }

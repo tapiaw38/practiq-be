@@ -2,6 +2,35 @@ package domain
 
 import "time"
 
+const (
+	// CourseStatusDraft is a course being prepared. Students never see it,
+	// not even one already enrolled: nothing in it is ready to be read.
+	CourseStatusDraft = "draft"
+	// CourseStatusPublished is a course running normally.
+	CourseStatusPublished = "published"
+	// CourseStatusArchived is a course that has finished. Students already in
+	// it keep reading their work and their marks — taking that away the day a
+	// teacher tidies up would erase their own history — but nobody new joins
+	// and nothing more can be handed in.
+	CourseStatusArchived = "archived"
+)
+
+// VisibleToStudents reports whether a student may open the course at all.
+func (c Course) VisibleToStudents() bool {
+	return c.Status == CourseStatusPublished || c.Status == CourseStatusArchived
+}
+
+// AcceptsWork reports whether students may still submit. Archived courses are
+// readable but closed to new work.
+func (c Course) AcceptsWork() bool {
+	return c.Status == CourseStatusPublished
+}
+
+// AcceptsEnrollment reports whether somebody new may join.
+func (c Course) AcceptsEnrollment() bool {
+	return c.Status == CourseStatusPublished
+}
+
 type Course struct {
 	ID        string
 	TeacherID string
@@ -17,6 +46,7 @@ type Course struct {
 	Description string
 	Level       string
 	Subject     string
+	Status      string
 	CreatedAt   time.Time
 }
 

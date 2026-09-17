@@ -32,6 +32,10 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 			JOIN schools active_school ON active_school.id = COALESCE(g.school_id, ts.id)
 				AND active_school.status = 'active'
 			WHERE c.deleted_at IS NULL
+			  -- The student's own home screen. Same rule the course listing
+			  -- applies: a draft is not ready to be seen, an archived course
+			  -- still belongs to whoever took it.
+			  AND c.status IN ('published', 'archived')
 			  -- A student reaches a course either by enrolling in it directly or
 			  -- by belonging to its grade, and the grade is the usual route.
 			  -- Matching on enrolments alone returned an empty home for those

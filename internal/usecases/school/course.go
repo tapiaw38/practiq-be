@@ -42,3 +42,26 @@ func EnsureCanManageCourse(
 	}
 	return course, nil
 }
+
+// EnsureCourseAcceptsWork refuses a student submission when the course is no
+// longer taking any.
+//
+// Archiving a course is how a teacher says it is finished. Students who took
+// it keep reading it — their answers and marks are their own record, and
+// deleting that view the day the teacher tidies up would take their history
+// with it — but nothing new is accepted, so an archived course cannot quietly
+// keep collecting work nobody will grade. A draft refuses for the opposite
+// reason: it was never open.
+func EnsureCourseAcceptsWork(ctx context.Context, app *appcontext.Context, courseID string) apperrors.ApplicationError {
+	course, err := app.Repositories.Course.Get(ctx, courseID)
+	if err != nil {
+		return apperrors.NewApplicationError(mappings.CourseGetError, err)
+	}
+	if course == nil {
+		return apperrors.NewNotFoundError("course not found")
+	}
+	if !course.AcceptsWork() {
+		return apperrors.NewBadRequestError("this course is closed: it no longer accepts submissions")
+	}
+	return nil
+}
