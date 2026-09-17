@@ -18,6 +18,7 @@ func NewUpdateHandler(uc ucNB.UpdateUsecase) gin.HandlerFunc {
 		var input struct {
 			Title       string `json:"title" binding:"required"`
 			Description string `json:"description"`
+			TopicID     string `json:"topic_id" binding:"required"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
@@ -27,6 +28,7 @@ func NewUpdateHandler(uc ucNB.UpdateUsecase) gin.HandlerFunc {
 		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, ucNB.UpdateInput{
 			Title:       input.Title,
 			Description: input.Description,
+			TopicID:     input.TopicID,
 		})
 		if appErr != nil {
 			appErr.Log(c)

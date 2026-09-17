@@ -52,10 +52,42 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
-
+	// A sheet owns its topic, but the level response previously discarded that
+	// relation. Resolve it once so student navigation can separate practices by
+	// subject without one topic query per sheet.
+	topicIDs := make([]string, 0, len(sheets))
+	seenTopics := make(map[string]struct{}, len(sheets))
+	for _, sheet := range sheets {
+		if sheet.TopicID == "" {
+			continue
+		}
+		if _, seen := seenTopics[sheet.TopicID]; !seen {
+			seenTopics[sheet.TopicID] = struct{}{}
+			topicIDs = append(topicIDs, sheet.TopicID)
+		}
+	}
 	notebooks, err := app.Repositories.Notebook.List(ctx, courseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
+	}
+	for _, notebook := range notebooks {
+		if notebook.TopicID == "" {
+			continue
+		}
+		if _, seen := seenTopics[notebook.TopicID]; !seen {
+			seenTopics[notebook.TopicID] = struct{}{}
+			topicIDs = append(topicIDs, notebook.TopicID)
+		}
+	}
+	topics, err := app.Repositories.Topic.GetByIDs(ctx, topicIDs)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
+	}
+	topicTitles := make(map[string]string, len(topics))
+	topicOrders := make(map[string]int, len(topics))
+	for _, topic := range topics {
+		topicTitles[topic.ID] = topic.Title
+		topicOrders[topic.ID] = topic.OrderIndex
 	}
 
 	maxLevel := currentLevel
@@ -91,7 +123,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		if b == nil {
 			continue
 		}
-		sd := toSheetData(s)
+		sd := toSheetData(s, topicTitles[s.TopicID], topicOrders[s.TopicID])
 		if s.SheetType == "level_test" && requesterID != "" {
 			attempts, _, statusErr := app.Repositories.StudentAttempt.LevelTestProgress(ctx, requesterID, s.ID)
 			if statusErr != nil {
@@ -130,7 +162,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		if b == nil {
 			continue
 		}
-		b.notebooks = append(b.notebooks, toNotebookData(nb))
+		b.notebooks = append(b.notebooks, toNotebookData(nb, topicTitles[nb.TopicID], topicOrders[nb.TopicID]))
 	}
 
 	levels := make([]LevelData, 0, maxLevel)

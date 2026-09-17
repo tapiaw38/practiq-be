@@ -13,8 +13,8 @@ func (r *repository) Create(ctx context.Context, n domain.Notebook) (string, err
 	}
 	var id string
 	err := r.db.QueryRowContext(ctx, `
-		INSERT INTO notebooks (course_id, teacher_id, title, description, level)
-		VALUES ($1, $2, $3, $4, $5) RETURNING id
-	`, n.CourseID, n.TeacherID, n.Title, n.Description, level).Scan(&id)
+		INSERT INTO notebooks (course_id, topic_id, teacher_id, title, description, level)
+		VALUES ($1, NULLIF($2, '')::uuid, $3, $4, $5, $6) RETURNING id
+	`, n.CourseID, n.TopicID, n.TeacherID, n.Title, n.Description, level).Scan(&id)
 	return id, err
 }

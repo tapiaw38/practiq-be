@@ -18,6 +18,7 @@ type (
 	UpdateInput struct {
 		Title       string
 		Description string
+		TopicID     string
 	}
 
 	UpdateOutput struct {
@@ -46,10 +47,14 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, nb.CourseID); appErr != nil {
 		return nil, appErr
 	}
+	if appErr := ensureTopicBelongsToCourse(ctx, app, input.TopicID, nb.CourseID); appErr != nil {
+		return nil, appErr
+	}
 
 	if err := app.Repositories.Notebook.Update(ctx, id, domain.Notebook{
 		Title:       input.Title,
 		Description: input.Description,
+		TopicID:     input.TopicID,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookUpdateError, err)
 	}

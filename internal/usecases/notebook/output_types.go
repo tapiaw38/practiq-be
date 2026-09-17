@@ -62,6 +62,7 @@ type (
 	NotebookData struct {
 		ID          string     `json:"id"`
 		CourseID    string     `json:"course_id"`
+		TopicID     string     `json:"topic_id,omitempty"`
 		TeacherID   string     `json:"teacher_id"`
 		Title       string     `json:"title"`
 		Description string     `json:"description"`
@@ -109,6 +110,7 @@ func toNotebookData(nb *domain.Notebook) NotebookData {
 	return NotebookData{
 		ID:          nb.ID,
 		CourseID:    nb.CourseID,
+		TopicID:     nb.TopicID,
 		TeacherID:   nb.TeacherID,
 		Title:       nb.Title,
 		Description: nb.Description,

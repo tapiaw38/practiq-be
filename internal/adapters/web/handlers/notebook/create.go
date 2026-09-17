@@ -17,6 +17,7 @@ func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 			Title       string `json:"title" binding:"required"`
 			Description string `json:"description"`
 			Level       int    `json:"level"`
+			TopicID     string `json:"topic_id" binding:"required"`
 		}
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
@@ -27,6 +28,7 @@ func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 			Title:       input.Title,
 			Description: input.Description,
 			Level:       input.Level,
+			TopicID:     input.TopicID,
 		})
 		if appErr != nil {
 			appErr.Log(c)

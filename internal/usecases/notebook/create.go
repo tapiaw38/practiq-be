@@ -20,6 +20,7 @@ type (
 		Title       string
 		Description string
 		Level       int
+		TopicID     string
 	}
 
 	CreateOutput struct {
@@ -39,6 +40,9 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	if appErr != nil {
 		return nil, appErr
 	}
+	if appErr := ensureTopicBelongsToCourse(ctx, app, input.TopicID, course.ID); appErr != nil {
+		return nil, appErr
+	}
 
 	// Authorization on update/delete/pages and the submission queue all filter
 	// by TeacherID, so storing the admin here locked the actual course teacher
@@ -50,6 +54,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 
 	id, err := app.Repositories.Notebook.Create(ctx, domain.Notebook{
 		CourseID:    input.CourseID,
+		TopicID:     input.TopicID,
 		TeacherID:   owner,
 		Title:       input.Title,
 		Description: input.Description,

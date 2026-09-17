@@ -8,7 +8,7 @@ import (
 
 func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebook, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT n.id, n.course_id, n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
+		SELECT n.id, n.course_id, COALESCE(n.topic_id::text, ''), n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
 		FROM notebooks n
 		JOIN courses c ON c.id = n.course_id
 		WHERE n.course_id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
@@ -22,7 +22,7 @@ func (r *repository) List(ctx context.Context, courseID string) ([]domain.Notebo
 	var notebooks []domain.Notebook
 	for rows.Next() {
 		var nb domain.Notebook
-		if err := rows.Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt); err != nil {
+		if err := rows.Scan(&nb.ID, &nb.CourseID, &nb.TopicID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt); err != nil {
 			return nil, err
 		}
 		notebooks = append(notebooks, nb)

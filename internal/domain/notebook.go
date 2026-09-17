@@ -5,6 +5,7 @@ import "time"
 type Notebook struct {
 	ID          string
 	CourseID    string
+	TopicID     string
 	TeacherID   string
 	Title       string
 	Description string

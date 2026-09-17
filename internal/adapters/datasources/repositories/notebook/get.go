@@ -10,11 +10,11 @@ import (
 func (r *repository) Get(ctx context.Context, id string) (*domain.Notebook, error) {
 	var nb domain.Notebook
 	err := r.db.QueryRowContext(ctx, `
-		SELECT n.id, n.course_id, n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
+		SELECT n.id, n.course_id, COALESCE(n.topic_id::text, ''), n.teacher_id, n.title, n.description, n.level, n.created_at, n.updated_at
 		FROM notebooks n
 		JOIN courses c ON c.id = n.course_id
 		WHERE n.id = $1 AND n.deleted_at IS NULL AND c.deleted_at IS NULL
-	`, id).Scan(&nb.ID, &nb.CourseID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt)
+	`, id).Scan(&nb.ID, &nb.CourseID, &nb.TopicID, &nb.TeacherID, &nb.Title, &nb.Description, &nb.Level, &nb.CreatedAt, &nb.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

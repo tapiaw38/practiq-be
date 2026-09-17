@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS ai_help_requests (
 CREATE TABLE IF NOT EXISTS notebooks (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     course_id   UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    topic_id    UUID REFERENCES topics(id) ON DELETE SET NULL,
     teacher_id  VARCHAR(255) NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
     title       TEXT NOT NULL,
     description TEXT DEFAULT '',

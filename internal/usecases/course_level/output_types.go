@@ -4,11 +4,16 @@ import "github.com/tapiaw38/practiq-be/internal/domain"
 
 type (
 	SheetData struct {
-		ID        string `json:"id"`
-		Title     string `json:"title"`
-		Level     int    `json:"level"`
-		SheetType string `json:"sheet_type"`
-		TestStyle string `json:"test_style"`
+		ID      string `json:"id"`
+		Title   string `json:"title"`
+		TopicID string `json:"topic_id,omitempty"`
+		// TopicTitle and TopicOrder let student navigation describe the subject
+		// of each practice instead of presenting one undifferentiated list.
+		TopicTitle string `json:"topic_title,omitempty"`
+		TopicOrder int    `json:"topic_order"`
+		Level      int    `json:"level"`
+		SheetType  string `json:"sheet_type"`
+		TestStyle  string `json:"test_style"`
 		// ScheduledAt is UTC and empty when the sheet has no date. The client
 		// uses it to show the date and disable the sheet until then.
 		ScheduledAt string `json:"scheduled_at,omitempty"`
@@ -28,6 +33,9 @@ type (
 	NotebookData struct {
 		ID          string `json:"id"`
 		Title       string `json:"title"`
+		TopicID     string `json:"topic_id,omitempty"`
+		TopicTitle  string `json:"topic_title,omitempty"`
+		TopicOrder  int    `json:"topic_order"`
 		Description string `json:"description"`
 		Level       int    `json:"level"`
 		Pages       int    `json:"pages"`
@@ -42,14 +50,17 @@ type (
 	}
 )
 
-func toSheetData(s domain.PracticeSheet) SheetData {
+func toSheetData(s domain.PracticeSheet, topicTitle string, topicOrder int) SheetData {
 	data := SheetData{
-		ID:        s.ID,
-		Title:     s.Title,
-		Level:     s.Level,
-		SheetType: s.SheetType,
-		TestStyle: s.TestStyle,
-		Exercises: len(s.Exercises),
+		ID:         s.ID,
+		Title:      s.Title,
+		TopicID:    s.TopicID,
+		TopicTitle: topicTitle,
+		TopicOrder: topicOrder,
+		Level:      s.Level,
+		SheetType:  s.SheetType,
+		TestStyle:  s.TestStyle,
+		Exercises:  len(s.Exercises),
 	}
 	if s.ScheduledAt != nil {
 		data.ScheduledAt = s.ScheduledAt.UTC().Format("2006-01-02T15:04:05Z")
@@ -60,10 +71,13 @@ func toSheetData(s domain.PracticeSheet) SheetData {
 	return data
 }
 
-func toNotebookData(nb domain.Notebook) NotebookData {
+func toNotebookData(nb domain.Notebook, topicTitle string, topicOrder int) NotebookData {
 	return NotebookData{
 		ID:          nb.ID,
 		Title:       nb.Title,
+		TopicID:     nb.TopicID,
+		TopicTitle:  topicTitle,
+		TopicOrder:  topicOrder,
 		Description: nb.Description,
 		Level:       nb.Level,
 		Pages:       len(nb.Pages),
