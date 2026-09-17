@@ -35,3 +35,19 @@ func (r *repository) MarkLevelTestStarted(ctx context.Context, studentID, sheetI
 	`, sheetID, studentID)
 	return err
 }
+
+// CloseExpiredLevelTest closes only the window that has reached deadline.
+// A student may have reopened the test while an earlier expiry request was in
+// flight; matching the deadline prevents that request from clearing the new
+// window.
+func (r *repository) CloseExpiredLevelTest(ctx context.Context, studentID, sheetID string, deadline time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE level_test_submissions
+		SET started_at = NULL
+		WHERE student_id = $1
+		  AND practice_sheet_id = $2::uuid
+		  AND started_at IS NOT NULL
+		  AND started_at <= $3
+	`, studentID, sheetID, deadline)
+	return err
+}

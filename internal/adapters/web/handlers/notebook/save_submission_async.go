@@ -63,8 +63,6 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 		}) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer finishCancel()
 
 			err := uc.Execute(ctx, ucNB.SaveSubmissionInput{
 				PageID:     pid,
@@ -73,6 +71,8 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 				AnswerText: payload.AnswerText,
 				Version:    ver,
 			})
+			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer finishCancel()
 			// A delivery the student has already replaced is not a failure to
 			// report. Telling them this one failed would send them to resubmit
 			// work that the newer answer already covers.

@@ -694,8 +694,11 @@ func ensureWithinTimeLimit(ctx context.Context, app *appcontext.Context, ps doma
 		return apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
 	}
 	deadline := ps.Deadline(startedAt)
-	if deadline == nil || !time.Now().After(*deadline) {
+	if deadline == nil || !submissionReferenceTime(ctx).After(*deadline) {
 		return nil
+	}
+	if err := app.Repositories.StudentAttempt.CloseExpiredLevelTest(ctx, studentID, ps.ID, *deadline); err != nil {
+		return apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
 	}
 	return apperrors.NewBadRequestError(fmt.Sprintf("time is up: this level test allows %d minutes", *ps.TimeLimitMinutes))
 }

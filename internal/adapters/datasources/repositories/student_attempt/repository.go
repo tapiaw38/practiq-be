@@ -21,6 +21,10 @@ type Repository interface {
 	// which is when a time limit starts running. Calling it again keeps the
 	// original moment: reopening the page must not buy more time.
 	MarkLevelTestStarted(ctx context.Context, studentID, sheetID string) error
+	// CloseExpiredLevelTest clears an active test window only when it still
+	// belongs to the expired attempt. The conditional update makes concurrent
+	// expiry requests safe and cannot close a later attempt.
+	CloseExpiredLevelTest(ctx context.Context, studentID, sheetID string, deadline time.Time) error
 	// ReleaseLevelTestSubmission undoes a claim whose submission never landed.
 	ReleaseLevelTestSubmission(ctx context.Context, studentID, sheetID string) error
 	// DeleteBySheet removes an incomplete level-test submission before releasing

@@ -51,10 +51,14 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 		go func(sheetID, uid, jid string, payload submitInput) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
-			defer finishCancel()
+			// The job was accepted while the test was still open. Its correction
+			// can begin later, so preserve that acceptance time for the deadline
+			// check instead of charging queue time to the student.
+			ctx = ucPS.WithSubmissionReceivedAt(ctx, now)
 
 			output, appErr := uc.Execute(ctx, sheetID, uid, ucPS.SubmitInput{Attempts: payload.Attempts})
+			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer finishCancel()
 			if appErr != nil {
 				if err := repo.Update(finishCtx, domain.SubmitJob{
 					ID:        jid,
