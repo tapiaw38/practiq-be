@@ -9,28 +9,57 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type UpdateUsecase interface {
-	Execute(context.Context, string, UpdateInput) (*ExerciseOutput, apperrors.ApplicationError)
+type (
+	UpdateUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+	}
+
+	updateUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	UpdateInput struct {
+		Type          string `json:"type"`
+		Question      string `json:"question"`
+		CorrectAnswer string `json:"correct_answer"`
+		Explanation   string `json:"explanation"`
+		Difficulty    int    `json:"difficulty"`
+		Metadata      string `json:"metadata"`
+	}
+
+	UpdateOutput struct {
+		Data ExerciseData `json:"data"`
+	}
+)
+
+func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
+	return &updateUsecase{contextFactory: contextFactory}
 }
 
-type updateUsecase struct {
-	factory appcontext.Factory
-}
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-type UpdateInput struct {
-	Type          string `json:"type"`
-	Question      string `json:"question"`
-	CorrectAnswer string `json:"correct_answer"`
-	Explanation   string `json:"explanation"`
-	Difficulty    int    `json:"difficulty"`
-}
+	// Verify exercise exists and check ownership
+	exercise, err := app.Repositories.Exercise.Get(ctx, id)
+	if err != nil {
+		return nil, apperrors.NewApplicationError(mappings.ExerciseListError, err)
+	}
+	if exercise == nil {
+		return nil, apperrors.NewNotFoundError("exercise not found")
+	}
 
-func NewUpdateUsecase(factory appcontext.Factory) UpdateUsecase {
-	return &updateUsecase{factory: factory}
-}
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, exercise.TopicID); appErr != nil {
+		return nil, appErr
+	}
 
-func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInput) (*ExerciseOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata, input.CorrectAnswer); appErr != nil {
+		return nil, appErr
+	}
+	if appErr := validateExerciseMediaURL(app, requesterID, input.Metadata, exercise.Metadata); appErr != nil {
+		return nil, appErr
+	}
+
+	metadata := storeTeacherImage(ctx, app, requesterID, input.Metadata, *exercise)
 
 	if err := app.Repositories.Exercise.Update(ctx, id, domain.Exercise{
 		Type:          input.Type,
@@ -38,6 +67,7 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		CorrectAnswer: input.CorrectAnswer,
 		Explanation:   input.Explanation,
 		Difficulty:    input.Difficulty,
+		Metadata:      metadata,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ExerciseUpdateError, err)
 	}
@@ -50,5 +80,5 @@ func (u *updateUsecase) Execute(ctx context.Context, id string, input UpdateInpu
 		return nil, apperrors.NewApplicationError(mappings.ExerciseNotFoundError, nil)
 	}
 
-	return &ExerciseOutput{Data: toExerciseData(*e)}, nil
+	return &UpdateOutput{Data: toExerciseData(app, *e)}, nil
 }
