@@ -114,7 +114,6 @@ type PracticeSheetUsecases struct {
 	Get               ucPracticeSheet.GetUsecase
 	GetAssistantMedia ucPracticeSheet.GetAssistantMediaUsecase
 	Submit            ucPracticeSheet.SubmitUsecase
-	CheckAnswer       ucPracticeSheet.CheckAnswerUsecase
 	Update            ucPracticeSheet.UpdateUsecase
 	Delete            ucPracticeSheet.DeleteUsecase
 }
@@ -318,7 +317,6 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Get:               ucPracticeSheet.NewGetUsecase(contextFactory),
 			GetAssistantMedia: ucPracticeSheet.NewGetAssistantMediaUsecase(contextFactory),
 			Submit:            ucPracticeSheet.NewSubmitUsecase(contextFactory),
-			CheckAnswer:       ucPracticeSheet.NewCheckAnswerUsecase(contextFactory),
 			Update:            ucPracticeSheet.NewUpdateUsecase(contextFactory),
 			Delete:            ucPracticeSheet.NewDeleteUsecase(contextFactory),
 		},
