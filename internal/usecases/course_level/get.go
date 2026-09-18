@@ -2,9 +2,11 @@ package courselevel
 
 import (
 	"context"
+	"sort"
 
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
 	practiceSheetRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/practice_sheet"
+	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
@@ -52,6 +54,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
+	sortSheetsForPath(sheets)
 	// A sheet owns its topic, but the level response previously discarded that
 	// relation. Resolve it once so student navigation can separate practices by
 	// subject without one topic query per sheet.
@@ -70,6 +73,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
+	sortNotebooksForPath(notebooks)
 	for _, notebook := range notebooks {
 		if notebook.TopicID == "" {
 			continue
@@ -207,4 +211,32 @@ func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, reques
 		}
 	}
 	return apperrors.NewForbiddenError()
+}
+
+// sortSheetsForPath puts the sheets in the order a student walks them.
+//
+// The listing they come from is newest-first, which is what a teacher wants of
+// their own work and the reverse of what a student should be handed: it put
+// Practica 2 above Practica 1. Sorted here rather than in the query, because
+// the teacher's listing reads the same one.
+func sortSheetsForPath(sheets []domain.PracticeSheet) {
+	sort.SliceStable(sheets, func(i, j int) bool {
+		if !sheets[i].CreatedAt.Equal(sheets[j].CreatedAt) {
+			return sheets[i].CreatedAt.Before(sheets[j].CreatedAt)
+		}
+		// Two sheets created in the same second have no order of their own, and
+		// the database is free to return them differently on every call. The id
+		// breaks the tie so the path does not rearrange itself between visits.
+		return sheets[i].ID < sheets[j].ID
+	})
+}
+
+// sortNotebooksForPath is the same reversal: the two sit on one path.
+func sortNotebooksForPath(notebooks []domain.Notebook) {
+	sort.SliceStable(notebooks, func(i, j int) bool {
+		if !notebooks[i].CreatedAt.Equal(notebooks[j].CreatedAt) {
+			return notebooks[i].CreatedAt.Before(notebooks[j].CreatedAt)
+		}
+		return notebooks[i].ID < notebooks[j].ID
+	})
 }
