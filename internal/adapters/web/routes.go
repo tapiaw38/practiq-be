@@ -154,6 +154,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/practice-sheets/:id/exercises/:exerciseId/assistant-media", practicesheet.NewGetAssistantMediaHandler(uc.PracticeSheet.GetAssistantMedia))
 	teacherOnly.PUT("/practice-sheets/:id", practicesheet.NewUpdateHandler(uc.PracticeSheet.Update))
 	teacherOnly.DELETE("/practice-sheets/:id", practicesheet.NewDeleteHandler(uc.PracticeSheet.Delete))
+	api.POST("/practice-sheets/:id/exercises/:exerciseId/check", practicesheet.NewCheckAnswerHandler(uc.PracticeSheet.CheckAnswer))
 	api.POST("/practice-sheets/:id/submit", practicesheet.NewSubmitHandler(uc.PracticeSheet.Submit))
 	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit, submitJobRepo))
 	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler(submitJobRepo))
