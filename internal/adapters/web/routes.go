@@ -79,6 +79,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/courses", handlerCourse.NewListHandler(uc.Course.List))
 	api.GET("/courses/:id", handlerCourse.NewGetHandler(uc.Course.Get))
 	teacherOnly.PUT("/courses/:id", handlerCourse.NewUpdateHandler(uc.Course.Update))
+	teacherOnly.PATCH("/courses/:id/status", handlerCourse.NewSetStatusHandler(uc.Course.SetStatus))
 	teacherOnly.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
 
 	// Grades. La estructura académica es institucional: la escribe el

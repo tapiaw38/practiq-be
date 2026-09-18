@@ -28,11 +28,12 @@ import (
 )
 
 type CourseUsecases struct {
-	Create ucCourse.CreateUsecase
-	List   ucCourse.ListUsecase
-	Get    ucCourse.GetUsecase
-	Update ucCourse.UpdateUsecase
-	Delete ucCourse.DeleteUsecase
+	Create    ucCourse.CreateUsecase
+	List      ucCourse.ListUsecase
+	Get       ucCourse.GetUsecase
+	Update    ucCourse.UpdateUsecase
+	SetStatus ucCourse.SetStatusUsecase
+	Delete    ucCourse.DeleteUsecase
 }
 
 type GradeUsecases struct {
@@ -228,11 +229,12 @@ type Usecases struct {
 func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 	return &Usecases{
 		Course: CourseUsecases{
-			Create: ucCourse.NewCreateUsecase(contextFactory),
-			List:   ucCourse.NewListUsecase(contextFactory),
-			Get:    ucCourse.NewGetUsecase(contextFactory),
-			Update: ucCourse.NewUpdateUsecase(contextFactory),
-			Delete: ucCourse.NewDeleteUsecase(contextFactory),
+			Create:    ucCourse.NewCreateUsecase(contextFactory),
+			List:      ucCourse.NewListUsecase(contextFactory),
+			Get:       ucCourse.NewGetUsecase(contextFactory),
+			Update:    ucCourse.NewUpdateUsecase(contextFactory),
+			SetStatus: ucCourse.NewSetStatusUsecase(contextFactory),
+			Delete:    ucCourse.NewDeleteUsecase(contextFactory),
 		},
 		AttemptReview: AttemptReviewUsecases{
 			List:           ucAttemptReview.NewListUsecase(contextFactory),
