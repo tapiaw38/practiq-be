@@ -90,8 +90,26 @@ func TestDraftMessageBodyWithoutATypeAsksForAMix(t *testing.T) {
 	}
 }
 
-func TestDraftTypeRuleIgnoresAnUnknownType(t *testing.T) {
-	if got := draftTypeRule("canvas"); got != draftTypeRule("") {
-		t.Fatalf("draftTypeRule(\"canvas\") = %q, want the same as no type at all", got)
+func TestDraftTypeRulePinsCanvas(t *testing.T) {
+	if got := draftTypeRule("canvas"); !strings.Contains(got, `únicamente ejercicios de tipo "canvas"`) {
+		t.Fatalf("draftTypeRule(\"canvas\") = %q, want canvas-only instruction", got)
+	}
+}
+
+func TestValidateDraftShapeRejectsHandwritten(t *testing.T) {
+	err := validateDraftShape(map[string]interface{}{
+		"type":     "handwritten",
+		"question": "Escribí esto a mano",
+	}, "")
+	if err == nil {
+		t.Fatal("validateDraftShape() accepted handwritten draft")
+	}
+}
+
+func TestValidateDraftShapeAcceptsManualCompatibleTypes(t *testing.T) {
+	for _, typ := range []string{"open_text", "multiple_choice", "equation", "canvas", "attachment", "fill_blanks"} {
+		if err := validateDraftShape(map[string]interface{}{"type": typ, "question": "Consigna"}, ""); err != nil {
+			t.Fatalf("validateDraftShape(%q) error = %v", typ, err)
+		}
 	}
 }

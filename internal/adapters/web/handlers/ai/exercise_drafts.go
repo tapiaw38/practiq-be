@@ -92,7 +92,7 @@ func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUse
 			c.Data(response.StatusCode, response.ContentType, response.Body)
 			return
 		}
-		drafts, err := parseDrafts(response.Body)
+		drafts, err := parseDrafts(response.Body, c.PostForm("exercise_type"))
 		if err != nil {
 			c.JSON(http.StatusBadGateway, gin.H{"code": "ai:invalid-drafts", "message": "La IA no devolvió ejercicios utilizables. Intentá nuevamente."})
 			return
@@ -133,6 +133,10 @@ func draftTypeRule(exerciseType string) string {
 		return ` Generá únicamente ejercicios de tipo "multiple_choice".`
 	case "fill_blanks":
 		return ` Generá únicamente ejercicios de tipo "fill_blanks". Ejemplo del formato exacto: {"type":"fill_blanks","question":"El agua hierve a {{1}} grados y se congela a {{2}} grados.","correct_answer":"","explanation":"...","difficulty":1,"metadata":{"blanks":[{"id":1,"answer":"100"},{"id":2,"answer":"0"}],"distractors":["50","212"],"layout":"text"}}`
+	case "canvas":
+		return ` Generá únicamente ejercicios de tipo "canvas". La consigna debe pedir al alumno resolver o representar el trabajo dibujando en el lienzo; agregá correct_answer como referencia breve para corregir.`
+	case "attachment":
+		return ` Generá únicamente ejercicios de tipo "attachment". La consigna debe pedir una entrega concreta y metadata.accept debe ser una lista de formatos entre "audio", "pdf", "image" y "doc"; correct_answer puede quedar vacío.`
 	default:
 		return " Variá los tipos entre los disponibles."
 	}
@@ -149,7 +153,7 @@ func draftMessageBody(content []byte, filename string, document bool, count, dif
 	if len(content) == 0 {
 		source = "sobre el tema indicado abajo"
 	}
-	prompt := fmt.Sprintf(`Creá exactamente %s ejercicios en español argentino, dificultad %s, %s. Devolvé ÚNICAMENTE JSON válido, sin markdown: {"drafts":[{"type":"open_text|multiple_choice|equation|fill_blanks","question":"...","correct_answer":"...","explanation":"...","difficulty":1,"metadata":{"options":["..."],"blanks":[{"id":1,"answer":"..."}],"distractors":["..."],"layout":"text"}}]}. Usá multiple_choice solo con cuatro opciones en metadata.options y correct_answer igual a una de ellas. Para fill_blanks escribí el enunciado con marcadores {{1}}, {{2}}, cada número una sola vez y en orden; poné una entrada en metadata.blanks por cada marcador con su respuesta, agregá opciones incorrectas en metadata.distractors, usá metadata.layout "code" solo si el enunciado es código, y dejá correct_answer vacío porque se arma con los huecos. Para los demás tipos no incluyas blanks ni distractors. No generes canvas, handwritten ni attachment.%s %s`, count, difficulty, source, draftTypeRule(exerciseType), strings.TrimSpace(instruction))
+	prompt := fmt.Sprintf(`Creá exactamente %s ejercicios en español argentino, dificultad %s, %s. Devolvé ÚNICAMENTE JSON válido, sin markdown: {"drafts":[{"type":"open_text|multiple_choice|equation|canvas|attachment|fill_blanks","question":"...","correct_answer":"...","explanation":"...","difficulty":1,"metadata":{"options":["..."],"blanks":[{"id":1,"answer":"..."}],"distractors":["..."],"layout":"text","accept":["image"]}}]}. Tipos permitidos: open_text, multiple_choice, equation, canvas, attachment y fill_blanks. Nunca generes handwritten/manuscrito. Usá multiple_choice solo con cuatro opciones en metadata.options y correct_answer igual a una de ellas. Para fill_blanks escribí el enunciado con marcadores {{1}}, {{2}}, cada número una sola vez y en orden; poné una entrada en metadata.blanks por cada marcador con su respuesta, agregá opciones incorrectas en metadata.distractors, usá metadata.layout "code" solo si el enunciado es código, y dejá correct_answer vacío porque se arma con los huecos. Para canvas pedí que el alumno resuelva o represente en el lienzo y escribí correct_answer como referencia de corrección. Para attachment pedí una entrega concreta, usá metadata.accept con uno o más de audio, pdf, image o doc, y podés dejar correct_answer vacío. Para los demás tipos no incluyas blanks, distractors ni accept.%s %s`, count, difficulty, source, draftTypeRule(exerciseType), strings.TrimSpace(instruction))
 	var b bytes.Buffer
 	w := multipart.NewWriter(&b)
 	if err := w.WriteField("content", prompt); err != nil {
@@ -174,7 +178,7 @@ func draftMessageBody(content []byte, filename string, document bool, count, dif
 	return b.Bytes(), w.FormDataContentType(), nil
 }
 
-func parseDrafts(body []byte) ([]map[string]interface{}, error) {
+func parseDrafts(body []byte, requestedType string) ([]map[string]interface{}, error) {
 	var envelope struct {
 		Data []struct {
 			Content string `json:"content"`
@@ -197,8 +201,35 @@ func parseDrafts(body []byte) ([]map[string]interface{}, error) {
 			if len(output.Drafts) == 0 {
 				return nil, fmt.Errorf("empty drafts")
 			}
+			for _, draft := range output.Drafts {
+				if err := validateDraftShape(draft, requestedType); err != nil {
+					return nil, err
+				}
+			}
 			return output.Drafts, nil
 		}
 	}
 	return nil, fmt.Errorf("assistant response missing")
+}
+
+// validateDraftShape is a boundary guard, not a replacement for the editor's
+// review. It makes the assistant contract match the manual exercise catalogue
+// and prevents unsupported or handwritten drafts from reaching the UI.
+func validateDraftShape(draft map[string]interface{}, requestedType string) error {
+	typ, _ := draft["type"].(string)
+	question, _ := draft["question"].(string)
+	allowed := map[string]bool{
+		"open_text": true, "multiple_choice": true, "equation": true,
+		"canvas": true, "attachment": true, "fill_blanks": true,
+	}
+	if !allowed[typ] {
+		return fmt.Errorf("unsupported draft type %q", typ)
+	}
+	if requestedType != "" && typ != requestedType {
+		return fmt.Errorf("draft type %q does not match requested type %q", typ, requestedType)
+	}
+	if strings.TrimSpace(question) == "" {
+		return fmt.Errorf("draft question is empty")
+	}
+	return nil
 }
