@@ -144,10 +144,10 @@ func draftTypeRule(exerciseType string) string {
 
 func draftMessageBody(content []byte, filename string, document bool, count, difficulty, instruction, exerciseType string) ([]byte, string, error) {
 	if count == "" {
-		count = "5"
+		count = "1"
 	}
 	if difficulty == "" {
-		difficulty = "5"
+		difficulty = "1"
 	}
 	source := "basados solamente en el archivo adjunto"
 	if len(content) == 0 {
