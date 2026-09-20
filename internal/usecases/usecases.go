@@ -153,6 +153,7 @@ type NotebookUsecases struct {
 	Delete           ucNB.DeleteUsecase
 	AddPage          ucNB.AddPageUsecase
 	UpdatePage       ucNB.UpdatePageUsecase
+	DeletePage       ucNB.DeletePageUsecase
 	SaveSubmission   ucNB.SaveSubmissionUsecase
 	ListSubmissions  ucNB.ListSubmissionsUsecase
 	ReviewSubmission ucNB.ReviewSubmissionUsecase
@@ -353,6 +354,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Delete:           ucNB.NewDeleteUsecase(contextFactory),
 			AddPage:          ucNB.NewAddPageUsecase(contextFactory),
 			UpdatePage:       ucNB.NewUpdatePageUsecase(contextFactory),
+			DeletePage:       ucNB.NewDeletePageUsecase(contextFactory),
 			SaveSubmission:   ucNB.NewSaveSubmissionUsecase(contextFactory),
 			ListSubmissions:  ucNB.NewListSubmissionsUsecase(contextFactory),
 			ReviewSubmission: ucNB.NewReviewSubmissionUsecase(contextFactory),
