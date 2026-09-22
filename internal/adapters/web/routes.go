@@ -163,6 +163,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
 	api.GET("/students/me/dashboard", studentprogress.NewDashboardHandler(uc.Progress.Dashboard))
 	api.GET("/students/me/courses/:id/progress", studentprogress.NewGetCourseProgressHandler(uc.Progress.GetCourse))
+	api.GET("/students/me/courses/:id/leaderboard", studentprogress.NewGetCourseLeaderboardHandler(uc.Progress.GetCourseLeaderboard))
 
 	// Teacher view of student progress
 	api.GET("/teachers/me/students/:studentId/progress", studentprogress.NewGetStudentProgressHandler(uc.Progress.GetStudentProgress))

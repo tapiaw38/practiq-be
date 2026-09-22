@@ -47,6 +47,10 @@ func (f *fakeCourseXP) ListByStudent(context.Context, string) ([]studentcoursexp
 	return nil, nil
 }
 
+func (f *fakeCourseXP) LeaderboardByCourse(context.Context, string, string, int) ([]studentcoursexp.LeaderboardEntry, error) {
+	return nil, nil
+}
+
 func (f *fakeCourseXP) pointsFor(eventType string) int {
 	total := 0
 	for _, input := range f.awarded {

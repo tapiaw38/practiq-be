@@ -122,6 +122,7 @@ type PracticeSheetUsecases struct {
 type ProgressUsecases struct {
 	GetMy                    ucProgress.GetMyProgressUsecase
 	GetCourse                ucProgress.GetCourseProgressUsecase
+	GetCourseLeaderboard     ucProgress.GetCourseLeaderboardUsecase
 	GetStudentProgress       ucProgress.GetStudentProgressUsecase
 	GetStudentCourseProgress ucProgress.GetStudentCourseProgressUsecase
 	GetStudentAttempts       ucProgress.GetStudentAttemptsUsecase
@@ -326,6 +327,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 		Progress: ProgressUsecases{
 			GetMy:                    ucProgress.NewGetMyProgressUsecase(contextFactory),
 			GetCourse:                ucProgress.NewGetCourseProgressUsecase(contextFactory),
+			GetCourseLeaderboard:     ucProgress.NewGetCourseLeaderboardUsecase(contextFactory),
 			GetStudentProgress:       ucProgress.NewGetStudentProgressUsecase(contextFactory),
 			GetStudentCourseProgress: ucProgress.NewGetStudentCourseProgressUsecase(contextFactory),
 			GetStudentAttempts:       ucProgress.NewGetStudentAttemptsUsecase(contextFactory),
