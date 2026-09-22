@@ -66,6 +66,7 @@ type CourseDashboardSummary struct {
 	SchoolName     string
 	Title          string
 	Subject        string
+	GradeName      string
 	PracticeSheets int
 	LevelTests     int
 	Notebooks      int

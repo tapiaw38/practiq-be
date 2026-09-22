@@ -23,6 +23,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 			-- Courses carry no school of their own: they hang off a grade and a
 			-- teacher, and a second source would be the same fact twice.
 			SELECT c.id, c.title, COALESCE(c.subject, '') AS subject, c.created_at,
+			       COALESCE(g.name, '') AS grade_name,
 			       COALESCE(g.school_id, ts.id)::text AS school_id,
 			       COALESCE(gs.name, ts.name, '') AS school_name
 			FROM courses c
@@ -73,7 +74,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 			FROM student_course_progress cp
 			WHERE cp.student_id = $1
 		)
-		SELECT sc.id, sc.title, sc.subject, COALESCE(sc.school_id, ''), sc.school_name,
+		SELECT sc.id, sc.title, sc.subject, sc.grade_name, COALESCE(sc.school_id, ''), sc.school_name,
 		       COALESCE(s.practices, 0), COALESCE(s.level_tests, 0),
 		       COALESCE(nb.notebooks, 0), COALESCE(l.current_level, 1),
 		       COALESCE(ct.topic_ids, ARRAY[]::text[])
@@ -92,7 +93,7 @@ func (r *repository) ListDashboardSummaries(ctx context.Context, studentID strin
 	summaries := []domain.CourseDashboardSummary{}
 	for rows.Next() {
 		var s domain.CourseDashboardSummary
-		if err := rows.Scan(&s.CourseID, &s.Title, &s.Subject, &s.SchoolID, &s.SchoolName,
+		if err := rows.Scan(&s.CourseID, &s.Title, &s.Subject, &s.GradeName, &s.SchoolID, &s.SchoolName,
 			&s.PracticeSheets, &s.LevelTests, &s.Notebooks, &s.CurrentLevel, pq.Array(&s.TopicIDs)); err != nil {
 			return nil, err
 		}

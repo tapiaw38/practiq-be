@@ -37,6 +37,7 @@ type (
 		SchoolName     string   `json:"school_name,omitempty"`
 		Title          string   `json:"title"`
 		Subject        string   `json:"subject"`
+		GradeName      string   `json:"grade_name,omitempty"`
 		PracticeSheets int      `json:"practice_sheets"`
 		LevelTests     int      `json:"level_tests"`
 		Notebooks      int      `json:"notebooks"`
@@ -91,6 +92,7 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 			SchoolName:     s.SchoolName,
 			Title:          s.Title,
 			Subject:        s.Subject,
+			GradeName:      s.GradeName,
 			PracticeSheets: s.PracticeSheets,
 			LevelTests:     s.LevelTests,
 			Notebooks:      s.Notebooks,
