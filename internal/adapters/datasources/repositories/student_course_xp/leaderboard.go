@@ -27,14 +27,16 @@ func (r *repository) LeaderboardByCourse(ctx context.Context, courseID, studentI
 		ranked AS (
 			SELECT
 				m.student_id,
+				COALESCE(p.avatar_seed, '') AS avatar_seed,
 				COALESCE(x.total_xp, 0) AS total_xp,
 				RANK() OVER (ORDER BY COALESCE(x.total_xp, 0) DESC) AS position,
 				ROW_NUMBER() OVER (ORDER BY COALESCE(x.total_xp, 0) DESC, m.student_id) AS seq
 			FROM members m
 			LEFT JOIN student_course_xp x
 				ON x.student_id = m.student_id AND x.course_id = $1::uuid
+			LEFT JOIN user_profiles p ON p.id = m.student_id
 		)
-		SELECT student_id, total_xp, position
+		SELECT student_id, avatar_seed, total_xp, position
 		FROM ranked
 		WHERE seq <= $2 OR student_id = $3
 		ORDER BY seq`, courseID, top, studentID)
@@ -46,7 +48,7 @@ func (r *repository) LeaderboardByCourse(ctx context.Context, courseID, studentI
 	entries := make([]LeaderboardEntry, 0, top+1)
 	for rows.Next() {
 		var entry LeaderboardEntry
-		if err := rows.Scan(&entry.StudentID, &entry.TotalXP, &entry.Position); err != nil {
+		if err := rows.Scan(&entry.StudentID, &entry.AvatarSeed, &entry.TotalXP, &entry.Position); err != nil {
 			return nil, err
 		}
 		entries = append(entries, entry)

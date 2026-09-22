@@ -29,8 +29,10 @@ type CourseXP struct {
 // this database. The usecase resolves it.
 type LeaderboardEntry struct {
 	StudentID string
-	TotalXP   int
-	Position  int
+	// AvatarSeed does live here: it is a practiq preference, unlike the name.
+	AvatarSeed string
+	TotalXP    int
+	Position   int
 }
 
 type Repository interface {

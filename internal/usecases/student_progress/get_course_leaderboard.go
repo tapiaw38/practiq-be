@@ -28,10 +28,12 @@ type (
 	LeaderboardEntryData struct {
 		// Shortened for display: classmates recognise each other by first name,
 		// and a ranking of minors is no place for a full surname.
-		Name     string `json:"name"`
-		TotalXP  int    `json:"total_xp"`
-		Position int    `json:"position"`
-		IsMe     bool   `json:"is_me,omitempty"`
+		Name string `json:"name"`
+		// Opaque token the client draws the avatar from; empty means none.
+		AvatarSeed string `json:"avatar_seed,omitempty"`
+		TotalXP    int    `json:"total_xp"`
+		Position   int    `json:"position"`
+		IsMe       bool   `json:"is_me,omitempty"`
 	}
 
 	GetCourseLeaderboardOutput struct {
@@ -82,10 +84,11 @@ func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, co
 	output := GetCourseLeaderboardOutput{Data: make([]LeaderboardEntryData, 0, len(entries))}
 	for i, entry := range entries {
 		item := LeaderboardEntryData{
-			Name:     shortDisplayName(names[entry.StudentID]),
-			TotalXP:  entry.TotalXP,
-			Position: entry.Position,
-			IsMe:     entry.StudentID == studentID,
+			Name:       shortDisplayName(names[entry.StudentID]),
+			AvatarSeed: entry.AvatarSeed,
+			TotalXP:    entry.TotalXP,
+			Position:   entry.Position,
+			IsMe:       entry.StudentID == studentID,
 		}
 		// The query appends the student's own row past the cut when the top does
 		// not already hold it, so only that trailing row becomes Me.
