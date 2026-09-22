@@ -8,10 +8,10 @@ import (
 )
 
 func (r *repository) Get(ctx context.Context, id string) (*domain.UserProfile, error) {
-	query := `SELECT id, profile_type, academic_status, COALESCE(timezone,''), ui_theme, created_at FROM user_profiles WHERE id = $1`
+	query := `SELECT id, profile_type, academic_status, COALESCE(timezone,''), ui_theme, COALESCE(avatar_seed,''), created_at FROM user_profiles WHERE id = $1`
 	row := r.db.QueryRowContext(ctx, query, id)
 	var p domain.UserProfile
-	err := row.Scan(&p.ID, &p.ProfileType, &p.AcademicStatus, &p.Timezone, &p.UITheme, &p.CreatedAt)
+	err := row.Scan(&p.ID, &p.ProfileType, &p.AcademicStatus, &p.Timezone, &p.UITheme, &p.AvatarSeed, &p.CreatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}

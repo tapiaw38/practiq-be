@@ -11,7 +11,10 @@ type UserProfile struct {
 	AcademicStatus string
 	// Timezone is the IANA zone the student's day is measured in, reported by
 	// the browser. Empty falls back to DefaultTimezone.
-	Timezone  string
-	UITheme   string
-	CreatedAt time.Time
+	Timezone string
+	UITheme  string
+	// AvatarSeed feeds the client-side avatar generator. Empty means the
+	// student has not picked one and the UI falls back to their initial.
+	AvatarSeed string
+	CreatedAt  time.Time
 }

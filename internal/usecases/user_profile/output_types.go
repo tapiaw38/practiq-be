@@ -10,6 +10,7 @@ type (
 		ProfileType    string `json:"profile_type"`
 		AcademicStatus string `json:"academic_status"`
 		UITheme        string `json:"ui_theme"`
+		AvatarSeed     string `json:"avatar_seed"`
 		// AssistantEnabled tells the client whether to show the assistant. It
 		// replaces the per-profile credentials the client used to receive and
 		// gate on, which meant handing the key to every browser.
@@ -29,6 +30,7 @@ func toProfileData(p domain.UserProfile, name, email string, assistantEnabled bo
 		ProfileType:      p.ProfileType,
 		AcademicStatus:   p.AcademicStatus,
 		UITheme:          p.UITheme,
+		AvatarSeed:       p.AvatarSeed,
 		AssistantEnabled: assistantEnabled,
 		CreatedAt:        p.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
