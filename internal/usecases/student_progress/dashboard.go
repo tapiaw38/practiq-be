@@ -51,8 +51,16 @@ type (
 		// StreakDays is the student's best live streak. It goes through the
 		// domain rule rather than a SQL MAX so a streak the student already
 		// broke is not reported.
-		StreakDays           int    `json:"streak_days"`
-		LastPracticedSheetID string `json:"last_practiced_sheet_id,omitempty"`
+		StreakDays           int                 `json:"streak_days"`
+		LastPracticedSheetID string              `json:"last_practiced_sheet_id,omitempty"`
+		ResumePractice       *ResumePracticeData `json:"resume_practice,omitempty"`
+	}
+
+	ResumePracticeData struct {
+		SheetID    string `json:"sheet_id"`
+		TopicID    string `json:"topic_id,omitempty"`
+		TopicTitle string `json:"topic_title,omitempty"`
+		Level      int    `json:"level"`
 	}
 
 	DashboardOutput struct {
@@ -77,7 +85,7 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
-	lastSheetID, err := app.Repositories.StudentPracticeState.GetLastOpenedSheetID(ctx, studentID)
+	resumePractice, err := app.Repositories.StudentPracticeState.GetLastOpenedPractice(ctx, studentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptGetError, err)
 	}
@@ -110,10 +118,19 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 		}
 	}
 
-	return &DashboardOutput{Data: DashboardData{
-		Courses:              courses,
-		Progress:             progressData,
-		StreakDays:           streak,
-		LastPracticedSheetID: lastSheetID,
-	}}, nil
+	data := DashboardData{
+		Courses:    courses,
+		Progress:   progressData,
+		StreakDays: streak,
+	}
+	if resumePractice != nil {
+		data.LastPracticedSheetID = resumePractice.SheetID
+		data.ResumePractice = &ResumePracticeData{
+			SheetID:    resumePractice.SheetID,
+			TopicID:    resumePractice.TopicID,
+			TopicTitle: resumePractice.TopicTitle,
+			Level:      resumePractice.Level,
+		}
+	}
+	return &DashboardOutput{Data: data}, nil
 }
