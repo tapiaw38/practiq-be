@@ -5,9 +5,11 @@ import (
 	"strings"
 
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/authapi"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
 // leaderboardTop is how many places the table shows before it cuts to the
@@ -16,7 +18,7 @@ const leaderboardTop = 10
 
 type (
 	GetCourseLeaderboardUsecase interface {
-		Execute(ctx context.Context, studentID, courseID string) (*GetCourseLeaderboardOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, studentID, courseID, bearerToken string) (*GetCourseLeaderboardOutput, apperrors.ApplicationError)
 	}
 
 	getCourseLeaderboardUsecase struct {
@@ -34,8 +36,7 @@ type (
 
 	GetCourseLeaderboardOutput struct {
 		Data []LeaderboardEntryData `json:"data"`
-		// Absent while the student has not earned anything: they are nowhere in
-		// the ranking yet, which is not the same as being last.
+		// Set when the student's place falls outside the visible top.
 		Me *LeaderboardEntryData `json:"me,omitempty"`
 	}
 )
@@ -44,7 +45,7 @@ func NewGetCourseLeaderboardUsecase(contextFactory appcontext.Factory) GetCourse
 	return &getCourseLeaderboardUsecase{contextFactory: contextFactory}
 }
 
-func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, courseID string) (*GetCourseLeaderboardOutput, apperrors.ApplicationError) {
+func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, courseID, bearerToken string) (*GetCourseLeaderboardOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	// The ranking exposes classmates, so course membership is the gate: without
@@ -69,38 +70,50 @@ func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, co
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
-	output := GetCourseLeaderboardOutput{Data: make([]LeaderboardEntryData, 0, len(entries))}
+	ids := make([]string, 0, len(entries))
 	for _, entry := range entries {
+		ids = append(ids, entry.StudentID)
+	}
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, ids)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	output := GetCourseLeaderboardOutput{Data: make([]LeaderboardEntryData, 0, len(entries))}
+	for i, entry := range entries {
 		item := LeaderboardEntryData{
-			Name:     shortDisplayName(entry.Name),
+			Name:     shortDisplayName(names[entry.StudentID]),
 			TotalXP:  entry.TotalXP,
 			Position: entry.Position,
 			IsMe:     entry.StudentID == studentID,
 		}
-		if item.IsMe {
+		// The query appends the student's own row past the cut when the top does
+		// not already hold it, so only that trailing row becomes Me.
+		if item.IsMe && i >= leaderboardTop {
 			me := item
 			output.Me = &me
+			continue
 		}
-		// The student's own row is repeated outside the top on purpose; keeping
-		// it in Data too would print it twice when they are inside it.
-		if item.Position <= leaderboardTop {
-			output.Data = append(output.Data, item)
-		}
+		output.Data = append(output.Data, item)
 	}
 
 	return &output, nil
 }
 
-// shortDisplayName turns "Walter Tapia Gomez" into "Walter T.". A single word
-// is left alone, and a profile with no name still gets something to render.
-func shortDisplayName(name string) string {
-	parts := strings.Fields(name)
-	switch len(parts) {
-	case 0:
+// shortDisplayName renders "Walter Tapia" as "Walter T.". A profile with no
+// surname keeps just the first name, and one with neither still has to render
+// as something rather than leak the raw id.
+func shortDisplayName(info authapi.UserInfo) string {
+	first := strings.TrimSpace(info.FirstName)
+	last := strings.TrimSpace(info.LastName)
+	if first == "" && last == "" {
 		return "Alumno"
-	case 1:
-		return parts[0]
-	default:
-		return parts[0] + " " + strings.ToUpper(string([]rune(parts[1])[:1])) + "."
 	}
+	if first == "" {
+		first, last = last, ""
+	}
+	if last == "" {
+		return first
+	}
+	return first + " " + strings.ToUpper(string([]rune(last)[:1])) + "."
 }

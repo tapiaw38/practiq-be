@@ -25,12 +25,12 @@ type CourseXP struct {
 	TotalXP  int
 }
 
+// LeaderboardEntry carries no name: identity lives in auth-api-be, not in
+// this database. The usecase resolves it.
 type LeaderboardEntry struct {
 	StudentID string
-	// Full name as stored. Shortening it for display is the usecase's job.
-	Name     string
-	TotalXP  int
-	Position int
+	TotalXP   int
+	Position  int
 }
 
 type Repository interface {

@@ -13,7 +13,7 @@ func NewGetCourseLeaderboardHandler(uc ucProgress.GetCourseLeaderboardUsecase) g
 	return func(c *gin.Context) {
 		studentID := middlewares.GetUserID(c)
 		courseID := c.Param("id")
-		output, appErr := uc.Execute(c, studentID, courseID)
+		output, appErr := uc.Execute(c, studentID, courseID, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
