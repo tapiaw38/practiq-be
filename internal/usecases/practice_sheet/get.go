@@ -56,6 +56,13 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 	}
 
 	data := toSheetData(app, *ps, includeTeacherData)
+	if !includeTeacherData && requesterID != "" {
+		if streak, err := currentStudentStreak(ctx, app, requesterID); err != nil {
+			log.Printf("[practice_sheet] could not read streak student_id=%s err=%v", requesterID, err)
+		} else {
+			data.StreakDays = streak
+		}
+	}
 
 	// Opening the test is what starts a student's clock, so there is no
 	// separate "begin" step to forget or to skip by going straight to submit.

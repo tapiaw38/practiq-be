@@ -541,6 +541,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	result := toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)
 	xp := awardPracticeXP(ctx, app, studentID, ps, input.Attempts, xpExercises, ps.SheetType == sheetTypeLevelTest && shouldLevelUp && !hasPendingReview)
 	result.XPGained, result.CourseXP, result.XPBreakdown = xp.Gained, xp.Balance, xp.Breakdown
+	if progress, err := app.Repositories.StudentProgress.ListByStudent(ctx, studentID); err != nil {
+		log.Printf("[practice_sheet] could not refresh streak student_id=%s err=%v", studentID, err)
+	} else {
+		result.StreakDays = domain.CurrentStreak(progress, studentLoc)
+	}
 	result.PendingReview = hasPendingReview
 	return &SubmitOutput{Data: result}, nil
 }
