@@ -77,7 +77,7 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
-	lastSheetID, err := app.Repositories.StudentAttempt.GetLastPracticedSheetID(ctx, studentID)
+	lastSheetID, err := app.Repositories.StudentPracticeState.GetLastOpenedSheetID(ctx, studentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptGetError, err)
 	}

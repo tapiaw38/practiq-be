@@ -47,6 +47,13 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 	if appErr != nil {
 		return nil, appErr
 	}
+	// Only student practice sheets feed "Continuar práctica". Level tests have
+	// a separate route and timing rules, so they must never replace this state.
+	if ps.SheetType != sheetTypeLevelTest && !includeTeacherData && requesterID != "" {
+		if err := app.Repositories.StudentPracticeState.MarkOpened(ctx, requesterID, ps.ID); err != nil {
+			log.Printf("[practice_sheet] could not save last opened sheet_id=%s student_id=%s err=%v", ps.ID, requesterID, err)
+		}
+	}
 
 	data := toSheetData(app, *ps, includeTeacherData)
 
