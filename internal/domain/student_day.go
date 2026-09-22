@@ -58,3 +58,15 @@ func EffectiveStreak(p StudentTopicProgress, loc *time.Location) int {
 	}
 	return 0
 }
+
+// CurrentStreak is the student's global live streak. Screens must use this
+// rather than the streak of whichever topic happens to be open.
+func CurrentStreak(progress []StudentTopicProgress, loc *time.Location) int {
+	streak := 0
+	for _, topic := range progress {
+		if current := EffectiveStreak(topic, loc); current > streak {
+			streak = current
+		}
+	}
+	return streak
+}

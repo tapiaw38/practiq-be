@@ -2,6 +2,7 @@ package studentprogress
 
 import (
 	"context"
+	"log"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -42,6 +43,7 @@ type (
 		LevelTests     int      `json:"level_tests"`
 		Notebooks      int      `json:"notebooks"`
 		CurrentLevel   int      `json:"current_level"`
+		CourseXP       int      `json:"course_xp"`
 		TopicIDs       []string `json:"topic_ids"`
 	}
 
@@ -85,6 +87,17 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
+	// XP is motivational metadata: losing it must not leave the student
+	// without courses, progress or streak. Degrade to zero and log.
+	xpByCourse := make(map[string]int)
+	if xpEntries, xpErr := app.Repositories.StudentCourseXP.ListByStudent(ctx, studentID); xpErr != nil {
+		log.Printf("[dashboard] could not load course xp student_id=%s err=%v", studentID, xpErr)
+	} else {
+		for _, entry := range xpEntries {
+			xpByCourse[entry.CourseID] = entry.TotalXP
+		}
+	}
+
 	resumePractice, err := app.Repositories.StudentPracticeState.GetLastOpenedPractice(ctx, studentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptGetError, err)
@@ -105,18 +118,16 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 			LevelTests:     s.LevelTests,
 			Notebooks:      s.Notebooks,
 			CurrentLevel:   s.CurrentLevel,
+			CourseXP:       xpByCourse[s.CourseID],
 			TopicIDs:       s.TopicIDs,
 		})
 	}
 
 	progressData := make([]ProgressData, 0, len(progress))
-	streak := 0
 	for _, p := range progress {
 		progressData = append(progressData, toProgressData(p, loc))
-		if s := domain.EffectiveStreak(p, loc); s > streak {
-			streak = s
-		}
 	}
+	streak := domain.CurrentStreak(progress, loc)
 
 	data := DashboardData{
 		Courses:    courses,

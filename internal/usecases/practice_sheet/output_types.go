@@ -65,6 +65,8 @@ type (
 		CreatedBy       string              `json:"created_by"`
 		CreatedAt       string              `json:"created_at"`
 		Exercises       []SheetExerciseData `json:"exercises"`
+		// StreakDays is global student state, never limited to this sheet's topic.
+		StreakDays int `json:"streak_days"`
 	}
 
 	ExerciseResultData struct {
@@ -93,6 +95,10 @@ type (
 		ShouldRepeat    bool                 `json:"should_repeat"`
 		PendingReview   bool                 `json:"pending_review,omitempty"`
 		NextLevel       int                  `json:"next_level"`
+		StreakDays      int                  `json:"streak_days"`
+		XPGained        int                  `json:"xp_gained"`
+		CourseXP        int                  `json:"course_xp"`
+		XPBreakdown     []XPBreakdownEntry   `json:"xp_breakdown,omitempty"`
 		ExerciseResults []ExerciseResultData `json:"exercise_results"`
 	}
 )

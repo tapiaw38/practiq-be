@@ -128,6 +128,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	var persistenceErr error
 	resultAIFeedback := ""
 	exerciseResults := make([]ExerciseResultData, 0, total)
+	xpExercises := make([]xpExercise, 0, total)
 
 	// The streak counts calendar days in the student's own zone, so it has to
 	// be resolved before any topic is updated.
@@ -335,6 +336,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			}
 		}
 
+		if ok {
+			xpExercises = append(xpExercises, xpExercise{ExerciseID: attempt.ExerciseID, Correct: isCorrect, Ungraded: ungraded})
+		}
+
 		// Practice sheets teach from their detailed result. A level test must not
 		// become an answer oracle, so it deliberately returns no verdict, answer
 		// or assistant feedback for an individual exercise.
@@ -534,6 +539,8 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		resultAIFeedback = ""
 	}
 	result := toSubmitOutputData(sheetScore, correct, total, newMastery, recommendation, resultAIFeedback, shouldLevelUp, shouldRepeat, nextLevel, exerciseResults)
+	xp := awardPracticeXP(ctx, app, studentID, ps, input.Attempts, xpExercises, ps.SheetType == sheetTypeLevelTest && shouldLevelUp && !hasPendingReview)
+	result.XPGained, result.CourseXP, result.XPBreakdown = xp.Gained, xp.Balance, xp.Breakdown
 	result.PendingReview = hasPendingReview
 	return &SubmitOutput{Data: result}, nil
 }
