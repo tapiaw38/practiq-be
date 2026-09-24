@@ -217,6 +217,9 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	// Paying with a Mercado Pago balance instead of a card: the teacher
 	// authorises the agreement at the gateway, so no card reaches the browser.
 	teacherOnly.POST("/teachers/me/subscription/hosted-checkout", subscription.NewHostedCheckoutHandler(uc.Subscription.HostedCheckout))
+	// Changing plan is not subscribing again: the agreement is restated, so a
+	// mid-cycle move costs the difference rather than a whole new month.
+	teacherOnly.POST("/teachers/me/subscription/change-plan", subscription.NewChangePlanHandler(uc.Subscription.ChangePlan))
 	teacherOnly.POST("/teachers/me/subscription/pause", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionPause))
 	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
 	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))

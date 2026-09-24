@@ -38,12 +38,16 @@ type (
 	// Entitlement answers "is this user paid up, and what does their plan
 	// allow" in one call.
 	Entitlement struct {
-		UserID         string         `json:"user_id"`
-		Active         bool           `json:"active"`
-		SubscriptionID *int           `json:"subscription_id"`
-		PlanID         *int           `json:"plan_id"`
-		AccessUntil    *Timestamp     `json:"access_until"`
-		Metadata       map[string]any `json:"metadata"`
+		UserID         string     `json:"user_id"`
+		Active         bool       `json:"active"`
+		SubscriptionID *int       `json:"subscription_id"`
+		PlanID         *int       `json:"plan_id"`
+		AccessUntil    *Timestamp `json:"access_until"`
+		// Status is the agreement's, which Active no longer implies: somebody
+		// paused or cancelled keeps the access they paid for until
+		// AccessUntil, and the screen still has to offer them a way back.
+		Status   string         `json:"status"`
+		Metadata map[string]any `json:"metadata"`
 	}
 
 	// PlanInput is what a superadmin can set. Amount and limits are separate
@@ -81,6 +85,25 @@ type (
 		PayerEmail string `json:"payer_email"`
 	}
 
+	// ChangePlanInput moves a live subscription to another plan. The card is
+	// for the prorated difference only: the agreement keeps charging whatever
+	// it already has on file.
+	ChangePlanInput struct {
+		PlanID          int    `json:"plan_id"`
+		UserID          string `json:"user_id"`
+		PayerEmail      string `json:"payer_email"`
+		CardTokenID     string `json:"card_token_id"`
+		PaymentMethodID string `json:"payment_method_id"`
+	}
+
+	// PlanChange reports what the move cost. Charged is zero moving down.
+	PlanChange struct {
+		SubscriptionID int     `json:"subscription_id"`
+		PlanID         int     `json:"plan_id"`
+		Status         string  `json:"status"`
+		Charged        float64 `json:"charged"`
+	}
+
 	// HostedSubscription is an agreement waiting for the payer to authorise it
 	// at the gateway. Nothing is charged until they do.
 	HostedSubscription struct {
@@ -108,6 +131,10 @@ type (
 		// can authorise the agreement at the gateway, where their account
 		// balance is an option a card form cannot offer.
 		StartHostedSubscription(ctx context.Context, in HostedSubscriptionInput) (*HostedSubscription, error)
+		// ChangePlan restates the amount on the agreement rather than opening
+		// a second one, so a mid-cycle move costs the difference and not a
+		// whole new month.
+		ChangePlan(ctx context.Context, in ChangePlanInput) (*PlanChange, error)
 		CreatePlan(ctx context.Context, in PlanInput) (*Plan, error)
 		UpdatePlan(ctx context.Context, planID int, in PlanInput) (*Plan, error)
 		// DeactivatePlan takes a plan off the shelf. Subscriptions to it keep
@@ -261,6 +288,14 @@ func (c *client) StartHostedSubscription(ctx context.Context, in HostedSubscript
 		return nil, err
 	}
 	return &hosted, nil
+}
+
+func (c *client) ChangePlan(ctx context.Context, in ChangePlanInput) (*PlanChange, error) {
+	var change PlanChange
+	if err := c.send(ctx, http.MethodPost, "/api/v1/subscriptions/subscriptions/change-plan", in, &change); err != nil {
+		return nil, err
+	}
+	return &change, nil
 }
 
 func (c *client) CreatePlan(ctx context.Context, in PlanInput) (*Plan, error) {

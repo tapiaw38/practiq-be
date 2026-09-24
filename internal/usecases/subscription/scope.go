@@ -46,6 +46,10 @@ type planScope struct {
 	// RenewsAt is when the paid period ends. Nil on the free plan, where the
 	// date that matters is the end of the trial instead.
 	RenewsAt *time.Time
+	// Status is what the gateway calls the agreement. An Active teacher may
+	// still be paused — they keep the month they bought — and that has to
+	// reach the screen or there is nothing to resume.
+	Status string
 }
 
 // Enforced reports whether a limit should be applied at all.
@@ -113,6 +117,7 @@ func scopeFor(ctx context.Context, app *appcontext.Context, schoolID, teacherID 
 			State:    capEnforced,
 			Active:   true,
 			RenewsAt: renewsAt(entitlement.AccessUntil),
+			Status:   entitlement.Status,
 		}, nil
 	}
 

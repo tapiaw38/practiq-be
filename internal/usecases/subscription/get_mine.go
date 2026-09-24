@@ -106,7 +106,7 @@ func (u *getMineUsecase) Execute(ctx context.Context, teacherID string) (*GetMin
 		data.RenewsAt = trialEndsAt(ctx, app, teacherID)
 	}
 
-	data.Status = subscriptionStatus(ctx, app, teacherID, scope.Active)
+	data.Status = subscriptionStatus(ctx, app, teacherID, scope)
 	return &GetMineOutput{Data: data}, nil
 }
 
@@ -125,8 +125,14 @@ func trialEndsAt(ctx context.Context, app *appcontext.Context, teacherID string)
 //
 // Without it a teacher who pauses sees the free plan and no way back: pausing
 // removes the entitlement, and the entitlement is all the screen would know.
-func subscriptionStatus(ctx context.Context, app *appcontext.Context, teacherID string, active bool) string {
-	if active {
+func subscriptionStatus(ctx context.Context, app *appcontext.Context, teacherID string, scope planScope) string {
+	if scope.Active {
+		// The entitlement now says so itself. A teacher who paused keeps the
+		// month they bought, so "entitled" no longer means "running", and
+		// answering "authorized" here would hide the button back.
+		if scope.Status != "" {
+			return scope.Status
+		}
 		return "authorized"
 	}
 	subscriptions, err := app.Integrations.Payments.ListSubscriptions(ctx, teacherID)

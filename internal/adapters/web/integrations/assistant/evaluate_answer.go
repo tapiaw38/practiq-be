@@ -93,7 +93,7 @@ func parseEvaluationResponse(raw string) (EvaluationResult, error) {
 	}
 
 	var parsed struct {
-		IsCorrect *bool   `json:"is_correct"`
+		IsCorrect *bool  `json:"is_correct"`
 		Feedback  string `json:"feedback"`
 	}
 	if err := json.Unmarshal([]byte(body), &parsed); err != nil {

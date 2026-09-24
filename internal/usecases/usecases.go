@@ -93,6 +93,7 @@ type SubscriptionUsecases struct {
 	ManageMine     ucSubscription.ManageMineUsecase
 	Subscribe      ucSubscription.SubscribeUsecase
 	HostedCheckout ucSubscription.HostedCheckoutUsecase
+	ChangePlan     ucSubscription.ChangePlanUsecase
 	Plans          ucSubscription.PlansUsecase
 	Downgrade      ucSubscription.DowngradeUsecase
 }
@@ -304,6 +305,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			ManageMine:     ucSubscription.NewManageMineUsecase(contextFactory),
 			Subscribe:      ucSubscription.NewSubscribeUsecase(contextFactory),
 			HostedCheckout: ucSubscription.NewHostedCheckoutUsecase(contextFactory),
+			ChangePlan:     ucSubscription.NewChangePlanUsecase(contextFactory),
 			Plans:          ucSubscription.NewPlansUsecase(contextFactory),
 			Downgrade:      ucSubscription.NewDowngradeUsecase(contextFactory),
 		},

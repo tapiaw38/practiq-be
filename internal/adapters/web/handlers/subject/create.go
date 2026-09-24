@@ -22,8 +22,8 @@ func NewCreateHandler(uc ucSubject.CreateUsecase) gin.HandlerFunc {
 		}
 
 		output, appErr := uc.Execute(c, ucSubject.CreateInput{
-			Name:        input.Name,
-			Description: input.Description,
+			Name:         input.Name,
+			Description:  input.Description,
 			CreatedBy:    middlewares.GetUserID(c),
 			SchoolID:     c.GetHeader("X-School-ID"),
 			IsSuperAdmin: middlewares.IsSuperAdmin(c),

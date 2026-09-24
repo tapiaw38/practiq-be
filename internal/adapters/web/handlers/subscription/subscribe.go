@@ -46,6 +46,25 @@ func NewHostedCheckoutHandler(uc ucSubscription.HostedCheckoutUsecase) gin.Handl
 	}
 }
 
+// NewChangePlanHandler moves a paying teacher to another plan, charging only
+// the difference for what is left of the period they already bought.
+func NewChangePlanHandler(uc ucSubscription.ChangePlanUsecase) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var input ucSubscription.ChangePlanInput
+		if err := c.ShouldBindJSON(&input); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+			return
+		}
+		out, appErr := uc.Execute(c, middlewares.GetUserID(c), c.GetHeader("Authorization"), input)
+		if appErr != nil {
+			appErr.Log(c)
+			c.JSON(appErr.StatusCode(), appErr)
+			return
+		}
+		c.JSON(http.StatusOK, out)
+	}
+}
+
 // NewCheckoutConfigHandler serves the gateway's public key, which the browser
 // needs to turn a card into a token without the card passing through us.
 func NewCheckoutConfigHandler(publicKey string) gin.HandlerFunc {
