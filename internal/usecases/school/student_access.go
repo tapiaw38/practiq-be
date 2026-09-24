@@ -34,7 +34,7 @@ func EnsureStudentCanWork(ctx context.Context, app *appcontext.Context, studentI
 	// A school whose trial ran out and that nobody pays for stops taking work
 	// from anybody, not just from students over a cap — there is no cap left.
 	owner := course.TeacherID
-	if !subscription.StudentsCanWork(ctx, app, course.SchoolID, owner) {
+	if !subscription.StudentMayWork(ctx, app, course.SchoolID, owner, studentID) {
 		return apperrors.NewForbiddenError()
 	}
 

@@ -36,6 +36,7 @@ type Repository interface {
 	// ListStudentsByActivity orders a school's active students least recently
 	// active first, which is the order a downgrade deactivates by.
 	ListStudentsByActivity(ctx context.Context, schoolID string) ([]string, error)
+	ListStudentsWithActivity(ctx context.Context, schoolID string) ([]domain.StudentActivity, error)
 	SetMemberActive(ctx context.Context, schoolID, userID string, active bool) error
 }
 

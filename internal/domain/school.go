@@ -55,6 +55,13 @@ type (
 		CloseReason string
 	}
 
+	// StudentActivity is a student and when they last practised, which is what
+	// the downgrade order is built from. Nil means never — those go first.
+	StudentActivity struct {
+		UserID        string
+		LastPracticed *time.Time
+	}
+
 	SchoolMember struct {
 		SchoolID string
 		UserID   string

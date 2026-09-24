@@ -141,6 +141,45 @@ func (r *repository) CountStudents(ctx context.Context, schoolID string) (int, e
 // would keep the students who finished months ago and cut the ones sitting in
 // class today: a teacher's oldest students are usually their most finished
 // ones. Students who never practised sort first, before anyone who did.
+// ListStudentsWithActivity is ListStudentsByActivity with the dates kept.
+//
+// The order alone tells a teacher nothing: choosing who stays means seeing who
+// has not practised since March, which is the very thing the order is built on.
+func (r *repository) ListStudentsWithActivity(ctx context.Context, schoolID string) ([]domain.StudentActivity, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT sm.user_id, activity.last_at
+		FROM school_members sm
+		LEFT JOIN (
+			SELECT student_id, MAX(last_practiced_at) AS last_at
+			FROM student_topic_progress GROUP BY student_id
+		) activity ON activity.student_id = sm.user_id
+		WHERE sm.school_id = $1 AND sm.role = 'student' AND sm.active
+		ORDER BY activity.last_at ASC NULLS FIRST, sm.created_at ASC
+	`, schoolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []domain.StudentActivity{}
+	for rows.Next() {
+		var (
+			id     string
+			lastAt sql.NullTime
+		)
+		if err := rows.Scan(&id, &lastAt); err != nil {
+			return nil, err
+		}
+		student := domain.StudentActivity{UserID: id}
+		if lastAt.Valid {
+			at := lastAt.Time
+			student.LastPracticed = &at
+		}
+		out = append(out, student)
+	}
+	return out, rows.Err()
+}
+
 func (r *repository) ListStudentsByActivity(ctx context.Context, schoolID string) ([]string, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT sm.user_id

@@ -41,6 +41,13 @@ type fakeSchools struct {
 	byID     map[string]*domain.School
 	students int
 	memberOf []domain.SchoolMember
+	// studentsByActivity is the order the cap is applied in, least recently
+	// active first.
+	studentsByActivity []string
+}
+
+func (f *fakeSchools) ListStudentsByActivity(context.Context, string) ([]string, error) {
+	return f.studentsByActivity, nil
 }
 
 func (f *fakeSchools) GetPersonal(context.Context, string) (*domain.School, error) {
@@ -408,6 +415,36 @@ func TestStudentsCanWork(t *testing.T) {
 			app := appWith(nil, tc.pay, subscriptionSchool(0), tc.profiles)
 			if got := StudentsCanWork(t.Context(), app, "", "teacher-1"); got != tc.want {
 				t.Fatalf("StudentsCanWork = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// Changing to a smaller plan deactivates nobody on purpose — the teacher gets
+// to choose. Until they do, the cap still has to bite, or a plan of five holds
+// fifteen students for as long as nobody opens the screen.
+func TestStudentMayWorkAppliesTheCapBeforeTheTeacherChooses(t *testing.T) {
+	paidForFive := &fakePayments{
+		entitlement: &payments.Entitlement{Active: true, Metadata: map[string]any{"max_students": float64(2)}},
+	}
+	// Least recently active first: the first two are the ones the cap drops.
+	schools := subscriptionSchool(4)
+	schools.studentsByActivity = []string{"dormant-1", "dormant-2", "working-1", "working-2"}
+
+	app := appWith(nil, paidForFive, schools, pastTrial())
+
+	for _, tc := range []struct {
+		student string
+		want    bool
+	}{
+		{"working-1", true},
+		{"working-2", true},
+		{"dormant-1", false},
+		{"dormant-2", false},
+	} {
+		t.Run(tc.student, func(t *testing.T) {
+			if got := StudentMayWork(t.Context(), app, "", "teacher-1", tc.student); got != tc.want {
+				t.Fatalf("StudentMayWork(%s) = %v, want %v", tc.student, got, tc.want)
 			}
 		})
 	}

@@ -12,11 +12,19 @@ import (
 
 type fakeSchools struct {
 	schoolRepo.Repository
-	members []domain.SchoolMember
+	members            []domain.SchoolMember
+	studentsByActivity []string
 }
 
 func (f *fakeSchools) ListForUser(context.Context, string) ([]domain.SchoolMember, error) {
 	return f.members, nil
+}
+
+// Answered because the cap is now applied per student at write time: a school
+// holding more students than its plan allows puts the excess in read-only
+// until the teacher chooses who stays.
+func (f *fakeSchools) ListStudentsByActivity(context.Context, string) ([]string, error) {
+	return f.studentsByActivity, nil
 }
 
 func (f *fakeSchools) Get(_ context.Context, id string) (*domain.School, error) {

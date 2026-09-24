@@ -11,7 +11,7 @@ import (
 
 func NewDowngradePreviewHandler(uc ucSubscription.DowngradeUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		output, appErr := uc.Preview(c, middlewares.GetUserID(c))
+		output, appErr := uc.Preview(c, middlewares.GetUserID(c), c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
