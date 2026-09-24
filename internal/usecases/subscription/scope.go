@@ -50,6 +50,9 @@ type planScope struct {
 	// still be paused — they keep the month they bought — and that has to
 	// reach the screen or there is nothing to resume.
 	Status string
+	// GraceEndsAt is set only while a lapsed plan is still being honoured. The
+	// teacher keeps everything until then, and has to be told the date.
+	GraceEndsAt *time.Time
 }
 
 // Enforced reports whether a limit should be applied at all.
@@ -119,6 +122,13 @@ func scopeFor(ctx context.Context, app *appcontext.Context, schoolID, teacherID 
 			RenewsAt: renewsAt(entitlement.AccessUntil),
 			Status:   entitlement.Status,
 		}, nil
+	}
+
+	// Paid until recently still counts. A card that expires on a Friday should
+	// not lock a class out on Saturday, so the plan is honoured in full for a
+	// few days more and the teacher is told when that ends.
+	if grace, found := graceScope(ctx, app, owner, school.ID); found {
+		return grace, nil
 	}
 
 	// Nobody paid, so the free month decides — and it is the profile's age
@@ -195,4 +205,62 @@ func renewsAt(access *payments.Timestamp) *time.Time {
 	}
 	at := access.Time
 	return &at
+}
+
+// graceScope honours a plan whose paid period ended within domain.GraceDays.
+//
+// Read from the subscriptions rather than the entitlement on purpose: the
+// entitlement answers "is this paid for", and the honest answer here is no.
+// What is true is that it was paid for until very recently.
+func graceScope(ctx context.Context, app *appcontext.Context, teacherID, schoolID string) (planScope, bool) {
+	subscriptions, err := app.Integrations.Payments.ListSubscriptions(ctx, teacherID)
+	if err != nil {
+		// Same rule as every other payments failure here: unknown is not
+		// "free plan", and an outage must not shrink somebody's school.
+		log.Printf("[payments] grace lookup failed teacher_id=%s err=%v", teacherID, err)
+		return planScope{}, false
+	}
+
+	now := time.Now().UTC()
+	var lapsed *payments.Subscription
+	for i := range subscriptions {
+		candidate := subscriptions[i]
+		if candidate.CurrentPeriodEnd == nil {
+			continue
+		}
+		if !domain.InGrace(candidate.CurrentPeriodEnd.UTC(), now) {
+			continue
+		}
+		// The one that was paid furthest into the future is the one they were
+		// actually on; older agreements from plan changes are not it.
+		if lapsed == nil || candidate.CurrentPeriodEnd.After(lapsed.CurrentPeriodEnd.Time) {
+			lapsed = &candidate
+		}
+	}
+	if lapsed == nil {
+		return planScope{}, false
+	}
+
+	plans, err := app.Integrations.Payments.ListPlans(ctx)
+	if err != nil {
+		log.Printf("[payments] grace plan lookup failed teacher_id=%s err=%v", teacherID, err)
+		return planScope{}, false
+	}
+	for _, plan := range plans {
+		if plan.ID != lapsed.PlanID {
+			continue
+		}
+		endsAt := domain.GraceEndsAt(lapsed.CurrentPeriodEnd.UTC())
+		return planScope{
+			SchoolID: schoolID,
+			Plan:     domain.PlanFromMetadata(plan.ID, planName(plan.Metadata), plan.Metadata),
+			State:    capEnforced,
+			// Not Active: nothing is being charged, and the screen must not
+			// show this as a running subscription.
+			Active:      false,
+			Status:      lapsed.Status,
+			GraceEndsAt: &endsAt,
+		}, true
+	}
+	return planScope{}, false
 }

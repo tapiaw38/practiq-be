@@ -6,6 +6,7 @@ import (
 
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
+	"github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
 // EnsureStudentCanWork refuses a student their school deactivated.
@@ -28,6 +29,13 @@ func EnsureStudentCanWork(ctx context.Context, app *appcontext.Context, studentI
 			log.Printf("[school] course lookup failed course_id=%s err=%v", courseID, err)
 		}
 		return nil
+	}
+
+	// A school whose trial ran out and that nobody pays for stops taking work
+	// from anybody, not just from students over a cap — there is no cap left.
+	owner := course.TeacherID
+	if !subscription.StudentsCanWork(ctx, app, course.SchoolID, owner) {
+		return apperrors.NewForbiddenError()
 	}
 
 	memberships, err := app.Repositories.School.ListForUser(ctx, studentID)

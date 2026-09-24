@@ -48,6 +48,10 @@ type (
 		// Without it the screen would show them a plan they are not on and a
 		// limit they do not have.
 		Uncapped bool `json:"uncapped,omitempty"`
+		// GraceEndsAt is set when the plan lapsed but is still being honoured.
+		// The teacher keeps everything until this date and has to be told it,
+		// because after it their students over the cap go read-only.
+		GraceEndsAt string `json:"grace_ends_at,omitempty"`
 		// TrialExpired is a free month that has run out. The allowance is
 		// already zero, and this says why it is rather than leaving a teacher
 		// to work out that "0 de 0" means they have to subscribe.
@@ -99,9 +103,14 @@ func (u *getMineUsecase) Execute(ctx context.Context, teacherID string) (*GetMin
 		data.CanAddStudent = true
 	}
 
-	// The free month's end is the date that matters to a teacher who is not
-	// paying, and it is the only one they have.
-	if !scope.Active && !data.Uncapped {
+	if scope.GraceEndsAt != nil {
+		// Their plan, not the free one, and the date that matters is when it
+		// stops being honoured.
+		data.GraceEndsAt = scope.GraceEndsAt.UTC().Format(time.RFC3339)
+		data.RenewsAt = ""
+	} else if !scope.Active && !data.Uncapped {
+		// The free month's end is the date that matters to a teacher who is
+		// not paying, and it is the only one they have.
 		data.TrialExpired = scope.Plan.MaxStudents == 0
 		data.RenewsAt = trialEndsAt(ctx, app, teacherID)
 	}

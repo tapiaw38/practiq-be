@@ -64,12 +64,25 @@ func (f *fakeSchools) ListForUser(context.Context, string) ([]domain.SchoolMembe
 
 type fakePayments struct {
 	payments.Client
-	entitlement *payments.Entitlement
-	err         error
+	entitlement   *payments.Entitlement
+	subscriptions []payments.Subscription
+	plans         []payments.Plan
+	err           error
 }
 
 func (f *fakePayments) GetEntitlement(context.Context, string) (*payments.Entitlement, error) {
 	return f.entitlement, f.err
+}
+
+// Answered because the grace window consults them: a plan that lapsed within
+// the last few days is still honoured, so an unpaid teacher is no longer one
+// lookup away from the free plan.
+func (f *fakePayments) ListSubscriptions(context.Context, string) ([]payments.Subscription, error) {
+	return f.subscriptions, f.err
+}
+
+func (f *fakePayments) ListPlans(context.Context) ([]payments.Plan, error) {
+	return f.plans, f.err
 }
 
 // fakeProfiles carries the one thing the free plan depends on: how long ago
@@ -291,6 +304,110 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			}
 			if !tc.wantRefused && appErr != nil {
 				t.Fatalf("expected the link to be allowed, got %v", appErr)
+			}
+		})
+	}
+}
+
+// A card that expires on a Friday must not lock a class out on Saturday. The
+// plan is honoured for a few days more, at its own cap — not the free one.
+func TestGraceKeepsTheLapsedPlan(t *testing.T) {
+	lapsedYesterday := payments.Timestamp{Time: time.Now().UTC().AddDate(0, 0, -1)}
+	lapsedLongAgo := payments.Timestamp{Time: time.Now().UTC().AddDate(0, 0, -domain.GraceDays-1)}
+
+	cases := []struct {
+		name            string
+		periodEnd       *payments.Timestamp
+		wantMaxStudents int
+	}{
+		{"lapsed yesterday keeps the plan", &lapsedYesterday, 15},
+		// Past the grace window the trial decides, and this teacher's is spent:
+		// an allowance of zero, which is what puts their students in read-only.
+		{"grace spent falls to the expired trial", &lapsedLongAgo, 0},
+		{"no recorded period is not grace", nil, 0},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app := appWith(nil, &fakePayments{
+				// Not entitled: nothing is being paid for any more.
+				entitlement: &payments.Entitlement{Active: false},
+				subscriptions: []payments.Subscription{
+					{ID: 10, PlanID: 2, Status: "cancelled", CurrentPeriodEnd: tc.periodEnd},
+				},
+				plans: []payments.Plan{
+					{ID: 2, Metadata: map[string]any{"name": "Crecimiento", "max_students": float64(15)}},
+				},
+			}, subscriptionSchool(0), pastTrial())
+
+			scope, appErr := scopeFor(t.Context(), app, "", "teacher-1")
+			if appErr != nil {
+				t.Fatalf("scopeFor: %v", appErr)
+			}
+			if scope.Plan.MaxStudents != tc.wantMaxStudents {
+				t.Fatalf("max students = %d, want %d", scope.Plan.MaxStudents, tc.wantMaxStudents)
+			}
+			// Grace is never "active": nothing is being charged, and the screen
+			// must not offer it as a running subscription.
+			if scope.Active {
+				t.Fatal("a lapsed plan must not read as active")
+			}
+		})
+	}
+}
+
+// The free month running out is not "one student over the cap": there is no
+// cap left, so the whole school stops adding work.
+func TestStudentsCanWork(t *testing.T) {
+	inGrace := payments.Timestamp{Time: time.Now().UTC().AddDate(0, 0, -1)}
+
+	cases := []struct {
+		name     string
+		pay      *fakePayments
+		profiles *fakeProfiles
+		want     bool
+	}{
+		{
+			name:     "paying",
+			pay:      &fakePayments{entitlement: &payments.Entitlement{Active: true, Metadata: map[string]any{"max_students": float64(5)}}},
+			profiles: pastTrial(),
+			want:     true,
+		},
+		{
+			name: "lapsed but inside the grace window",
+			pay: &fakePayments{
+				entitlement:   &payments.Entitlement{Active: false},
+				subscriptions: []payments.Subscription{{ID: 1, PlanID: 2, Status: "cancelled", CurrentPeriodEnd: &inGrace}},
+				plans:         []payments.Plan{{ID: 2, Metadata: map[string]any{"max_students": float64(15)}}},
+			},
+			profiles: pastTrial(),
+			want:     true,
+		},
+		{
+			name:     "trial still running",
+			pay:      &fakePayments{entitlement: &payments.Entitlement{Active: false}},
+			profiles: withinTrial(),
+			want:     true,
+		},
+		{
+			name:     "trial spent and nobody paying",
+			pay:      &fakePayments{entitlement: &payments.Entitlement{Active: false}},
+			profiles: pastTrial(),
+			want:     false,
+		},
+		{
+			name:     "a payments outage is not a failure to pay",
+			pay:      &fakePayments{err: errors.New("payments down")},
+			profiles: pastTrial(),
+			want:     true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app := appWith(nil, tc.pay, subscriptionSchool(0), tc.profiles)
+			if got := StudentsCanWork(t.Context(), app, "", "teacher-1"); got != tc.want {
+				t.Fatalf("StudentsCanWork = %v, want %v", got, tc.want)
 			}
 		})
 	}

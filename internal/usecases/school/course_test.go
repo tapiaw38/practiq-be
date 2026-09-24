@@ -6,6 +6,8 @@ import (
 
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
 	courseRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/course"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/payments"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 )
@@ -19,12 +21,22 @@ func (f *fakeCourses) Get(context.Context, string) (*domain.Course, error) {
 	return f.course, nil
 }
 
+// payingTeacher keeps these tests about membership. Whether the school is paid
+// up is its own rule, with its own tests; leaving it unset would panic here and
+// hide what each case is actually asserting.
+type payingTeacher struct{ payments.Client }
+
+func (payingTeacher) GetEntitlement(context.Context, string) (*payments.Entitlement, error) {
+	return &payments.Entitlement{Active: true, Metadata: map[string]any{"max_students": float64(30)}}, nil
+}
+
 func appWithCourse(course *domain.Course, members ...domain.SchoolMember) *appcontext.Context {
 	return &appcontext.Context{
 		Repositories: &repositories.Repositories{
 			School: &fakeSchools{members: members},
 			Course: &fakeCourses{course: course},
 		},
+		Integrations: &integrations.Integrations{Payments: payingTeacher{}},
 	}
 }
 

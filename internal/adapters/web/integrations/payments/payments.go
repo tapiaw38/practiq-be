@@ -75,6 +75,10 @@ type (
 		PlanID int    `json:"plan_id"`
 		UserID string `json:"user_id"`
 		Status string `json:"status"`
+		// CurrentPeriodEnd is the last day already paid for. Needed to tell a
+		// plan that lapsed yesterday from one that lapsed last year, which is
+		// the whole of the grace period.
+		CurrentPeriodEnd *Timestamp `json:"current_period_end"`
 	}
 
 	// HostedSubscriptionInput subscribes somebody who is not giving us a card,
