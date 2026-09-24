@@ -387,6 +387,33 @@ func (c *client) send(ctx context.Context, method, path string, body any, out an
 	return nil
 }
 
+// rejectionDetail reads the payments service's two shapes of refusal.
+//
+// A gateway rejection is an object with a code; anything the service refuses
+// on its own is a bare string — HTTPException(detail="already_subscribed").
+// Reading only the object shape left every one of those with an empty code, so
+// they all came out as the fallback message: a teacher told to "probá de nuevo
+// en un rato" when the real answer was that they are already subscribed.
+func rejectionDetail(body []byte) (code, message string) {
+	var object struct {
+		Detail struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"detail"`
+	}
+	if err := json.Unmarshal(body, &object); err == nil && object.Detail.Code != "" {
+		return strings.TrimSpace(object.Detail.Code), strings.TrimSpace(object.Detail.Message)
+	}
+	var plain struct {
+		Detail string `json:"detail"`
+	}
+	if err := json.Unmarshal(body, &plain); err == nil {
+		detail := strings.TrimSpace(plain.Detail)
+		return detail, detail
+	}
+	return "", ""
+}
+
 func (c *client) responseError(resp *http.Response) error {
 	// Payments only returns our own structured code/message. Read a bounded
 	// body anyway: gateway error pages must never become a memory risk.
@@ -394,16 +421,6 @@ func (c *client) responseError(resp *http.Response) error {
 	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
 		return &Unavailable{Err: fmt.Errorf("payments responded %d", resp.StatusCode)}
 	}
-	var envelope struct {
-		Detail struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
-		} `json:"detail"`
-	}
-	_ = json.Unmarshal(body, &envelope)
-	return &Rejected{
-		StatusCode: resp.StatusCode,
-		Code:       strings.TrimSpace(envelope.Detail.Code),
-		Message:    strings.TrimSpace(envelope.Detail.Message),
-	}
+	code, message := rejectionDetail(body)
+	return &Rejected{StatusCode: resp.StatusCode, Code: code, Message: message}
 }

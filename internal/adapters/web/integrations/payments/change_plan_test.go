@@ -43,3 +43,26 @@ func TestAPausedEntitlementIsActiveAndSaysSo(t *testing.T) {
 		t.Fatalf("status = %q, want paused", entitlement.Status)
 	}
 }
+
+// The payments service refuses on its own with a bare string detail, not the
+// {code, message} object a gateway rejection uses. Reading only the object
+// shape left the code empty, so every such refusal came out as the fallback
+// "probá de nuevo en un rato" — including "you are already subscribed".
+func TestABareStringDetailStillCarriesItsCode(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{"bare string", `{"detail":"already_subscribed"}`, "already_subscribed"},
+		{"object", `{"detail":{"code":"cc_rejected","message":"no"}}`, "cc_rejected"},
+		{"neither", `nonsense`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			code, _ := rejectionDetail([]byte(tc.body))
+			if code != tc.want {
+				t.Fatalf("code = %q, want %q", code, tc.want)
+			}
+		})
+	}
+}
