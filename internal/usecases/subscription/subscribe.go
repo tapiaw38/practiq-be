@@ -75,9 +75,25 @@ func (u *subscribeUsecase) Execute(ctx context.Context, teacherID, bearerToken s
 		PayerEmail:  email,
 		CardTokenID: in.CardTokenID,
 	}); err != nil {
+		if rejected, ok := payments.IsRejected(err); ok {
+			return apperrors.NewBadRequestError(subscriptionRejectionMessage(rejected.Code))
+		}
 		return apperrors.NewApplicationError(mappings.SubscriptionUnavailableError, err)
 	}
 	return nil
+}
+
+func subscriptionRejectionMessage(code string) string {
+	switch {
+	case strings.Contains(code, "invalid_user"):
+		return "Usá una cuenta de Mercado Pago distinta a la cuenta que recibe el cobro."
+	case strings.Contains(code, "token"):
+		return "No pudimos validar la tarjeta. Volvé a cargar los datos e intentá de nuevo."
+	case strings.Contains(code, "rejected"):
+		return "La tarjeta fue rechazada. Probá con otra tarjeta o consultá a tu banco."
+	default:
+		return "Mercado Pago no pudo autorizar la suscripción. Revisá los datos o probá otra tarjeta."
+	}
 }
 
 // CheckoutConfig serves the gateway's public key to the browser.

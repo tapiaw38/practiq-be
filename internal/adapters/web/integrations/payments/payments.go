@@ -12,10 +12,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -107,10 +109,27 @@ type (
 	// Unavailable marks a payments outage, so callers can tell "this teacher
 	// has no subscription" from "we could not find out".
 	Unavailable struct{ Err error }
+
+	// Rejected is an expected 4xx answer from the payments product. It carries
+	// its public error code so the use case can guide a teacher without
+	// pretending that Mercado Pago is down.
+	Rejected struct {
+		StatusCode int
+		Code       string
+		Message    string
+	}
 )
 
 func (e *Unavailable) Error() string { return "payments unavailable: " + e.Err.Error() }
 func (e *Unavailable) Unwrap() error { return e.Err }
+func (e *Rejected) Error() string {
+	return fmt.Sprintf("payments rejected %d: %s", e.StatusCode, e.Code)
+}
+
+func IsRejected(err error) (*Rejected, bool) {
+	var rejected *Rejected
+	return rejected, errors.As(err, &rejected)
+}
 
 func NewClient(baseURL, apiKey string) Client {
 	return &client{
@@ -260,7 +279,7 @@ func (c *client) send(ctx context.Context, method, path string, body any, out an
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return &Unavailable{Err: fmt.Errorf("payments responded %d", resp.StatusCode)}
+		return c.responseError(resp)
 	}
 	if out == nil {
 		return nil
@@ -269,4 +288,25 @@ func (c *client) send(ctx context.Context, method, path string, body any, out an
 		return &Unavailable{Err: err}
 	}
 	return nil
+}
+
+func (c *client) responseError(resp *http.Response) error {
+	// Payments only returns our own structured code/message. Read a bounded
+	// body anyway: gateway error pages must never become a memory risk.
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<10))
+	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
+		return &Unavailable{Err: fmt.Errorf("payments responded %d", resp.StatusCode)}
+	}
+	var envelope struct {
+		Detail struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"detail"`
+	}
+	_ = json.Unmarshal(body, &envelope)
+	return &Rejected{
+		StatusCode: resp.StatusCode,
+		Code:       strings.TrimSpace(envelope.Detail.Code),
+		Message:    strings.TrimSpace(envelope.Detail.Message),
+	}
 }
