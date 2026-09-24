@@ -1,0 +1,1 @@
+ALTER TABLE grades DROP COLUMN IF EXISTS visual_theme;

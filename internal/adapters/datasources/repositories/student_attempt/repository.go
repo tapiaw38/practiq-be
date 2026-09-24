@@ -3,82 +3,48 @@ package studentattempt
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
 type Repository interface {
 	Create(context.Context, domain.StudentAttempt) (string, error)
+	// ClaimLevelTestSubmission atomically reserves a student's one submission
+	// for a level test. False means it was already submitted.
+	ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string, maxAttempts int) (bool, error)
+	// LevelTestProgress reports how many times the student has submitted this
+	// test and when they first opened it. A student who never opened it has
+	// zero attempts and no start.
+	LevelTestProgress(ctx context.Context, studentID, sheetID string) (int, *time.Time, error)
+	// MarkLevelTestStarted records when the student first opened the test,
+	// which is when a time limit starts running. Calling it again keeps the
+	// original moment: reopening the page must not buy more time.
+	MarkLevelTestStarted(ctx context.Context, studentID, sheetID string) error
+	// CloseExpiredLevelTest clears an active test window only when it still
+	// belongs to the expired attempt. The conditional update makes concurrent
+	// expiry requests safe and cannot close a later attempt.
+	CloseExpiredLevelTest(ctx context.Context, studentID, sheetID string, deadline time.Time) error
+	// ReleaseLevelTestSubmission undoes a claim whose submission never landed.
+	ReleaseLevelTestSubmission(ctx context.Context, studentID, sheetID string) error
+	// DeleteBySheet removes an incomplete level-test submission before releasing
+	// its claim. It is only safe after the claim has established exclusivity.
+	DeleteBySheet(ctx context.Context, studentID, sheetID string) error
 	ListBySheet(ctx context.Context, studentID, sheetID string) ([]domain.StudentAttempt, error)
 	SaveCanvasWork(ctx context.Context, attemptID, imageData string) error
+	GetLastPracticedSheetID(ctx context.Context, studentID string) (string, error)
+	GetDailyAttempts(ctx context.Context, studentID, courseID string, from, to *time.Time) ([]domain.DailyAttemptCount, error)
+	ListPendingReview(ctx context.Context, filter PendingReviewFilter) ([]domain.PendingAttemptReview, error)
+	GetTeacherForAttempt(ctx context.Context, attemptID string) (string, error)
+	GetExerciseIDForAttempt(ctx context.Context, attemptID string) (string, error)
+	Review(ctx context.Context, attemptID string, isCorrect bool, feedback string) error
+	GetSheetOutcome(ctx context.Context, studentID, sheetID string) (domain.SheetOutcome, error)
+	GetAttemptContext(ctx context.Context, attemptID string) (domain.AttemptContext, error)
 }
-
 type repository struct {
 	db *sql.DB
 }
 
 func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
-}
-
-func (r *repository) Create(ctx context.Context, a domain.StudentAttempt) (string, error) {
-	query := `
-		INSERT INTO student_attempts (student_id, exercise_id, practice_sheet_id, answer_text, ai_feedback, is_correct, score, time_spent_seconds, hints_used)
-		VALUES ($1, $2, NULLIF($3,'')::uuid, $4, $5, $6, $7, $8, $9)
-		RETURNING id
-	`
-	var id string
-	err := r.db.QueryRowContext(ctx, query, a.StudentID, a.ExerciseID, a.PracticeSheetID, a.AnswerText, a.AIFeedback, a.IsCorrect, a.Score, a.TimeSpentSecs, a.HintsUsed).Scan(&id)
-	return id, err
-}
-
-func (r *repository) SaveCanvasWork(ctx context.Context, attemptID, imageData string) error {
-	updateQuery := `
-		UPDATE student_work_canvas
-		SET image_url = $2
-		WHERE attempt_id = $1::uuid
-	`
-	result, err := r.db.ExecContext(ctx, updateQuery, attemptID, imageData)
-	if err != nil {
-		return err
-	}
-
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows > 0 {
-		return nil
-	}
-
-	insertQuery := `
-		INSERT INTO student_work_canvas (attempt_id, image_url)
-		VALUES ($1::uuid, $2)
-	`
-	_, err = r.db.ExecContext(ctx, insertQuery, attemptID, imageData)
-	return err
-}
-
-func (r *repository) ListBySheet(ctx context.Context, studentID, sheetID string) ([]domain.StudentAttempt, error) {
-	query := `
-		SELECT id, student_id, exercise_id, COALESCE(practice_sheet_id::text,''), answer_text, COALESCE(ai_feedback,''), is_correct, score, time_spent_seconds, hints_used, created_at
-		FROM student_attempts
-		WHERE student_id = $1 AND practice_sheet_id = $2::uuid
-		ORDER BY created_at DESC
-	`
-	rows, err := r.db.QueryContext(ctx, query, studentID, sheetID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var attempts []domain.StudentAttempt
-	for rows.Next() {
-		var a domain.StudentAttempt
-		if err := rows.Scan(&a.ID, &a.StudentID, &a.ExerciseID, &a.PracticeSheetID, &a.AnswerText, &a.AIFeedback, &a.IsCorrect, &a.Score, &a.TimeSpentSecs, &a.HintsUsed, &a.CreatedAt); err != nil {
-			return nil, err
-		}
-		attempts = append(attempts, a)
-	}
-	return attempts, nil
 }
