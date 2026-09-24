@@ -73,6 +73,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if appErr := school.EnsureCourseAcceptsWork(ctx, app, ps.CourseID); appErr != nil {
 		return nil, appErr
 	}
+	// Same rule for a student their school deactivated: they keep everything
+	// they wrote and stop adding to it.
+	if appErr := school.EnsureStudentCanWork(ctx, app, studentID, ps.CourseID); appErr != nil {
+		return nil, appErr
+	}
 	if appErr := ensureSheetIsOpen(ctx, app, ps, studentID, false); appErr != nil {
 		return nil, appErr
 	}

@@ -67,6 +67,11 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	if appErr := school.EnsureCourseAcceptsWork(ctx, app, notebook.CourseID); appErr != nil {
 		return fmt.Errorf("this course is closed: it no longer accepts submissions")
 	}
+	// And the same rule for a student their school deactivated: what they
+	// already wrote stays readable, nothing new goes in.
+	if appErr := school.EnsureStudentCanWork(ctx, app, input.StudentID, notebook.CourseID); appErr != nil {
+		return fmt.Errorf("tu docente pausó tu acceso: podés ver lo que ya hiciste, pero no entregar")
+	}
 
 	// Get course for grade context
 	course, _ := app.Repositories.Course.Get(ctx, notebook.CourseID)
