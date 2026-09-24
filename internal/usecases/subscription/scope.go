@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/payments"
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
@@ -111,7 +112,7 @@ func scopeFor(ctx context.Context, app *appcontext.Context, schoolID, teacherID 
 			Plan:     domain.PlanFromMetadata(planID, planName(entitlement.Metadata), entitlement.Metadata),
 			State:    capEnforced,
 			Active:   true,
-			RenewsAt: entitlement.AccessUntil,
+			RenewsAt: renewsAt(entitlement.AccessUntil),
 		}, nil
 	}
 
@@ -180,4 +181,13 @@ func studentsUsed(ctx context.Context, app *appcontext.Context, schoolID string)
 		return 0, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 	return used, nil
+}
+
+// renewsAt unwraps the payments timestamp, which tolerates a missing timezone.
+func renewsAt(access *payments.Timestamp) *time.Time {
+	if access == nil || access.IsZero() {
+		return nil
+	}
+	at := access.Time
+	return &at
 }

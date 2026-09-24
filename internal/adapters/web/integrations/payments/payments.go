@@ -42,7 +42,7 @@ type (
 		Active         bool           `json:"active"`
 		SubscriptionID *int           `json:"subscription_id"`
 		PlanID         *int           `json:"plan_id"`
-		AccessUntil    *time.Time     `json:"access_until"`
+		AccessUntil    *Timestamp     `json:"access_until"`
 		Metadata       map[string]any `json:"metadata"`
 	}
 
@@ -126,6 +126,15 @@ type (
 		http    *http.Client
 	}
 
+	// Timestamp reads an instant whether or not the payments service says which
+	// zone it is in.
+	//
+	// It serialises naive datetimes, so access_until arrives as
+	// "2026-10-24T02:49:15". time.Time insists on an offset and fails the whole
+	// decode, which turned a paid subscription into a payments outage and
+	// showed the teacher the free plan. A timestamp is not worth that.
+	Timestamp struct{ time.Time }
+
 	// Unavailable marks a payments outage, so callers can tell "this teacher
 	// has no subscription" from "we could not find out".
 	Unavailable struct{ Err error }
@@ -139,6 +148,31 @@ type (
 		Message    string
 	}
 )
+
+// timestampLayouts are tried in order. The offset-bearing one first, so a
+// service that does say the zone is believed rather than reinterpreted.
+var timestampLayouts = []string{
+	time.RFC3339Nano,
+	time.RFC3339,
+	"2006-01-02T15:04:05.999999",
+	"2006-01-02T15:04:05",
+}
+
+func (t *Timestamp) UnmarshalJSON(data []byte) error {
+	raw := strings.Trim(string(data), `"`)
+	if raw == "" || raw == "null" {
+		return nil
+	}
+	for _, layout := range timestampLayouts {
+		// Naive datetimes are UTC: that is what the payments service stores,
+		// and reading them as local time would move an expiry by hours.
+		if parsed, err := time.ParseInLocation(layout, raw, time.UTC); err == nil {
+			t.Time = parsed
+			return nil
+		}
+	}
+	return fmt.Errorf("payments: unrecognised timestamp %q", raw)
+}
 
 func (e *Unavailable) Error() string { return "payments unavailable: " + e.Err.Error() }
 func (e *Unavailable) Unwrap() error { return e.Err }
