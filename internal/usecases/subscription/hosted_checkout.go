@@ -29,6 +29,15 @@ type (
 
 	HostedCheckoutInput struct {
 		PlanID int `json:"plan_id"`
+		// PayerEmail is the teacher's Mercado Pago address, which is often not
+		// the one they signed up to Practiq with. The gateway demands it up
+		// front and then refuses the checkout to anyone who logs in with a
+		// different account, so guessing it wastes the trip.
+		//
+		// Unlike the card flow this is safe to take from the request: it names
+		// who Mercado Pago asks to authorise the charge, and it cannot charge
+		// them — they have to log in and agree first.
+		PayerEmail string `json:"payer_email"`
 	}
 
 	HostedCheckoutData struct {
@@ -53,15 +62,21 @@ func (u *hostedCheckoutUsecase) Execute(ctx context.Context, teacherID, bearerTo
 		return nil, apperrors.NewBadRequestError("a plan is required")
 	}
 
-	// Same rule as the card flow: the payer is whoever is asking, and their
-	// email comes from auth-api rather than the request body.
-	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{teacherID})
-	if appErr != nil {
-		return nil, appErr
+	// The account email is only the default. Whoever is asking still comes from
+	// the token, so nobody can open a checkout for another teacher's plan.
+	email := strings.TrimSpace(in.PayerEmail)
+	if email == "" {
+		names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{teacherID})
+		if appErr != nil {
+			return nil, appErr
+		}
+		email = strings.TrimSpace(names[teacherID].Email)
 	}
-	email := strings.TrimSpace(names[teacherID].Email)
 	if email == "" {
 		return nil, apperrors.NewBadRequestError("your account has no email to bill")
+	}
+	if !strings.Contains(email, "@") || strings.ContainsAny(email, " \t\r\n") {
+		return nil, apperrors.NewBadRequestError("ese no parece un email válido")
 	}
 
 	hosted, err := app.Integrations.Payments.StartHostedSubscription(ctx, payments.HostedSubscriptionInput{
