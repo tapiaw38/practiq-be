@@ -57,7 +57,9 @@ func (u *downgradeUsecase) Preview(ctx context.Context, teacherID string) (*Down
 	// Nothing is deactivated for a teacher with no cap, nor on a payments
 	// outage: an unreadable plan must not cost anyone their students.
 	if !scope.Enforced() {
-		return &DowngradeOutput{}, nil
+		// JSON encodes a nil slice as null. This is a collection in the public
+		// contract, so keep it an empty array even when no plan is enforced.
+		return &DowngradeOutput{Data: DowngradeData{Deactivated: []string{}}}, nil
 	}
 
 	byActivity, err := app.Repositories.School.ListStudentsByActivity(ctx, scope.SchoolID)
@@ -65,9 +67,13 @@ func (u *downgradeUsecase) Preview(ctx context.Context, teacherID string) (*Down
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
 
+	deactivated := domain.StudentsToDeactivate(byActivity, scope.Plan.MaxStudents, nil)
+	if deactivated == nil {
+		deactivated = []string{}
+	}
 	return &DowngradeOutput{Data: DowngradeData{
 		MaxStudents: scope.Plan.MaxStudents,
-		Deactivated: domain.StudentsToDeactivate(byActivity, scope.Plan.MaxStudents, nil),
+		Deactivated: deactivated,
 	}}, nil
 }
 
@@ -79,7 +85,7 @@ func (u *downgradeUsecase) Apply(ctx context.Context, teacherID string, keep []s
 		return nil, appErr
 	}
 	if !scope.Enforced() {
-		return &DowngradeOutput{}, nil
+		return &DowngradeOutput{Data: DowngradeData{Deactivated: []string{}}}, nil
 	}
 
 	byActivity, err := app.Repositories.School.ListStudentsByActivity(ctx, scope.SchoolID)
@@ -88,6 +94,9 @@ func (u *downgradeUsecase) Apply(ctx context.Context, teacherID string, keep []s
 	}
 
 	deactivated := domain.StudentsToDeactivate(byActivity, scope.Plan.MaxStudents, keep)
+	if deactivated == nil {
+		deactivated = []string{}
+	}
 	for _, studentID := range deactivated {
 		if err := app.Repositories.School.SetMemberActive(ctx, scope.SchoolID, studentID, false); err != nil {
 			return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
