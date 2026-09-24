@@ -90,7 +90,11 @@ func subscriptionRejectionMessage(code string) string {
 	case strings.Contains(code, "token"):
 		return "No pudimos validar la tarjeta. Volvé a cargar los datos e intentá de nuevo."
 	case strings.Contains(code, "rejected"):
-		return "La tarjeta fue rechazada. Probá con otra tarjeta o consultá a tu banco."
+		// The gateway does not name the card type here, and it rejects prepaid
+		// cards for subscriptions outright: preapproval plans only accept
+		// account_money, credit_card and debit_card. Saying so beats sending a
+		// teacher to a bank that never saw the charge.
+		return "La tarjeta fue rechazada. Las prepagas no sirven para pagos mensuales: usá una de crédito o débito."
 	default:
 		return "Mercado Pago no pudo autorizar la suscripción. Revisá los datos o probá otra tarjeta."
 	}
