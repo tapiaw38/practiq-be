@@ -73,6 +73,22 @@ type (
 		Status string `json:"status"`
 	}
 
+	// HostedSubscriptionInput subscribes somebody who is not giving us a card,
+	// because they intend to pay with their Mercado Pago balance.
+	HostedSubscriptionInput struct {
+		PlanID     int    `json:"plan_id"`
+		UserID     string `json:"user_id"`
+		PayerEmail string `json:"payer_email"`
+	}
+
+	// HostedSubscription is an agreement waiting for the payer to authorise it
+	// at the gateway. Nothing is charged until they do.
+	HostedSubscription struct {
+		SubscriptionID int    `json:"subscription_id"`
+		Status         string `json:"status"`
+		InitPoint      string `json:"init_point"`
+	}
+
 	Client interface {
 		// ListPlans returns the plans on offer, cheapest first is not
 		// guaranteed — the caller orders them.
@@ -88,6 +104,10 @@ type (
 		// CreateSubscription hands the gateway a card token the browser
 		// produced. The card itself never reaches us.
 		CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error)
+		// StartHostedSubscription returns somewhere to send the payer so they
+		// can authorise the agreement at the gateway, where their account
+		// balance is an option a card form cannot offer.
+		StartHostedSubscription(ctx context.Context, in HostedSubscriptionInput) (*HostedSubscription, error)
 		CreatePlan(ctx context.Context, in PlanInput) (*Plan, error)
 		UpdatePlan(ctx context.Context, planID int, in PlanInput) (*Plan, error)
 		// DeactivatePlan takes a plan off the shelf. Subscriptions to it keep
@@ -199,6 +219,14 @@ func (c *client) CreateSubscription(ctx context.Context, in SubscriptionInput) (
 		return nil, err
 	}
 	return &subscription, nil
+}
+
+func (c *client) StartHostedSubscription(ctx context.Context, in HostedSubscriptionInput) (*HostedSubscription, error) {
+	var hosted HostedSubscription
+	if err := c.send(ctx, http.MethodPost, "/api/v1/subscriptions/subscriptions/hosted", in, &hosted); err != nil {
+		return nil, err
+	}
+	return &hosted, nil
 }
 
 func (c *client) CreatePlan(ctx context.Context, in PlanInput) (*Plan, error) {

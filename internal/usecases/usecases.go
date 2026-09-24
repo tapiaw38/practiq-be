@@ -89,11 +89,12 @@ type SchoolUsecases struct {
 }
 
 type SubscriptionUsecases struct {
-	GetMine    ucSubscription.GetMineUsecase
-	ManageMine ucSubscription.ManageMineUsecase
-	Subscribe  ucSubscription.SubscribeUsecase
-	Plans      ucSubscription.PlansUsecase
-	Downgrade  ucSubscription.DowngradeUsecase
+	GetMine        ucSubscription.GetMineUsecase
+	ManageMine     ucSubscription.ManageMineUsecase
+	Subscribe      ucSubscription.SubscribeUsecase
+	HostedCheckout ucSubscription.HostedCheckoutUsecase
+	Plans          ucSubscription.PlansUsecase
+	Downgrade      ucSubscription.DowngradeUsecase
 }
 
 type MaterialUsecases struct {
@@ -299,11 +300,12 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			Manage: ucSchool.NewManageUsecase(contextFactory),
 		},
 		Subscription: SubscriptionUsecases{
-			GetMine:    ucSubscription.NewGetMineUsecase(contextFactory),
-			ManageMine: ucSubscription.NewManageMineUsecase(contextFactory),
-			Subscribe:  ucSubscription.NewSubscribeUsecase(contextFactory),
-			Plans:      ucSubscription.NewPlansUsecase(contextFactory),
-			Downgrade:  ucSubscription.NewDowngradeUsecase(contextFactory),
+			GetMine:        ucSubscription.NewGetMineUsecase(contextFactory),
+			ManageMine:     ucSubscription.NewManageMineUsecase(contextFactory),
+			Subscribe:      ucSubscription.NewSubscribeUsecase(contextFactory),
+			HostedCheckout: ucSubscription.NewHostedCheckoutUsecase(contextFactory),
+			Plans:          ucSubscription.NewPlansUsecase(contextFactory),
+			Downgrade:      ucSubscription.NewDowngradeUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
 			Create: ucMaterial.NewCreateUsecase(contextFactory),

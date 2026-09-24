@@ -134,10 +134,21 @@ func subscriptionStatus(ctx context.Context, app *appcontext.Context, teacherID 
 		log.Printf("[payments] subscription lookup failed teacher_id=%s err=%v", teacherID, err)
 		return ""
 	}
+	// Paused first: it is the one the teacher can act on. Pending matters too
+	// — somebody who authorised a charge at the gateway comes back before the
+	// webhook lands, and without this the screen would show them the free plan
+	// as if nothing had happened.
+	pending := false
 	for _, subscription := range subscriptions {
-		if subscription.Status == "paused" {
+		switch subscription.Status {
+		case "paused":
 			return "paused"
+		case "pending":
+			pending = true
 		}
+	}
+	if pending {
+		return "pending"
 	}
 	return ""
 }
