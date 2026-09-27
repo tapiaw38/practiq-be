@@ -94,6 +94,7 @@ func main() {
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-School-ID"},
 		AllowCredentials: true,
+		MaxAge:           2 * time.Hour,
 	}))
 
 	app.GET("/health", func(c *gin.Context) {
