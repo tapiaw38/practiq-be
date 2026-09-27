@@ -20,18 +20,8 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
 
-// staleSubmitJobAfter is longer than a submission can legitimately take: the
-// goroutine that runs one gives up at five minutes. Anything older than this
-// is not slow, it is gone.
 const staleSubmitJobAfter = 10 * time.Minute
 
-// startSubmitJobSweeper closes submissions whose process is no longer running.
-//
-// The work lives in a goroutine and its payload nowhere else, so a restart
-// leaves jobs marked processing that nothing will ever finish. The client
-// polls them forever, and the student waits on a spinner instead of
-// resubmitting. This runs once at boot — the restart case — and then on a
-// timer, for a goroutine that died without saying so.
 func startSubmitJobSweeper(repo submitjob.Repository) {
 	sweep := func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -88,9 +78,7 @@ func main() {
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: []string{cfg.ServerConfig.FrontendURL, "https://app.practiq.com.ar", "https://practiq.com.ar", "https://www.practiq.com.ar", "https://practiq-landing.onrender.com", "http://localhost:5174", "http://localhost:5173", "http://localhost:4321", "http://127.0.0.1:4321"},
-		// PATCH belongs here as much as the rest: without it the browser
-		// answers its own preflight with a refusal and the request never
-		// leaves, which reads in the app as the server rejecting it.
+
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-School-ID"},
 		AllowCredentials: true,

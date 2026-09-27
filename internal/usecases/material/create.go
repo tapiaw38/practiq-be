@@ -35,8 +35,6 @@ type (
 	}
 )
 
-// materialStatus reflects whether a file actually backs the material, instead
-// of always claiming "uploaded".
 func materialStatus(fileURL string) string {
 	if strings.TrimSpace(fileURL) == "" {
 		return "text_only"
@@ -55,10 +53,6 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, appErr
 	}
 
-	// A canonical bucket URL is guessable and readable from other courses'
-	// material responses. Without this, a teacher could paste someone else's
-	// object into their own course, and withViewURL would then presign it for
-	// every reader of that course.
 	if input.FileURL != "" && (app.ImageStorage == nil ||
 		!app.ImageStorage.OwnsFileURL(input.FileURL, materialsFolder, input.TeacherID)) {
 		return nil, apperrors.NewApplicationError(mappings.MaterialCreateError,

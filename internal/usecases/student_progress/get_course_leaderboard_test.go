@@ -12,12 +12,11 @@ func TestShortDisplayNameKeepsFirstNameAndInitialOnly(t *testing.T) {
 	}{
 		{"Walter", "Tapia", "Walter T."},
 		{"  Sofia ", " Martinez ", "Sofia M."},
-		// Nothing to hide when there is no surname on the profile.
+
 		{"Walter", "", "Walter"},
-		// A profile with only a surname still renders, and still hides nothing
-		// it does not have to.
+
 		{"", "Tapia", "Tapia"},
-		// Never fall through to the bare id: that is the auth username.
+
 		{"", "", "Alumno"},
 		{"   ", "  ", "Alumno"},
 	}
@@ -37,7 +36,7 @@ func TestShortDisplayNameUppercasesTheInitial(t *testing.T) {
 }
 
 func TestShortDisplayNameHandlesMultibyteSurnames(t *testing.T) {
-	// Slicing bytes instead of runes would cut "Ñ" in half and emit garbage.
+
 	if got := shortDisplayName(authapi.UserInfo{FirstName: "Ana", LastName: "Ñandú"}); got != "Ana Ñ." {
 		t.Fatalf("una inicial multibyte debe salir entera, dio %q", got)
 	}

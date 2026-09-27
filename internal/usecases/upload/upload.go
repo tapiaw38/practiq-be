@@ -13,7 +13,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 )
 
-// previewLinkTTL only has to cover the form the teacher is filling in.
 const previewLinkTTL = time.Hour
 
 type (
@@ -27,7 +26,7 @@ type (
 
 	Input struct {
 		UserID string
-		// Folder groups objects in the bucket, e.g. "attachments".
+
 		Folder      string
 		Filename    string
 		ContentType string
@@ -41,8 +40,7 @@ type (
 
 	FileData struct {
 		URL string `json:"url"`
-		// PreviewURL is a short-lived signed URL for opening the file right
-		// after upload. Only URL is meant to be stored.
+
 		PreviewURL  string `json:"preview_url,omitempty"`
 		Filename    string `json:"filename"`
 		ContentType string `json:"content_type"`
@@ -65,7 +63,6 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 		return nil, apperrors.NewApplicationError(mappings.UploadTooLargeError, nil)
 	}
 
-	// Read one byte past the cap so a lying Content-Length is still caught.
 	body, err := io.ReadAll(io.LimitReader(input.Reader, storage.MaxUploadBytes+1))
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.UploadError, err)
@@ -79,8 +76,6 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 		folder = "uploads"
 	}
 
-	// Resolve first so the response reports the type the file is actually
-	// stored with, which may be the sniffed one.
 	contentType, kind, _, err := storage.ResolveContentType(input.ContentType, body)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.UploadUnsupportedTypeError, err)

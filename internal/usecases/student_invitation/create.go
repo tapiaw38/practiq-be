@@ -12,12 +12,8 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-// defaultTTL: el código se dicta al principio del ciclo lectivo y tiene que
-// durar el trimestre sin que el docente lo renueve.
 const defaultTTL = 90 * 24 * time.Hour
 
-// createAttempts cubre la colisión de códigos, que con 40 bits es rarísima
-// pero no imposible; el índice único es el que la detecta.
 const createAttempts = 3
 
 type (
@@ -38,8 +34,6 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-// Execute deja al docente con un único código vigente: regenerar revoca el
-// anterior, así el que se filtró deja de servir apenas se pide otro.
 func (u *createUsecase) Execute(ctx context.Context, teacherID string) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
@@ -53,9 +47,6 @@ func (u *createUsecase) Execute(ctx context.Context, teacherID string) (*CreateO
 		}
 	}
 
-	// The invitation carries the school so redeeming it does not have to guess
-	// from the teacher. A teacher at an institution has students who belong to
-	// the institution, not to their own school.
 	schoolID, appErr := school.OwnedSchoolID(ctx, app, teacherID)
 	if appErr != nil {
 		return nil, appErr

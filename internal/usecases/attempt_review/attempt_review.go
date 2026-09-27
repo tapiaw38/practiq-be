@@ -15,8 +15,6 @@ import (
 
 const timeFormat = "2006-01-02T15:04:05Z"
 
-// attachmentLinkTTL has to outlive a grading session without leaving a
-// shareable link around for long.
 const attachmentLinkTTL = time.Hour
 
 const (
@@ -54,26 +52,23 @@ type (
 		Question              string `json:"question"`
 		ExerciseType          string `json:"exercise_type"`
 		StatementMediaViewURL string `json:"statement_media_view_url,omitempty"`
-		// HasTeacherImage marks a handwritten statement; fetch it from
-		// /attempt-reviews/:id/statement-image when the teacher opens it.
+
 		HasTeacherImage    bool   `json:"has_teacher_image,omitempty"`
 		PracticeSheetID    string `json:"practice_sheet_id,omitempty"`
 		PracticeSheetTitle string `json:"practice_sheet_title,omitempty"`
 		SheetType          string `json:"sheet_type,omitempty"`
 		CourseID           string `json:"course_id"`
 		CourseTitle        string `json:"course_title"`
-		// ImageViewURL is the signed canvas image; like the attachment, the
-		// stored URL is not openable on its own.
+
 		ImageViewURL  string `json:"image_view_url,omitempty"`
 		AttachmentURL string `json:"attachment_url,omitempty"`
-		// AttachmentViewURL is a short-lived signed URL. The bucket is private,
-		// so AttachmentURL alone is not openable by a browser.
+
 		AttachmentViewURL     string `json:"attachment_view_url,omitempty"`
 		AttachmentName        string `json:"attachment_name,omitempty"`
 		AttachmentContentType string `json:"attachment_content_type,omitempty"`
 		AnswerText            string `json:"answer_text,omitempty"`
 		AIFeedback            string `json:"ai_feedback,omitempty"`
-		// AIIsCorrect is a suggestion, never the grade.
+
 		AIIsCorrect       *bool  `json:"ai_is_correct,omitempty"`
 		TeacherIsCorrect  *bool  `json:"teacher_is_correct,omitempty"`
 		TeacherFeedback   string `json:"teacher_feedback,omitempty"`
@@ -93,7 +88,7 @@ type (
 
 	ListOutput struct {
 		Data []ReviewData `json:"data"`
-		// HasMore says another page exists without returning a total count.
+
 		HasMore bool `json:"has_more"`
 	}
 
@@ -135,8 +130,6 @@ func (u *listUsecase) Execute(ctx context.Context, teacherID string, input ListI
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewListError, err)
 	}
 
-	// The repository asks for one extra row to report whether another page
-	// exists; it is never shown.
 	hasMore := len(reviews) > limit
 	if hasMore {
 		reviews = reviews[:limit]
@@ -191,8 +184,6 @@ func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string
 		return nil, apperrors.NewForbiddenError()
 	}
 
-	// Practice answers are graded on submit and are not part of this queue.
-	// Overwriting one here would change a score the student already acted on.
 	attemptCtx, err := app.Repositories.StudentAttempt.GetAttemptContext(ctx, attemptID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewError, err)
@@ -205,8 +196,6 @@ func (u *reviewUsecase) Execute(ctx context.Context, attemptID, teacherID string
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewError, err)
 	}
 
-	// A level test holds promotion while an answer is pending; correcting the
-	// last one has to lift that hold.
 	applyLevelTestOutcome(ctx, app, attemptID)
 
 	return &ReviewOutput{Data: OperationResultData{Message: "attempt reviewed"}}, nil

@@ -9,10 +9,6 @@ import (
 	"strings"
 )
 
-// Fill-in-the-blanks exercises: a statement in plain text with {{n}} markers,
-// plus the answers and options in metadata. Subject-agnostic by design — the
-// same type serves prose, dates, formulas or code.
-
 var blankMarkerPattern = regexp.MustCompile(`\{\{\s*(\d+)\s*\}\}`)
 
 var (
@@ -25,9 +21,6 @@ var (
 	ErrGradingAnswerMismatch = errors.New("the grading answer does not match the blanks in metadata")
 )
 
-// BlankIDsInStatement returns the blank numbers in the order they appear.
-// A repeated marker is rejected: two blanks sharing a number would fill each
-// other in the UI and read as one answer, which is never what the teacher meant.
 func BlankIDsInStatement(statement string) ([]int, error) {
 	matches := blankMarkerPattern.FindAllStringSubmatch(statement, -1)
 	ids := make([]int, 0, len(matches))
@@ -50,17 +43,8 @@ func BlankIDsInStatement(statement string) ([]int, error) {
 	return ids, nil
 }
 
-// BlanksAnswer maps a blank number to what was placed in it.
 type BlanksAnswer map[string]string
 
-// ParseBlanksAnswer reads the JSON answer format, {"1":"a","2":"b"}. Values are
-// trimmed and their inner whitespace collapsed so formatting cannot decide a
-// grade.
-//
-// Keys are normalised ("01" and "1" are the same blank), and a collision
-// between two keys that normalise to the same blank is an error rather than a
-// coin flip: Go map iteration is random, so picking a winner would make the
-// same answer grade differently on each attempt.
 func ParseBlanksAnswer(value string) (BlanksAnswer, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -73,8 +57,7 @@ func ParseBlanksAnswer(value string) (BlanksAnswer, error) {
 	}
 
 	parsed := make(BlanksAnswer, len(raw))
-	// Keep this separate from parsed: an empty duplicate must still be rejected.
-	// Otherwise map iteration could discard it before seeing its equivalent key.
+
 	seenIDs := make(map[string]struct{}, len(raw))
 	for id, answer := range raw {
 		key := strings.TrimSpace(id)
@@ -97,13 +80,10 @@ func ParseBlanksAnswer(value string) (BlanksAnswer, error) {
 	return parsed, nil
 }
 
-// NormalizeBlankAnswer collapses whitespace so spacing never decides a grade.
 func NormalizeBlankAnswer(value string) string {
 	return strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
 }
 
-// BlanksAnswersMatch reports whether the student placed every blank as
-// expected. A missing, extra or malformed blank fails.
 func BlanksAnswersMatch(student, expected string) bool {
 	got, err := ParseBlanksAnswer(student)
 	if err != nil || got == nil {
@@ -121,7 +101,6 @@ func BlanksAnswersMatch(student, expected string) bool {
 	return true
 }
 
-// FillBlanksMetadata is the exercise configuration stored as JSON.
 type FillBlanksMetadata struct {
 	Blanks []struct {
 		ID     int    `json:"id"`
@@ -131,10 +110,6 @@ type FillBlanksMetadata struct {
 	Layout  string   `json:"layout"`
 }
 
-// ValidateFillBlanksGradingAnswer rejects a correct_answer that disagrees with
-// the blanks in metadata. Grading compares the student's JSON only against
-// correct_answer, so a mismatch here marks every right selection as wrong and
-// nothing else in the system notices.
 func ValidateFillBlanksGradingAnswer(correctAnswer, metadata string) error {
 	var config FillBlanksMetadata
 	if err := json.Unmarshal([]byte(strings.TrimSpace(metadata)), &config); err != nil {
@@ -156,9 +131,6 @@ func ValidateFillBlanksGradingAnswer(correctAnswer, metadata string) error {
 	return nil
 }
 
-// ValidateFillBlanksExercise rejects an exercise a student could not solve.
-// Enforced here rather than only in the UI, since the API is also reachable
-// from the MCP server and from scripts.
 func ValidateFillBlanksExercise(statement, metadata string) error {
 	ids, err := BlankIDsInStatement(statement)
 	if err != nil {
@@ -191,8 +163,6 @@ func ValidateFillBlanksExercise(statement, metadata string) error {
 		}
 	}
 
-	// Every answer needs its own block in the pool, counting repeats: two blanks
-	// sharing an answer need two blocks or the student can only fill one.
 	available := make(map[string]int, len(config.Options))
 	for _, option := range config.Options {
 		available[strings.ToLower(NormalizeBlankAnswer(option))]++

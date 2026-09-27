@@ -39,9 +39,6 @@ func NewUpdateUIThemeUsecase(contextFactory appcontext.Factory) UpdateUIThemeUse
 func (u *updateUIThemeUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Reuses the assignment-visibility rule: the requester may touch this
-	// profile if it's their own, or they administer a school the target
-	// belongs to.
 	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.ID); appErr != nil {
 		return nil, appErr
 	}

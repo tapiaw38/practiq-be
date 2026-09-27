@@ -24,7 +24,6 @@ func (r *repository) Get(ctx context.Context, id string) (*domain.PracticeSheet,
 		return nil, err
 	}
 
-	// Load exercises
 	exQuery := `
 		SELECT pse.id, pse.practice_sheet_id, pse.order_index,
 		       e.id, e.topic_id, COALESCE(e.material_id::text,''), e.type, e.question,

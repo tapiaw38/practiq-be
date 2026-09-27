@@ -29,8 +29,6 @@ func NewGetMessagesUsecase(contextFactory appcontext.Factory) GetMessagesUsecase
 func (u *getMessagesUsecase) Execute(ctx context.Context, conversationID, requesterID string, isSuperAdmin bool) (*GetMessagesOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// La conversación con el tutor es del alumno: sin este chequeo bastaba
-	// conocer el id para leer el diálogo de cualquier otro.
 	conversation, err := app.Repositories.AIConversation.Get(ctx, conversationID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AIMessageListError, err)

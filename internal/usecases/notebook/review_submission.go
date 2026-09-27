@@ -52,7 +52,6 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		return nil, fmt.Errorf("assistant service not configured")
 	}
 
-	// Get course for grade context
 	course, _ := app.Repositories.Course.Get(ctx, submission.CourseID)
 	gradeName := ""
 	if course != nil {
@@ -66,14 +65,11 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 	var isCorrect *bool
 	var feedback string
 
-	// Whether a teacher is needed is decided at the end, from what the assistant
-	// managed to do. See submissionNeedsTeacherReview.
 	hasStudentWork := strings.TrimSpace(submission.AnswerText) != "" ||
 		strings.TrimSpace(submission.CanvasData) != ""
 
 	studentAnswer := strings.TrimSpace(submission.AnswerText)
 
-	// If there's canvas data but no text answer, try to recognize the handwriting
 	if studentAnswer == "" && strings.TrimSpace(submission.CanvasData) != "" {
 		canvasData, resolveErr := resolveImageForOCR(ctx, app, submission.CanvasData)
 		if resolveErr != nil {
@@ -91,15 +87,13 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 		}
 	}
 
-	// If the recognized answer is unreadable, report that
 	if strings.EqualFold(studentAnswer, "UNREADABLE") {
 		feedback = "respuesta no legible (UNREADABLE)"
 		isCorrect = nil
 	} else if !statementReady {
 		feedback = "la consigna no está disponible para evaluar"
 	} else if studentAnswer != "" && expectedAnswer != "" {
-		// Evaluate the answer with AI, against the teacher's page when it is an
-		// image (see evaluateNotebookSubmission).
+
 		evaluation, aiErr := evaluateNotebookSubmission(ctx, app, assistantCfg, page, expectedAnswer, studentAnswer, gradeName)
 		if aiErr != nil {
 			log.Printf("[notebook] evaluation failed submission_id=%s err=%v", submissionID, aiErr)
@@ -120,7 +114,6 @@ func (u *reviewSubmissionUsecase) Execute(ctx context.Context, submissionID stri
 
 	needsTeacherReview := submissionNeedsTeacherReview(hasStudentWork, isCorrect)
 
-	// Update the submission with the AI review results
 	if err := app.Repositories.Notebook.UpdateSubmissionAIReview(ctx, submissionID, recognizedText, isCorrect, feedback, needsTeacherReview); err != nil {
 		return nil, err
 	}

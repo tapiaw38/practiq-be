@@ -74,7 +74,6 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		}
 	}
 
-	// Check if course already has cached curiosities
 	cached, err := app.Repositories.CourseCuriosities.Get(ctx, input.CourseID)
 	if err != nil {
 		log.Printf("[ai_curiosities] warning: failed to get cached curiosities course_id=%s err=%v", input.CourseID, err)
@@ -97,7 +96,6 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		return u.fallbackResponse(input.CourseID), nil
 	}
 
-	// Build topic string from course info
 	subject := course.SubjectName
 	if subject == "" {
 		subject = course.Subject
@@ -107,7 +105,6 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		topic = topic + " - " + course.Description
 	}
 
-	// Generate curiosities via AI
 	curiosities, err := app.Integrations.AssistantGateway.GenerateCourseCuriosities(ctx, cfg, subject, topic, course.GradeName, 8)
 	if err != nil {
 		log.Printf("[ai_curiosities] warning: AI generation failed course_id=%s err=%v, falling back to defaults", input.CourseID, err)

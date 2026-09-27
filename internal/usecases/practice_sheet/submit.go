@@ -29,10 +29,10 @@ type (
 	AttemptInput struct {
 		ExerciseID       string `json:"exercise_id"`
 		AnswerText       string `json:"answer_text"`
-		CanvasData       string `json:"canvas_data"` // base64 PNG for canvas/handwritten exercises
+		CanvasData       string `json:"canvas_data"`
 		TimeSpentSeconds int    `json:"time_spent_seconds"`
 		HintsUsed        int    `json:"hints_used"`
-		// Attachment answers: URL returned by POST /uploads plus its metadata.
+
 		AttachmentURL         string `json:"attachment_url"`
 		AttachmentName        string `json:"attachment_name"`
 		AttachmentContentType string `json:"attachment_content_type"`
@@ -69,12 +69,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if !hasAccess {
 		return nil, apperrors.NewForbiddenError()
 	}
-	// Reading an archived course is allowed; adding to it is not.
+
 	if appErr := school.EnsureCourseAcceptsWork(ctx, app, ps.CourseID); appErr != nil {
 		return nil, appErr
 	}
-	// Same rule for a student their school deactivated: they keep everything
-	// they wrote and stop adding to it.
+
 	if appErr := school.EnsureStudentCanWork(ctx, app, studentID, ps.CourseID); appErr != nil {
 		return nil, appErr
 	}
@@ -101,7 +100,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 	}
 
-	// Get course for grade context
 	course, _ := app.Repositories.Course.Get(ctx, ps.CourseID)
 	gradeName := ""
 	if course != nil {
@@ -115,34 +113,25 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	assistantCfg := assistantcfg.Resolve(ctx, app)
 
-	// Only a level test is corrected by a teacher (the homework notebook has its
-	// own review flow). A practice is graded on the spot with whatever the
-	// assistant could read: it never enters the teacher's queue and never waits
-	// on one.
 	teacherGrades := teacherGradesSheet(ps.SheetType)
 
 	correct := 0
 	total := len(input.Attempts)
-	// Any answer waiting for a teacher blocks promotion on a level test.
+
 	hasPendingReview := false
 	totalHints := 0
 	totalTime := 0
-	// A level test claims its single submission before any of this is written.
-	// Any persistence failure must compensate every saved attempt and release
-	// the claim, otherwise a partial delivery could be scored or lock the user.
+
 	var persistenceErr error
 	resultAIFeedback := ""
 	exerciseResults := make([]ExerciseResultData, 0, total)
 	xpExercises := make([]xpExercise, 0, total)
 
-	// The streak counts calendar days in the student's own zone, so it has to
-	// be resolved before any topic is updated.
 	studentLoc := domain.StudentLocation("")
 	if profile, profileErr := app.Repositories.UserProfile.Get(ctx, studentID); profileErr == nil && profile != nil {
 		studentLoc = domain.StudentLocation(profile.Timezone)
 	}
 
-	// Track progress per topic
 	topicStats := make(map[string]struct{ correct, total int })
 
 	for _, attempt := range input.Attempts {
@@ -153,11 +142,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		aiFeedback := ""
 		hasTextAnswer := strings.TrimSpace(answerText) != ""
 		hasCanvasAnswer := strings.TrimSpace(attempt.CanvasData) != ""
-		// Only a file this student uploaded counts. Without the ownership check
-		// a crafted attachment_url pointed at any object in the bucket — another
-		// student's delivery or a course material — and the submit flow both
-		// forwarded its contents to the assistant and stored it on this attempt,
-		// where the teacher's review view later presigns it.
+
 		if strings.TrimSpace(attempt.AttachmentURL) != "" &&
 			(app.ImageStorage == nil ||
 				!app.ImageStorage.OwnsFileURL(attempt.AttachmentURL, attachmentsFolder, studentID)) {
@@ -168,15 +153,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		}
 
 		hasAttachment := strings.TrimSpace(attempt.AttachmentURL) != ""
-		// Gillie does not participate in grading. A statement image or audio can
-		// change what the answer means, so do not grade it from the text-only
-		// question and answer fields. Keep a submitted answer for teacher review.
+
 		hasStatementMedia := ok && ex.MediaURL() != ""
 		statementMediaNeedsReview := needsReviewForStatementMedia(ex, hasTextAnswer, hasCanvasAnswer, hasAttachment)
 		canvasUnreadable := false
 
-		// Handwriting is only an image until the assistant reads it, so this is
-		// the one path that can turn it into something comparable.
 		canvasAwaitsOCR := hasCanvasAnswer && !hasStatementMedia
 		assistantReady := app.Integrations.AssistantGateway != nil &&
 			app.Integrations.AssistantGateway.IsConfigured(assistantCfg)
@@ -192,21 +173,15 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 					canvasUnreadable = true
 				}
 			} else if !hasTextAnswer {
-				// Do not turn an OCR failure into a fabricated wrong answer.
+
 				canvasUnreadable = true
 			}
 		}
-		// Nothing ever read the handwriting: no assistant at all, or none
-		// configured for the student or their teacher. Without this the empty
-		// answerText fell through to the comparison below and scored as wrong —
-		// the student lost the exercise for a transcription that never ran, and
-		// on a level test that is the promotion.
+
 		if transcriptionUnavailable(canvasAwaitsOCR, hasTextAnswer, assistantReady) {
 			canvasUnreadable = true
 		}
 
-		// A canvas the OCR cannot transcribe must not lower the student's score.
-		// It is left ungraded instead of being evaluated as arbitrary text.
 		ungraded := canvasUnreadable || statementMediaNeedsReview
 		if canvasUnreadable {
 			answerText = "UNREADABLE"
@@ -217,10 +192,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		var aiSuggestion *bool
 
 		if statementMediaNeedsReview {
-			// The answer is deliberately not auto-graded: see hasStatementMedia.
+
 		} else if ok && ex.Type == exerciseTypeAttachment {
 			if !hasAttachment {
-				// Nothing was uploaded: that is simply an unanswered exercise.
+
 				ungraded = false
 			} else {
 				outcome := evaluateAttachment(ctx, app, assistantCfg, ex, gradeName,
@@ -234,9 +209,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				}
 			}
 		} else if ok && ex.Type == exerciseTypeFillBlanks {
-			// Blanks are graded by exact comparison against the expected
-			// placement. Sending them to the assistant would spend a call on a
-			// settled answer and risk it contradicting the exact match.
+
 			isCorrect = blanksAnswersMatch(answerText, ex.CorrectAnswer)
 		} else if ok {
 			normalizedCorrect := normalizeCanvasAnswer(ex.CorrectAnswer)
@@ -271,21 +244,17 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 				imageURL = uploaded
 			} else {
 				log.Printf("[image_storage] practice attempt upload failed student_id=%s exercise_id=%s err=%v", studentID, attempt.ExerciseID, uploadErr)
-				// Keep answer recoverable when object storage is temporarily
-				// unavailable. The repository persists image_url; dropping it here
-				// would make a successful submission lose the student's drawing.
+
 				imageURL = canvasData
 			}
 		}
 
-		// The teacher's queue only ever holds level test answers.
 		needsTeacherReview := ungraded && teacherGrades
 
 		score := 0.0
 		switch {
 		case ungraded:
-			// Nobody produced a verdict: drop it from the denominator so an
-			// unread answer cannot fail the student on its own.
+
 			total--
 			if needsTeacherReview {
 				hasPendingReview = true
@@ -295,7 +264,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			score = 100.0
 		}
 
-		// Track per-topic stats
 		if ok && ex.TopicID != "" && !ungraded {
 			stats := topicStats[ex.TopicID]
 			stats.total++
@@ -345,9 +313,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			xpExercises = append(xpExercises, xpExercise{ExerciseID: attempt.ExerciseID, Correct: isCorrect, Ungraded: ungraded})
 		}
 
-		// Practice sheets teach from their detailed result. A level test must not
-		// become an answer oracle, so it deliberately returns no verdict, answer
-		// or assistant feedback for an individual exercise.
 		if ps.SheetType == sheetTypeLevelTest {
 			continue
 		}
@@ -370,17 +335,10 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 		if ps.SheetType != sheetTypeLevelTest {
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, persistenceErr)
 		}
-		// Detached from the request: the usual reason a submission fails is that
-		// this very context expired, and running the recovery through it meant
-		// both queries failed instantly and the student stayed locked out — the
-		// exact case the compensation exists for. WithoutCancel keeps the
-		// request's values (tracing, logging) and drops only the cancellation.
+
 		cleanupCtx, cancelCleanup := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
 		defer cancelCleanup()
 
-		// The claim makes these attempts exclusive to this submission. Delete
-		// before release: reversing the order would let a retry race with stale
-		// rows from this failed delivery.
 		if cleanupErr := app.Repositories.StudentAttempt.DeleteBySheet(cleanupCtx, studentID, sheetID); cleanupErr != nil {
 			log.Printf("[practice_submit] could not remove partial level test student_id=%s sheet_id=%s err=%v", studentID, sheetID, cleanupErr)
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetSubmitError, cleanupErr)
@@ -396,12 +354,11 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	if total > 0 {
 		sheetScore = float64(correct) / float64(total) * 100
 	}
-	// Nothing came back with a verdict: there is no score to act on yet.
+
 	allUngraded := total <= 0 && len(input.Attempts) > 0
 
 	kumon := domain.NewKumonStrategy()
 
-	// For level tests or single-topic sheets, use overall score for level progression
 	derivedTopicID := ps.TopicID
 	if derivedTopicID == "" && len(topicStats) == 1 {
 		for topicID := range topicStats {
@@ -412,9 +369,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	currentScore := 0.0
 	currentLevel := 1
 	if ps.SheetType == "level_test" {
-		// Level tests advance the course, not the topic. Topic progress can be
-		// ahead because of regular practice and must not cause level skipping.
-		// ensureSheetIsOpen already proved this is the student's current level.
+
 		currentLevel = ps.Level
 	} else {
 		currentProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, derivedTopicID)
@@ -434,8 +389,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	switch {
 	case allUngraded:
-		// Nothing gradeable came back, so level progression stays where it is
-		// rather than acting on a score of zero.
+
 		shouldLevelUp = false
 		shouldRepeat = false
 		nextLevel = currentLevel
@@ -446,7 +400,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			recommendation = "No pudimos corregir tus respuestas automáticamente, así que tu progreso quedó como estaba."
 		}
 	case ps.SheetType == sheetTypeLevelTest && hasPendingReview:
-		// Some answer still needs a teacher, and this test decides promotion.
+
 		shouldLevelUp = false
 		shouldRepeat = false
 		nextLevel = currentLevel
@@ -484,7 +438,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 
 	now := time.Now()
 
-	// Write progress for each topic
 	for topicID, stats := range topicStats {
 		topicProgress, _ := app.Repositories.StudentProgress.Get(ctx, studentID, topicID)
 		topicCurrentScore := 0.0
@@ -529,7 +482,7 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 			StreakDays:      topicStreak,
 			LastPracticedAt: &now,
 		}); err != nil {
-			// Log error but don't fail the submit
+
 			_ = err
 		}
 	}
@@ -555,9 +508,6 @@ func (u *submitUsecase) Execute(ctx context.Context, sheetID, studentID string, 
 	return &SubmitOutput{Data: result}, nil
 }
 
-// validateLevelTestAttempts keeps the server's pass/fail calculation tied to
-// the complete test. UI validation alone is bypassable: submitting only one
-// easy exercise previously produced a 100% score and promoted the student.
 func validateLevelTestAttempts(exercises []domain.PracticeSheetExercise, attempts []AttemptInput) apperrors.ApplicationError {
 	if len(attempts) != len(exercises) {
 		return apperrors.NewBadRequestError("a level test must include every exercise exactly once")
@@ -584,35 +534,14 @@ func needsReviewForStatementMedia(ex domain.Exercise, hasTextAnswer, hasCanvasAn
 	return ex.MediaURL() != "" && (hasTextAnswer || hasCanvasAnswer || hasAttachment)
 }
 
-// transcriptionUnavailable reports a handwritten answer that never became text.
-// Whether the assistant failed or was never reachable, the outcome is the same:
-// there is nothing to compare, so the answer has to be left ungraded rather
-// than measured against an empty string.
 func transcriptionUnavailable(canvasAwaitsOCR, hasTextAnswer, assistantReady bool) bool {
 	return canvasAwaitsOCR && !hasTextAnswer && !assistantReady
 }
 
-// teacherGradesSheet says whether a sheet's answers are corrected by a person.
-// Only a level test is: it decides promotion, so a human confirms it. A
-// practice is formative — it must resolve on submit, so it is never queued for
-// a teacher and never left hanging on one.
 func teacherGradesSheet(sheetType string) bool {
 	return sheetType == sheetTypeLevelTest
 }
 
-// unreadableCanvasFeedback explains a handwritten answer the OCR could not
-// transcribe. Only a level test can point the student at a correction: on a
-// practice nobody is going to look at it, so asking them to request one would
-// send them after something the app no longer offers.
-// unresolvedEvaluation decides an answer the assistant was asked to judge and
-// could not.
-//
-// What is left is a string comparison, and it only knows whether the wording
-// matched. An exact match needs no interpretation and stands as correct. A
-// mismatch does not mean wrong: it cannot tell "cuatro" from "4", and letting
-// it decide marks a right answer wrong with nobody to appeal to. That case is
-// indeterminate, so it leaves the denominator instead of the student's score —
-// the same treatment an unreadable canvas already gets.
 func unresolvedEvaluation(textMatches bool) (isCorrect, ungraded bool) {
 	if textMatches {
 		return true, false
@@ -620,10 +549,6 @@ func unresolvedEvaluation(textMatches bool) (isCorrect, ungraded bool) {
 	return false, true
 }
 
-// evaluationUnavailableFeedback explains an answer nobody could judge. It is
-// said plainly rather than dressed up as a hint: the student answered, the
-// wording did not match the expected one, and the only thing that could have
-// told whether it meant the same was unreachable.
 func evaluationUnavailableFeedback(teacherGrades bool) string {
 	if teacherGrades {
 		return "No pudimos evaluar tu respuesta en este momento, así que la va a revisar el docente."
@@ -638,9 +563,6 @@ func unreadableCanvasFeedback(teacherGrades bool) string {
 	return "No pudimos leer tu respuesta escrita, así que no cuenta en tu puntaje. Intentá escribirla más clara la próxima vez."
 }
 
-// statementMediaFeedback explains why an answer to an exercise with image or
-// audio in its statement was not auto-graded, without promising a correction
-// that only a level test actually gets.
 func statementMediaFeedback(teacherGrades bool) string {
 	if teacherGrades {
 		return "Tu respuesta quedó pendiente de la revisión del docente porque este ejercicio incluye material visual o de audio."
@@ -682,8 +604,6 @@ func normalizeCanvasDataURI(value string) string {
 	return "data:image/png;base64," + trimmed
 }
 
-// calcStreak counts consecutive days of practice in the student's own zone.
-// Measuring in UTC broke it for a UTC-3 audience: see domain.StudentLocation.
 func calcStreak(current *domain.StudentTopicProgress, loc *time.Location) int {
 	if current == nil || current.LastPracticedAt == nil {
 		return 1
@@ -699,14 +619,6 @@ func calcStreak(current *domain.StudentTopicProgress, loc *time.Location) int {
 	}
 }
 
-// ensureWithinTimeLimit refuses a submission that arrives after the student's
-// own deadline.
-//
-// The clock runs from when they opened the test, not from the sheet's
-// schedule: two students starting at different moments each get the full time.
-// A limit added after someone already opened the test does not apply to them,
-// since there is no start to count from and inventing one would cut short a
-// test they are in the middle of.
 func ensureWithinTimeLimit(ctx context.Context, app *appcontext.Context, ps domain.PracticeSheet, studentID string) apperrors.ApplicationError {
 	if ps.TimeLimitMinutes == nil {
 		return nil

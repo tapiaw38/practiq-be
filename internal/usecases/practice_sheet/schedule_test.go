@@ -7,9 +7,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// The gate used to reject every scheduled sheet: blocked before the date and
-// "expired" from the date onwards, so a scheduled level test could never be
-// taken. These cases pin the window down.
 func TestSheetWindowState(t *testing.T) {
 	now := time.Now()
 
@@ -33,8 +30,7 @@ func TestSheetWindowState(t *testing.T) {
 			want:  windowNotYetOpen,
 		},
 		{
-			// The regression: this used to report closed, so a scheduled test
-			// was unreachable from the moment it opened.
+
 			name:  "open once the date passes and no closing date",
 			sheet: domain.PracticeSheet{ScheduledAt: &hourAgo},
 			want:  windowOpen,

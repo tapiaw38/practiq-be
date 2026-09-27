@@ -35,7 +35,7 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAd
 		return nil, apperrors.NewApplicationError(mappings.SubjectListError, err)
 	}
 	if scope.Empty() {
-		// Belonging to no school means seeing nothing, not everything.
+
 		return &ListOutput{Data: []SubjectData{}}, nil
 	}
 	subjects, err := app.Repositories.Subject.List(ctx, scope.SchoolIDs)

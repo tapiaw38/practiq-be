@@ -8,15 +8,12 @@ import (
 )
 
 type Repository interface {
-	// Upsert replaces the notification for the same user, type and resource, so
-	// rescheduling an event does not stack duplicates.
 	Upsert(context.Context, domain.Notification) error
 	ListByUser(context.Context, ListFilter) ([]domain.Notification, error)
 	CountUnread(context.Context, string) (int, error)
 	MarkRead(ctx context.Context, id, userID string) (bool, error)
 	MarkAllRead(context.Context, string) error
-	// Delete removes a notification the user dismissed. Scoped by user so one
-	// user cannot delete another's.
+
 	Delete(ctx context.Context, id, userID string) (bool, error)
 	DeleteByResource(ctx context.Context, notificationType, resourceID string) error
 }

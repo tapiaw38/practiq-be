@@ -112,10 +112,7 @@ func readMultipartValues(t *testing.T, contentType string, body []byte) map[stri
 }
 
 func TestEnrichTutorMessageTellsTheModelToRejudgeAttachedWork(t *testing.T) {
-	// The exact shape a "Revisá" sends: the student's page attached, and the
-	// same wording as the previous review, whose "incorrecta" is still in the
-	// conversation. Without this instruction the model repeats that verdict
-	// even after the student erased and fixed the answer.
+
 	body, contentType := multipartWithImage(t,
 		map[string]string{"content": "Revisá mi respuesta actual y ayudame a mejorarla."},
 		"image_content", "practice-1.jpg", []byte("fake-png-bytes"),
@@ -152,8 +149,7 @@ func TestEnrichTutorMessageLeavesTextOnlyMessagesAlone(t *testing.T) {
 }
 
 func TestEnrichTutorMessageHandlesImageBeforeContent(t *testing.T) {
-	// The instruction depends on a part that may arrive after the one it
-	// changes, which is why the parts are buffered before being rewritten.
+
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
 	file, err := writer.CreateFormFile("image_content", "page.png")

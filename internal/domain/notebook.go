@@ -20,18 +20,14 @@ type NotebookPage struct {
 	NotebookID  string
 	PageNumber  int
 	Title       string
-	ContentType string // "canvas" | "text"
-	ContentData string // teacher content (base64 PNG or text)
-	// StatementText is the page transcribed to text when ContentData is an
-	// image, so grading compares against words instead of re-reading the
-	// picture on every submission.
+	ContentType string
+	ContentData string
+
 	StatementText string
-	// StatementVerified records that a teacher looked at StatementText. Until
-	// then it is an unchecked transcription and a verdict built on it can only
-	// be a suggestion.
+
 	StatementVerified bool
 	Instructions      string
-	Submission        *NotebookSubmission // student's work, if loaded
+	Submission        *NotebookSubmission
 	CreatedAt         time.Time
 }
 
@@ -46,10 +42,7 @@ type NotebookSubmission struct {
 	AIFeedback         string
 	AIReviewedAt       *time.Time
 	NeedsTeacherReview bool
-	// Version orders deliveries by when the server accepted them. Saving runs
-	// after the assistant replies, so two submissions can be in flight at once
-	// and finish out of order; the repository refuses to apply a version older
-	// than the stored one.
+
 	Version           int64
 	TeacherIsCorrect  *bool
 	TeacherFeedback   string

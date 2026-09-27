@@ -20,9 +20,6 @@ func (f *fakeSchools) ListForUser(context.Context, string) ([]domain.SchoolMembe
 	return f.members, nil
 }
 
-// Answered because the cap is now applied per student at write time: a school
-// holding more students than its plan allows puts the excess in read-only
-// until the teacher chooses who stays.
 func (f *fakeSchools) ListStudentsByActivity(context.Context, string) ([]string, error) {
 	return f.studentsByActivity, nil
 }
@@ -52,8 +49,7 @@ func TestScopeFor(t *testing.T) {
 			wantAll:      true,
 		},
 		{
-			// Not "every school listed": a superadmin who belongs to none would
-			// otherwise stop seeing anything.
+
 			name:         "a superadmin belonging to nothing still sees everything",
 			members:      nil,
 			isSuperAdmin: true,
@@ -68,8 +64,7 @@ func TestScopeFor(t *testing.T) {
 			wantIDs: []string{"a", "b"},
 		},
 		{
-			// A downgrade pushed this student out of the plan. They keep their
-			// history and stop reaching the school.
+
 			name: "a deactivated membership does not count",
 			members: []domain.SchoolMember{
 				{SchoolID: "a", Role: domain.SchoolRoleStudent, Active: false},
@@ -77,8 +72,7 @@ func TestScopeFor(t *testing.T) {
 			wantEmpty: true,
 		},
 		{
-			// The dangerous one. Reading "no schools" as "do not narrow" would
-			// turn an empty list into every school's data.
+
 			name:      "belonging to nothing sees nothing, not everything",
 			members:   nil,
 			wantEmpty: true,
@@ -109,9 +103,6 @@ func TestScopeFor(t *testing.T) {
 	}
 }
 
-// The repository takes nil to mean "do not narrow". An empty non-nil slice
-// would filter to nothing, so the two must never be confused: a superadmin
-// passing an empty slice would see no grades at all.
 func TestSuperAdminScopePassesNilNotEmpty(t *testing.T) {
 	scope, err := ScopeFor(context.Background(), appWith(), "user-1", true)
 	if err != nil {

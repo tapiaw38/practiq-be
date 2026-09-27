@@ -30,7 +30,6 @@ func encryptionBox() *secretbox.Box {
 	return box
 }
 
-// Seal encrypts a Gillie API key for storage.
 func Seal(apiKey string) (string, error) {
 	b := encryptionBox()
 	if b == nil {
@@ -39,10 +38,6 @@ func Seal(apiKey string) (string, error) {
 	return b.Seal(apiKey)
 }
 
-// Resolve returns the platform's Gillie configuration, which a superadmin
-// stores and nothing else supplies. An empty Config reads as "not configured"
-// everywhere it is used, so every failure here turns the assistant off rather
-// than reaching for a second set of credentials nobody chose.
 func Resolve(ctx context.Context, app *appcontext.Context) assistant.Config {
 	if app == nil || app.Repositories == nil || app.Repositories.GillieSettings == nil {
 		return assistant.Config{}
@@ -74,8 +69,6 @@ func Resolve(ctx context.Context, app *appcontext.Context) assistant.Config {
 	}
 }
 
-// Enabled reports whether the platform assistant can be used, without handing
-// out the credentials that answer the question.
 func Enabled(ctx context.Context, app *appcontext.Context) bool {
 	cfg := Resolve(ctx, app)
 	return strings.TrimSpace(cfg.BaseURL) != "" && strings.TrimSpace(cfg.APIKey) != ""

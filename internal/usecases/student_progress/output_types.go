@@ -29,8 +29,7 @@ type (
 		AIFeedback      string  `json:"ai_feedback,omitempty"`
 		IsCorrect       bool    `json:"is_correct"`
 		Score           float64 `json:"score"`
-		// NotGraded: nobody put a verdict on it, so is_correct=false here means
-		// "not corrected", not "wrong".
+
 		NotGraded     bool   `json:"not_graded,omitempty"`
 		TimeSpentSecs int    `json:"time_spent_seconds"`
 		HintsUsed     int    `json:"hints_used"`

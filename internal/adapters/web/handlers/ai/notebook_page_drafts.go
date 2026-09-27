@@ -17,8 +17,6 @@ import (
 	ucNotebook "github.com/tapiaw38/practiq-be/internal/usecases/notebook"
 )
 
-// NewNotebookPageDraftsHandler creates text-page drafts only. The teacher
-// reviews them and the normal page endpoint is still the only persistent write.
 func NewNotebookPageDraftsHandler(proxy ucAI.ProxyUsecase, notebooks ucNotebook.GetUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := middlewares.GetUserID(c)

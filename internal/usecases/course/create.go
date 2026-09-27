@@ -13,13 +13,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-// mismatch reports a grade or subject that belongs to another school.
-//
-// The ids travel as the original message so the log says which row and which
-// two schools disagreed. Without them this refusal was indistinguishable in
-// the log from the missing-header case above, which is what made a real
-// 400 in production impossible to tell apart from a client that simply had
-// no school selected.
 func mismatch(kind, id, rowSchool, selectedSchool string) apperrors.ApplicationError {
 	return apperrors.NewApplicationError(
 		mappings.ErrorDetails{
@@ -73,11 +66,7 @@ func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input Creat
 	if strings.TrimSpace(input.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
 	}
-	// Three different failures used to answer with one message here, and the
-	// one that actually happens most reads as the most misleading: with no
-	// school selected, SchoolID is empty, every grade compares unequal to it,
-	// and the caller is told their grade belongs elsewhere when the request
-	// simply never said where "here" is.
+
 	if strings.TrimSpace(input.SchoolID) == "" {
 		return nil, apperrors.NewBadRequestError("seleccioná una escuela antes de crear un curso")
 	}
@@ -118,10 +107,6 @@ func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input Creat
 		return nil, apperrors.NewApplicationError(mappings.CourseCreateError, err)
 	}
 
-	// The repositories share a *sql.DB with no transaction plumbing, so failing
-	// after the insert used to leave the course committed: the client retried
-	// the "failed" creation and ended up with duplicates, while the first one
-	// sat there without its default strategy. Undo the insert instead.
 	rollbackCourse := func() {
 		if err := app.Repositories.Course.Delete(ctx, id); err != nil {
 			log.Printf("[course_create] could not roll back course_id=%s err=%v", id, err)

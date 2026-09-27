@@ -18,8 +18,6 @@ type (
 		contextFactory appcontext.Factory
 	}
 
-	// Data en nil significa que el docente todavía no generó ninguno, o que el
-	// que tenía venció. La pantalla ofrece generarlo en los dos casos.
 	GetActiveOutput struct {
 		Data *InvitationData `json:"data"`
 	}

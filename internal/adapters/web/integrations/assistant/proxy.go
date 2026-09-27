@@ -12,8 +12,6 @@ import (
 	"time"
 )
 
-// maxAssistantResponseBytes bounds every body read from a user-configured
-// assistant endpoint, preventing an unbounded response from exhausting memory.
 const maxAssistantResponseBytes = 25 << 20
 
 func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentType string, body []byte) (*ProxyResponse, error) {

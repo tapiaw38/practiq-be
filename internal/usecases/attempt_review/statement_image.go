@@ -11,12 +11,6 @@ import (
 )
 
 type (
-	// StatementImageUsecase serves the handwritten statement of the exercise an
-	// attempt belongs to.
-	//
-	// It is a separate call on purpose: the image is a base64 canvas of a few
-	// hundred KB, and inlining one per row would turn the review queue into a
-	// multi-megabyte response for a list the teacher only skims.
 	StatementImageUsecase interface {
 		Execute(ctx context.Context, attemptID, teacherID string, isSuperAdmin bool) (*StatementImageOutput, apperrors.ApplicationError)
 	}
@@ -30,8 +24,6 @@ type (
 	}
 
 	StatementImageData struct {
-		// Image is a data URL, empty when the exercise has no handwritten
-		// statement.
 		Image string `json:"image"`
 	}
 )
@@ -43,8 +35,6 @@ func NewStatementImageUsecase(contextFactory appcontext.Factory) StatementImageU
 func (u *statementImageUsecase) Execute(ctx context.Context, attemptID, teacherID string, isSuperAdmin bool) (*StatementImageOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Same ownership rule as reviewing: whoever may grade the attempt may see
-	// the statement it was answering.
 	owner, err := app.Repositories.StudentAttempt.GetTeacherForAttempt(ctx, attemptID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AttemptReviewError, err)
@@ -77,11 +67,6 @@ func (u *statementImageUsecase) Execute(ctx context.Context, attemptID, teacherI
 	}, nil
 }
 
-// asDataURL keeps this endpoint's contract while the storage underneath changed.
-//
-// Exercises saved by the current editor keep the drawing in the bucket, so the
-// value here is a URL the reviewer's browser cannot open on its own. Older ones
-// already hold a data URL and pass straight through.
 func (u *statementImageUsecase) asDataURL(ctx context.Context, app *appcontext.Context, image string) string {
 	if image == "" || strings.HasPrefix(image, "data:") {
 		return image

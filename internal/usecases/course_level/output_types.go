@@ -7,22 +7,19 @@ type (
 		ID      string `json:"id"`
 		Title   string `json:"title"`
 		TopicID string `json:"topic_id,omitempty"`
-		// TopicTitle and TopicOrder let student navigation describe the subject
-		// of each practice instead of presenting one undifferentiated list.
+
 		TopicTitle string `json:"topic_title,omitempty"`
 		TopicOrder int    `json:"topic_order"`
 		Level      int    `json:"level"`
 		SheetType  string `json:"sheet_type"`
 		TestStyle  string `json:"test_style"`
-		// ScheduledAt is UTC and empty when the sheet has no date. The client
-		// uses it to show the date and disable the sheet until then.
+
 		ScheduledAt string `json:"scheduled_at,omitempty"`
-		// AvailableUntil is UTC and empty when the sheet remains open.
+
 		AvailableUntil string `json:"available_until,omitempty"`
 		Exercises      int    `json:"exercises"`
 		Submitted      bool   `json:"submitted"`
-		// AttemptsUsed and AttemptsAllowed let the student see what is left
-		// before spending one, instead of finding out on the refusal.
+
 		AttemptsUsed    int   `json:"attempts_used"`
 		AttemptsAllowed int   `json:"attempts_allowed"`
 		PendingReview   bool  `json:"pending_review"`

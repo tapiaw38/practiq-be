@@ -12,7 +12,7 @@ type createInput struct {
 	Title         string `json:"title" binding:"required"`
 	Type          string `json:"type" binding:"required"`
 	ExtractedText string `json:"extracted_text"`
-	// FileURL comes from POST /uploads; empty means a text-only material.
+
 	FileURL string `json:"file_url"`
 }
 

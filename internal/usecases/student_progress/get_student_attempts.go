@@ -40,10 +40,6 @@ func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID str
 		}
 	}
 
-	// HasAccess only proves the requester can see this student somewhere; it
-	// says nothing about the sheet. Without tying the sheet back to a course
-	// the requester owns, a teacher of one course could read the same student's
-	// answers and scores for a sheet in another course, or in a deleted one.
 	if !isSuperAdmin {
 		sheet, err := app.Repositories.PracticeSheet.Get(ctx, sheetID)
 		if err != nil {
@@ -52,8 +48,7 @@ func (u *getStudentAttemptsUsecase) Execute(ctx context.Context, requesterID str
 		if sheet == nil {
 			return nil, apperrors.NewNotFoundError("practice sheet not found")
 		}
-		// EnsureCanManageCourse's Get filters out soft-deleted courses, so a
-		// not-found error here is also the deleted-course case.
+
 		if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, sheet.CourseID); appErr != nil {
 			return nil, appErr
 		}

@@ -138,7 +138,7 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 		if err != nil {
 			log.Printf("[ai_help] warning: failed to get exercise exercise_id=%s err=%v", input.ExerciseID, err)
 		}
-		// Get grade from exercise → topic → course
+
 		if exercise != nil && exercise.TopicID != "" {
 			if topic, _ := app.Repositories.Topic.Get(ctx, exercise.TopicID); topic != nil {
 				if course, _ := app.Repositories.Course.Get(ctx, topic.CourseID); course != nil {

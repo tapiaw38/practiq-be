@@ -2,9 +2,6 @@ package domain
 
 import "testing"
 
-// The three states differ in two independent ways: whether a student may open
-// the course at all, and whether they may still add to it. Archived is the
-// case that needs both answers — visible, but closed.
 func TestCourseStatusRules(t *testing.T) {
 	cases := []struct {
 		status          string
@@ -15,8 +12,7 @@ func TestCourseStatusRules(t *testing.T) {
 		{CourseStatusDraft, false, false, false},
 		{CourseStatusPublished, true, true, true},
 		{CourseStatusArchived, true, false, false},
-		// A row written before the column existed, or by something that
-		// skipped it, must not be treated as open.
+
 		{"", false, false, false},
 	}
 

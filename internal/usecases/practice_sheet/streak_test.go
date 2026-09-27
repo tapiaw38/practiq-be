@@ -7,9 +7,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// Measured in UTC, the day flipped at 21:00 in Argentina: practising twice one
-// evening counted as two days, and practising two evenings running counted as
-// one. Both are the common case, since homework happens after dinner.
 func TestCalcStreakUsesTheStudentsDay(t *testing.T) {
 	loc := domain.StudentLocation(domain.DefaultTimezone)
 	now := time.Now().In(loc)

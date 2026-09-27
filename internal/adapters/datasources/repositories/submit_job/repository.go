@@ -12,8 +12,7 @@ type Repository interface {
 	Create(ctx context.Context, job domain.SubmitJob) error
 	Update(ctx context.Context, job domain.SubmitJob) error
 	GetByID(ctx context.Context, id string) (*domain.SubmitJob, error)
-	// FailStale closes jobs left processing by a process that is gone, so a
-	// student stops waiting on work nobody is doing.
+
 	FailStale(ctx context.Context, olderThan time.Duration) (int64, error)
 }
 type repository struct {

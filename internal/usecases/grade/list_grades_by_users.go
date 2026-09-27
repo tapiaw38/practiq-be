@@ -11,9 +11,6 @@ import (
 
 type (
 	ListGradesByUsersUsecase interface {
-		// Execute mirrors ListUserGrades' rule per id: the caller sees their
-		// own grades always, and everyone else's only if they teach. Ids the
-		// caller can't see are dropped rather than failing the whole batch.
 		Execute(ctx context.Context, requesterID string, isTeacher bool, userIDs []string) (*ListGradesByUsersOutput, apperrors.ApplicationError)
 	}
 
@@ -30,8 +27,6 @@ func NewListGradesByUsersUsecase(contextFactory appcontext.Factory) ListGradesBy
 	return &listGradesByUsersUsecase{contextFactory: contextFactory}
 }
 
-// filterAllowedUserIDs applies the same rule as the single-user endpoint to
-// every id in the batch: teachers see anyone, everyone else only themselves.
 func filterAllowedUserIDs(requesterID string, isTeacher bool, userIDs []string) []string {
 	if isTeacher {
 		return userIDs

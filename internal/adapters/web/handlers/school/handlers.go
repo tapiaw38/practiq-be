@@ -21,8 +21,6 @@ func NewListHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	}
 }
 
-// NewMineHandler serves the school selector: what the asking user belongs to,
-// with the role they hold in each.
 func NewMineHandler(uc ucSchool.ManageUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		output, appErr := uc.Mine(c, middlewares.GetUserID(c), c.GetHeader("Authorization"))

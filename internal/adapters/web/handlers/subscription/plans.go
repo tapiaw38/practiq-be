@@ -21,9 +21,6 @@ func NewListPlansHandler(uc ucSubscription.PlansUsecase) gin.HandlerFunc {
 	}
 }
 
-// NewPublicListPlansHandler exposes only plans a new teacher can buy. Plan
-// management and the teacher catalogue keep using the authenticated handler:
-// retired plans must remain visible there for existing subscriptions.
 func NewPublicListPlansHandler(uc ucSubscription.PlansUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		output, appErr := uc.List(c)

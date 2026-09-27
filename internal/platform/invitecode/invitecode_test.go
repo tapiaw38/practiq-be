@@ -63,8 +63,6 @@ func TestFormat(t *testing.T) {
 	}
 }
 
-// Un código tiene que sobrevivir el viaje por la pantalla: se muestra con guion
-// y el alumno lo pega tal cual.
 func TestFormatThenNormalizeRoundTrip(t *testing.T) {
 	code, err := invitecode.New()
 

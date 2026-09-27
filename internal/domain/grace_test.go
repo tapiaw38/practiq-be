@@ -30,9 +30,6 @@ func TestInGrace(t *testing.T) {
 	}
 }
 
-// A subscription that never recorded a paid period cannot be in grace: there
-// is no day to count five from, and treating it as grace would hand the plan
-// to anybody whose dates failed to sync.
 func TestNoPaidPeriodIsNotGrace(t *testing.T) {
 	if InGrace(time.Time{}, time.Now()) {
 		t.Fatal("a zero paid-until must never grant grace")

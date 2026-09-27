@@ -2,20 +2,6 @@ package studentattempt
 
 import "context"
 
-// ClaimLevelTestSubmission is intentionally an INSERT with a unique key, not
-// a read-then-write check. Async submit jobs can run concurrently, and both
-// would otherwise observe an empty attempt list before either writes answers.
-//
-// maxAttempts is how many submissions the sheet allows; the caller passes 1
-// for a sheet that sets no limit, which is what a level test allowed before
-// limits existed. The cap is part of the same statement for the same reason
-// the insert is: two jobs reading the count and then updating it would both
-// see room for one more.
-//
-// Clearing started_at closes the student's window: the next attempt starts its
-// own when they open the test again. Sharing one window across attempts made
-// the later ones unusable, since a second attempt would begin with whatever
-// time the first had left -- often none.
 func (r *repository) ClaimLevelTestSubmission(ctx context.Context, studentID, sheetID string, maxAttempts int) (bool, error) {
 	if maxAttempts < 1 {
 		maxAttempts = 1

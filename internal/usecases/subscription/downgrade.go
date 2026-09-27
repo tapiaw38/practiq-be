@@ -14,21 +14,11 @@ import (
 )
 
 type (
-	// DowngradeUsecase brings a school back inside its plan.
-	//
-	// It is applied when the period the teacher already paid for ends, not the
-	// day they change plan: cutting immediately takes away something they
-	// bought, and the students who lose access did not make the decision.
-	//
-	// Until then the teacher is told how many will go and may choose which stay.
 	DowngradeUsecase interface {
-		// Preview says who would be deactivated right now, so the teacher can
-		// see the consequence before it happens.
 		Preview(ctx context.Context, teacherID, bearerToken string) (*DowngradeOutput, apperrors.ApplicationError)
-		// Apply deactivates the excess. `keep` is the teacher's choice; empty
-		// means the automatic order.
+
 		Apply(ctx context.Context, teacherID string, keep []string) (*DowngradeOutput, apperrors.ApplicationError)
-		// Reactivate brings one student back, refused when the plan is full.
+
 		Reactivate(ctx context.Context, teacherID, studentID string) apperrors.ApplicationError
 	}
 
@@ -36,25 +26,20 @@ type (
 		contextFactory appcontext.Factory
 	}
 
-	// DowngradeStudent is one candidate, named and dated so the teacher can
-	// actually choose. A list of opaque ids is not a choice.
 	DowngradeStudent struct {
 		ID   string `json:"id"`
 		Name string `json:"name"`
-		// LastPracticedAt is empty for somebody who never practised — the
-		// reason they are first in line.
+
 		LastPracticedAt string `json:"last_practiced_at,omitempty"`
-		// Keeps is what the automatic order would do, so the screen can start
-		// from it rather than from an empty form.
+
 		Keeps bool `json:"keeps"`
 	}
 
 	DowngradeData struct {
 		MaxStudents int `json:"max_students"`
-		// Deactivated is who lost access, or would with Preview.
+
 		Deactivated []string `json:"deactivated"`
-		// Students is everyone the cap applies to, in the order it applies
-		// them. Only present on Preview, and only when there is a choice.
+
 		Students []DowngradeStudent `json:"students,omitempty"`
 	}
 
@@ -74,11 +59,9 @@ func (u *downgradeUsecase) Preview(ctx context.Context, teacherID, bearerToken s
 	if appErr != nil {
 		return nil, appErr
 	}
-	// Nothing is deactivated for a teacher with no cap, nor on a payments
-	// outage: an unreadable plan must not cost anyone their students.
+
 	if !scope.Enforced() {
-		// JSON encodes a nil slice as null. This is a collection in the public
-		// contract, so keep it an empty array even when no plan is enforced.
+
 		return &DowngradeOutput{Data: DowngradeData{Deactivated: []string{}}}, nil
 	}
 
@@ -103,10 +86,6 @@ func (u *downgradeUsecase) Preview(ctx context.Context, teacherID, bearerToken s
 	return &DowngradeOutput{Data: data}, nil
 }
 
-// describeCandidates names and dates everyone the cap applies to.
-//
-// Names come from auth-api and are best effort: a teacher choosing between ten
-// students is better served by nine names and one id than by an error page.
 func describeCandidates(
 	ctx context.Context,
 	app *appcontext.Context,
@@ -189,9 +168,6 @@ func (u *downgradeUsecase) Reactivate(ctx context.Context, teacherID, studentID 
 		return apperrors.NewNotFoundError("no school to reactivate in")
 	}
 
-	// Checked against the same rule an addition goes through: reactivating is
-	// adding a student back, and the plan does not care how they got there. An
-	// outage skips the check for the same reason adding one does.
 	if scope.Enforced() {
 		used, appErr := studentsUsed(ctx, app, scope.SchoolID)
 		if appErr != nil {

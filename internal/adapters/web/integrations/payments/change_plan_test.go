@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// Moving down charges nothing, and the screen says so rather than claiming a
-// payment that never happened.
 func TestPlanChangeReportsWhatWasCharged(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -28,8 +26,6 @@ func TestPlanChangeReportsWhatWasCharged(t *testing.T) {
 	}
 }
 
-// A paused teacher keeps the month they bought, so the entitlement is active
-// and the status is what tells the screen to offer resuming.
 func TestAPausedEntitlementIsActiveAndSaysSo(t *testing.T) {
 	body := `{"user_id":"t","active":true,"status":"paused","access_until":"2026-10-24T02:49:15"}`
 	var entitlement Entitlement
@@ -44,10 +40,6 @@ func TestAPausedEntitlementIsActiveAndSaysSo(t *testing.T) {
 	}
 }
 
-// The payments service refuses on its own with a bare string detail, not the
-// {code, message} object a gateway rejection uses. Reading only the object
-// shape left the code empty, so every such refusal came out as the fallback
-// "probá de nuevo en un rato" — including "you are already subscribed".
 func TestABareStringDetailStillCarriesItsCode(t *testing.T) {
 	for _, tc := range []struct {
 		name string

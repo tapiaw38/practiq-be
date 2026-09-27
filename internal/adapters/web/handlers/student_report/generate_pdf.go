@@ -27,7 +27,6 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 			CourseID:  c.Query("course_id"),
 		}
 
-		// Parse date filters
 		if fromStr := c.Query("from"); fromStr != "" {
 			t, err := time.Parse("2006-01-02", fromStr)
 			if err != nil {
@@ -43,7 +42,7 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 				c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "invalid to date format, use YYYY-MM-DD"})
 				return
 			}
-			// Set to end of day
+
 			t = t.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 			filter.To = &t
 		}
@@ -55,14 +54,12 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 			return
 		}
 
-		// Generate filename
 		studentPrefix := studentID
 		if len(studentID) > 8 {
 			studentPrefix = studentID[:8]
 		}
 		filename := fmt.Sprintf("reporte_progreso_%s_%s.pdf", studentPrefix, time.Now().Format("20060102"))
 
-		// Set headers for PDF download
 		c.Header("Content-Type", "application/pdf")
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 		c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))

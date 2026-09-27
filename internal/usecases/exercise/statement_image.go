@@ -12,18 +12,6 @@ import (
 )
 
 type (
-	// StatementImageUsecase serves the handwritten statement of one exercise.
-	//
-	// It exists so no listing or sheet payload has to carry the drawing. It also
-	// hides where the drawing lives: exercises saved by the current editor point
-	// at the bucket, older ones keep the image inline, and both come back here
-	// as plain bytes.
-	//
-	// Serving the bytes through the API rather than handing out a bucket URL is
-	// what lets a browser draw the image into a canvas. A cross-origin image
-	// taints the canvas, and both callers that matter — the editor loading a
-	// drawing to change it, and the practice screen composing the page it sends
-	// for grading — export that canvas afterwards.
 	StatementImageUsecase interface {
 		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, exerciseID string) (*StatementImageOutput, apperrors.ApplicationError)
 	}
@@ -55,9 +43,6 @@ func (u *statementImageUsecase) Execute(ctx context.Context, requesterID string,
 		return nil, apperrors.NewNotFoundError("exercise not found")
 	}
 
-	// Seeing the statement is seeing the course it belongs to: the same rule the
-	// exercise listing applies, so this opens nothing the requester could not
-	// already read.
 	if appErr := requesterCanReadExercise(ctx, app, requesterID, isSuperAdmin, ex.TopicID); appErr != nil {
 		return nil, appErr
 	}
@@ -85,7 +70,6 @@ func (u *statementImageUsecase) Execute(ctx context.Context, requesterID string,
 	return &StatementImageOutput{Content: content, ContentType: contentType}, nil
 }
 
-// decodeDataURL unpacks the inline form older exercises were saved in.
 func decodeDataURL(value string) ([]byte, string, error) {
 	comma := strings.Index(value, ",")
 	if comma < 0 {

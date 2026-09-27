@@ -12,15 +12,13 @@ func TestPlanFromMetadataReadsTheLimitTheProductPublished(t *testing.T) {
 		want     int
 	}{
 		{
-			// The payments service stores metadata as JSON, so numbers arrive
-			// as float64 through an untyped map.
+
 			name:     "a limit sent as JSON is read",
 			metadata: map[string]any{"max_students": float64(5)},
 			want:     5,
 		},
 		{
-			// Falling back to the free allowance rather than to unlimited: a
-			// plan saved without a limit should sell nothing, not everything.
+
 			name:     "a plan with no limit grants the free allowance",
 			metadata: map[string]any{"name": "Equipo"},
 			want:     FreePlan.MaxStudents,
@@ -51,9 +49,9 @@ func TestCanAddStudentStopsAtTheLimit(t *testing.T) {
 	}{
 		{used: 0, want: true},
 		{used: 4, want: true},
-		// The fifth student fills the plan; a sixth does not fit.
+
 		{used: 5, want: false},
-		// Already over, which happens after a downgrade.
+
 		{used: 9, want: false},
 	}
 
@@ -105,8 +103,7 @@ func TestEffectiveFreePlan(t *testing.T) {
 			want: 1,
 		},
 		{
-			// The whole point of the trial: past it, nothing is free, so the
-			// allowance is none rather than the one it used to be.
+
 			name: "a day past the month allows nobody",
 			now:  created.AddDate(0, 0, FreePlan.TrialDays).Add(time.Second),
 			want: 0,
@@ -128,9 +125,6 @@ func TestEffectiveFreePlan(t *testing.T) {
 	}
 }
 
-// An expired trial has to refuse the first student, not merely stop the
-// second. Zero is the number that makes every consumer agree without being
-// told a trial exists.
 func TestExpiredTrialRefusesEvenTheFirstStudent(t *testing.T) {
 	created := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
 	expired := FreeSubscription(created, created.AddDate(0, 0, FreePlan.TrialDays+1), 0)

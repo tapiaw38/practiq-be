@@ -74,14 +74,6 @@ Si alumno insiste en resultado final, recházalo con amabilidad y guía el proce
 
 Mensaje del alumno:`
 
-// Added only when the message carries the student's page, because that image
-// is the whole answer in a handwritten exercise and the conversation it
-// arrives in usually holds an earlier verdict about an earlier version of it.
-//
-// A student who writes a wrong answer, asks for a review, erases it and fixes
-// it was being told "incorrecta" a second time: same wording, no fresh
-// context to notice, and its own confident verdict sitting in the history.
-// The image is the only thing that changed, so it has to be what decides.
 const attachedWorkInstruction = `La imagen adjunta es el estado ACTUAL de la hoja del alumno y reemplaza cualquier imagen o veredicto anterior de esta conversación. El alumno pudo haber borrado y corregido desde tu última respuesta.
 Evalúa únicamente lo que ves en esta imagen, partiendo de cero, sin dar por válido ningún juicio previo tuyo. En ejercicios manuscritos la respuesta está solamente en la imagen: es la fuente principal.`
 
@@ -96,9 +88,6 @@ func enrichTutorMessage(contentType string, body []byte) (string, []byte, error)
 		return "", nil, io.ErrUnexpectedEOF
 	}
 
-	// Buffered rather than streamed because the instruction depends on whether
-	// an image is attached, and the parts arrive in whatever order the browser
-	// built the form — "content" is usually first, the image after it.
 	type formPart struct {
 		header textproto.MIMEHeader
 		name   string

@@ -20,8 +20,7 @@ func TestMetadataWithoutTeacherImageKeepsEverythingElse(t *testing.T) {
 			wantKeys: []string{"media_url", "options"},
 		},
 		{
-			// The key was renamed twice; a payload saved under an old name has
-			// to be stripped too or the image ships anyway.
+
 			name:     "older key names are stripped as well",
 			metadata: `{"imageData":"` + drawing + `","layout":"grid"}`,
 			wantKeys: []string{"layout"},
@@ -66,8 +65,6 @@ func TestMetadataWithoutTeacherImageKeepsEverythingElse(t *testing.T) {
 	}
 }
 
-// A bare data URL was a valid metadata value before the field became JSON.
-// Returning it unchanged would defeat the whole point of stripping.
 func TestMetadataWithoutTeacherImageFailsClosedOnUnparseableValues(t *testing.T) {
 	got := Exercise{Metadata: "data:image/png;base64,iVBORw0KGgo="}.MetadataWithoutTeacherImage()
 	if got != "{}" {
@@ -86,8 +83,6 @@ func TestTeacherImageReadsBothStorageForms(t *testing.T) {
 		t.Fatalf("data URL: got %q, want %q", got, inline)
 	}
 
-	// A value that is neither is not an image, and handing it to a fetcher would
-	// be following an arbitrary string out of the database.
 	if got := (Exercise{Metadata: `{"teacher_image":"/etc/passwd"}`}).TeacherImage(); got != "" {
 		t.Fatalf("got %q, want empty", got)
 	}

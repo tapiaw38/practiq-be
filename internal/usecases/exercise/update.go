@@ -39,7 +39,6 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Verify exercise exists and check ownership
 	exercise, err := app.Repositories.Exercise.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ExerciseListError, err)

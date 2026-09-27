@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-// DecodeDataURI decodes a base64 data URI (e.g., "data:image/png;base64,...")
-// Returns the decoded bytes and content type.
 func DecodeDataURI(dataURI string) ([]byte, string, error) {
 	dataURI = strings.TrimSpace(dataURI)
 	parts := strings.SplitN(dataURI, ",", 2)

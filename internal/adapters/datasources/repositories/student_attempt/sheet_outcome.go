@@ -7,9 +7,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// GetSheetOutcome summarises a student's latest answer per exercise for a
-// sheet. Attempts accumulate across submissions, so only the newest one per
-// exercise counts — that is the submission the teacher is correcting.
 func (r *repository) GetSheetOutcome(ctx context.Context, studentID, sheetID string) (domain.SheetOutcome, error) {
 	var outcome domain.SheetOutcome
 	err := r.db.QueryRowContext(ctx, `
@@ -31,8 +28,6 @@ func (r *repository) GetSheetOutcome(ctx context.Context, studentID, sheetID str
 	return outcome, err
 }
 
-// GetAttemptContext resolves the sheet and student an attempt belongs to, so a
-// review can recompute that sheet's outcome.
 func (r *repository) GetAttemptContext(ctx context.Context, attemptID string) (domain.AttemptContext, error) {
 	var attemptCtx domain.AttemptContext
 	err := r.db.QueryRowContext(ctx, `

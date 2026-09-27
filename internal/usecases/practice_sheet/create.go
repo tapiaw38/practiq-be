@@ -73,8 +73,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	if testStyle != "canvas" {
 		testStyle = "keyboard"
 	}
-	// Only level tests are scheduled; a date on a practice sheet would lock it
-	// for students with no way to see why.
+
 	scheduledAt := input.ScheduledAt
 	if sheetType != sheetTypeLevelTest {
 		scheduledAt = nil

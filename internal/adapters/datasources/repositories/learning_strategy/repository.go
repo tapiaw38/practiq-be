@@ -15,7 +15,6 @@ type Repository interface {
 	Update(context.Context, string, domain.LearningStrategy) error
 	Delete(context.Context, string) error
 
-	// Course learning strategies
 	ListByCourse(ctx context.Context, courseID string) ([]domain.CourseLearningStrategy, error)
 	AssignToCourse(ctx context.Context, cls domain.CourseLearningStrategy) (string, error)
 	GetCourseStrategy(ctx context.Context, id string) (*domain.CourseLearningStrategy, error)

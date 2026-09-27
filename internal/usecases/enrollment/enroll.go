@@ -40,8 +40,6 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentAlreadyExistsError, nil)
 	}
 
-	// Enrolling in a course makes the student one of that course's teacher's,
-	// so the teacher's plan decides whether there is room.
 	course, err := app.Repositories.Course.Get(ctx, courseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
@@ -52,9 +50,7 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 	if appErr := school.RequireActive(ctx, app, course.SchoolID); appErr != nil {
 		return nil, appErr
 	}
-	// A draft is not open yet and an archived course is over. Joining either
-	// would put the student somewhere they cannot work: a draft is invisible
-	// to them, and an archived course takes no more submissions.
+
 	if !course.AcceptsEnrollment() {
 		return nil, apperrors.NewBadRequestError("this course is not open for enrollment")
 	}
@@ -70,9 +66,6 @@ func (u *enrollUsecase) Execute(ctx context.Context, courseID, studentID string)
 		return nil, apperrors.NewApplicationError(mappings.EnrollmentCreateError, err)
 	}
 
-	// The course's school, not the teacher's. Deducing it from the teacher put
-	// a student enrolled in an institution's course into that teacher's
-	// personal school instead — the same mistake invitations already fixed.
 	school.JoinSchool(ctx, app, course.SchoolID, course.TeacherID, studentID)
 
 	return &EnrollOutput{Data: toOperationResultData(domain.OperationResult{Message: "enrolled successfully"})}, nil

@@ -17,8 +17,7 @@ func (r *repository) MarkOpened(ctx context.Context, studentID, sheetID string) 
 }
 
 func (r *repository) GetLastOpenedPractice(ctx context.Context, studentID string) (*ResumePractice, error) {
-	// Match the student's course visibility rule. A stale state row must never
-	// advertise a draft, deleted or no-longer-accessible sheet.
+
 	var practice ResumePractice
 	err := r.db.QueryRowContext(ctx, `
 		SELECT s.practice_sheet_id::text,

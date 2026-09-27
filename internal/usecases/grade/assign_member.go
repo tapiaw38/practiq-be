@@ -39,7 +39,6 @@ func (u *assignMemberUsecase) Execute(ctx context.Context, requesterID string, i
 		return nil, apperrors.NewApplicationError(mappings.GradeNotFoundError, nil)
 	}
 
-	// The route lets a teacher ask; this decides whose grade they may touch.
 	if appErr := schoolUC.EnsureAdministers(ctx, app, requesterID, isSuperAdmin, grade.SchoolID); appErr != nil {
 		return nil, appErr
 	}

@@ -22,10 +22,6 @@ func (r *repository) LevelTestProgress(ctx context.Context, studentID, sheetID s
 	return attempts, startedAt, err
 }
 
-// MarkLevelTestStarted creates the row with no attempt spent, so the clock can
-// start before anything is submitted. COALESCE keeps the first moment: a
-// student who reloads the page, or opens it on a second device, does not get
-// the time limit reset.
 func (r *repository) MarkLevelTestStarted(ctx context.Context, studentID, sheetID string) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO level_test_submissions (practice_sheet_id, student_id, attempts, started_at, submitted_at)
@@ -36,10 +32,6 @@ func (r *repository) MarkLevelTestStarted(ctx context.Context, studentID, sheetI
 	return err
 }
 
-// CloseExpiredLevelTest closes only the window that has reached deadline.
-// A student may have reopened the test while an earlier expiry request was in
-// flight; matching the deadline prevents that request from clearing the new
-// window.
 func (r *repository) CloseExpiredLevelTest(ctx context.Context, studentID, sheetID string, deadline time.Time) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE level_test_submissions

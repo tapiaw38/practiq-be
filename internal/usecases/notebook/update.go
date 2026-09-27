@@ -35,7 +35,6 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Verify notebook exists and check ownership
 	nb, err := app.Repositories.Notebook.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookGetError, err)

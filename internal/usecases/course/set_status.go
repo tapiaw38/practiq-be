@@ -25,7 +25,6 @@ func NewSetStatusUsecase(contextFactory appcontext.Factory) SetStatusUsecase {
 	return &setStatusUsecase{contextFactory: contextFactory}
 }
 
-// ValidCourseStatus reports whether a status is one a course can hold.
 func ValidCourseStatus(status string) bool {
 	switch status {
 	case domain.CourseStatusDraft, domain.CourseStatusPublished, domain.CourseStatusArchived:
@@ -35,12 +34,6 @@ func ValidCourseStatus(status string) bool {
 	}
 }
 
-// Execute moves a course through its lifecycle and touches nothing else.
-//
-// Update demands the whole course — grade, subject, title — because it writes
-// every column. Publishing is not an edit of those: asking the teacher's
-// browser to resend a course it is not changing is how a lifecycle change
-// blanks a description.
 func (u *setStatusUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, status string) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 

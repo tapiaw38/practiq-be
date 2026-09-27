@@ -16,7 +16,7 @@ type updateInput struct {
 	Description string `json:"description"`
 	Level       string `json:"level"`
 	Subject     string `json:"subject"`
-	// Omitted means "leave the lifecycle alone".
+
 	Status string `json:"status"`
 }
 

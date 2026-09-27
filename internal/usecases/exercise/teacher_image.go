@@ -10,20 +10,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 )
 
-// storeTeacherImage moves a handwritten statement out of the metadata and into
-// the bucket, and keeps the one already stored when a save does not mention it.
-//
-// Both halves matter:
-//
-// The editor posts the drawing as a base64 data URL, which is how three of them
-// came to weigh 25 KB inside a JSONB column and travel in every payload that
-// touched the exercise. Uploading it here means the editor did not have to
-// change and no client can reintroduce the inline form.
-//
-// Carrying the previous value over is what makes the change safe. Responses no
-// longer include the drawing, so an editor that loads an exercise and saves it
-// back sends metadata without it; without this, opening and saving an exercise
-// would silently erase its statement.
 func storeTeacherImage(ctx context.Context, app *appcontext.Context, ownerID, incoming string, previous domain.Exercise) string {
 	values, ok := parseMetadata(incoming)
 	if !ok {
@@ -33,7 +19,7 @@ func storeTeacherImage(ctx context.Context, app *appcontext.Context, ownerID, in
 	key, value := findTeacherImage(values)
 	switch {
 	case key == "":
-		// Not mentioned: keep whatever the exercise already had.
+
 		if kept := previous.TeacherImage(); kept != "" {
 			values["teacher_image"] = jsonString(kept)
 			return encodeMetadata(values, incoming)
@@ -41,11 +27,11 @@ func storeTeacherImage(ctx context.Context, app *appcontext.Context, ownerID, in
 		return incoming
 
 	case value == "":
-		// Mentioned as empty: the teacher cleared the drawing.
+
 		return incoming
 
 	case !strings.HasPrefix(value, "data:"):
-		// Already a stored URL; nothing to upload.
+
 		return incoming
 	}
 
@@ -54,8 +40,7 @@ func storeTeacherImage(ctx context.Context, app *appcontext.Context, ownerID, in
 	}
 	uploaded, err := app.ImageStorage.UploadDataURI(ctx, "exercises", ownerID, value)
 	if err != nil {
-		// Falling back to the inline form keeps the teacher's work rather than
-		// losing a drawing over a storage hiccup.
+
 		log.Printf("[image_storage] exercise statement upload failed owner_id=%s err=%v", ownerID, err)
 		return incoming
 	}
@@ -74,9 +59,6 @@ func parseMetadata(metadata string) (map[string]json.RawMessage, bool) {
 	return values, true
 }
 
-// findTeacherImage returns the key the drawing is under and its value. The key
-// has been renamed over time, so which one is present says how old the payload
-// is; writing back under the same key avoids leaving two of them behind.
 func findTeacherImage(values map[string]json.RawMessage) (string, string) {
 	for _, key := range []string{"teacher_image", "teacherImage", "image_data", "imageData"} {
 		raw, ok := values[key]

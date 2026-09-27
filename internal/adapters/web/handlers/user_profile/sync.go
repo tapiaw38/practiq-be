@@ -9,11 +9,8 @@ import (
 )
 
 type syncInput struct {
-	// ProfileType is a product onboarding choice, not an Auth role. The usecase
-	// accepts it only while creating the first Practiq profile.
 	ProfileType string `json:"profile_type"`
-	// Timezone is the IANA zone the browser reports. Empty leaves whatever is
-	// stored: the streak is measured with it and most clients do not send one.
+
 	Timezone string `json:"timezone"`
 }
 type uiThemeInput struct {

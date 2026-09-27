@@ -30,8 +30,7 @@ type (
 	RedeemData struct {
 		TeacherID   string `json:"teacher_id"`
 		TeacherName string `json:"teacher_name"`
-		// AlreadyLinked distingue el canje nuevo del repetido, para que la
-		// pantalla no anuncie dos veces lo mismo.
+
 		AlreadyLinked bool `json:"already_linked"`
 	}
 )
@@ -54,9 +53,6 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 		return nil, apperrors.NewApplicationError(mappings.InvitationInvalidCodeError, nil)
 	}
 
-	// El perfil dice si es alumno; el rol del token no alcanza porque el
-	// administrador también entra por acá y no tiene sentido que se asigne a
-	// sí mismo como alumno de alguien.
 	profile, err := app.Repositories.UserProfile.Get(ctx, studentID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
@@ -77,11 +73,6 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 		return nil, appErr
 	}
 
-	// Checked before the code is spent: a redemption refused for a full plan
-	// must leave the invitation usable, or the student burns it for nothing.
-	// Against the school the invitation names, which is where the student ends
-	// up: charging the teacher's personal plan for a student joining an
-	// institution refused them over a limit that does not apply.
 	if appErr := subscription.EnsureCanAddStudent(ctx, app, invitation.SchoolID, invitation.TeacherID, studentID); appErr != nil {
 		return nil, appErr
 	}
@@ -91,8 +82,6 @@ func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerT
 		return nil, apperrors.NewApplicationError(mappings.InvitationRedeemError, err)
 	}
 
-	// Assign es idempotente y reactiva el vínculo si estaba inactivo, así que
-	// repetir el canje no rompe nada.
 	if err := app.Repositories.TeacherStudentAssignment.Assign(ctx, domain.TeacherStudentAssignment{
 		TeacherID: invitation.TeacherID,
 		StudentID: studentID,

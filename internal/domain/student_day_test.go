@@ -5,9 +5,6 @@ import (
 	"time"
 )
 
-// The cases that were wrong while the day was measured in UTC: for a UTC-3
-// student the UTC day flips at 21:00 local, right in the middle of homework
-// time.
 func TestDaysBetweenUsesTheStudentsDay(t *testing.T) {
 	loc := StudentLocation(DefaultTimezone)
 
@@ -41,10 +38,10 @@ func TestDaysBetweenUsesTheStudentsDay(t *testing.T) {
 			want: 4,
 		},
 		{
-			// The instant is what matters, not the zone it is expressed in.
+
 			name: "an instant stored as UTC still lands on the local day",
-			from: time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC),  // 22:00 of the 10th local
-			to:   time.Date(2026, 8, 11, 23, 0, 0, 0, time.UTC), // 20:00 of the 11th local
+			from: time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC),
+			to:   time.Date(2026, 8, 11, 23, 0, 0, 0, time.UTC),
 			want: 1,
 		},
 	}

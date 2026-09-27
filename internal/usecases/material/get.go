@@ -9,11 +9,6 @@ import (
 )
 
 type (
-	// GetUsecase reads one material, extracted text included.
-	//
-	// It is the other half of the listing: that one carries a preview so a
-	// course's materials do not ship every document's full text, and this one
-	// serves the rest when a reader actually opens one.
 	GetUsecase interface {
 		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, materialID string) (*GetOutput, apperrors.ApplicationError)
 	}
@@ -42,8 +37,6 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		return nil, apperrors.NewNotFoundError("material not found")
 	}
 
-	// Reading a material is reading its course. Checking after the lookup is
-	// what lets the course be known at all; the material id alone says nothing.
 	if appErr := requesterCanReadCourse(ctx, app, requesterID, isSuperAdmin, material.CourseID); appErr != nil {
 		return nil, appErr
 	}

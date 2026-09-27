@@ -50,8 +50,6 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 	return &deleteUsecase{contextFactory: contextFactory}
 }
 
-// Execute removes a notification the user dismissed. Deleting one that is
-// already gone is not an error: the client may retry or double-click.
 func (u *deleteUsecase) Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
@@ -61,8 +59,6 @@ func (u *deleteUsecase) Execute(ctx context.Context, id, userID string) (*MarkRe
 	return &MarkReadOutput{Data: OperationResultData{Message: "notification deleted"}}, nil
 }
 
-// Execute marks one notification as read. Scoped by user, so a notification
-// that belongs to someone else is indistinguishable from a missing one.
 func (u *markReadUsecase) Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
@@ -71,7 +67,7 @@ func (u *markReadUsecase) Execute(ctx context.Context, id, userID string) (*Mark
 		return nil, apperrors.NewApplicationError(mappings.NotificationUpdateError, err)
 	}
 	if !updated {
-		// Already read is not an error: the client may retry or double-click.
+
 		return &MarkReadOutput{Data: OperationResultData{Message: "notification already read"}}, nil
 	}
 	return &MarkReadOutput{Data: OperationResultData{Message: "notification marked as read"}}, nil

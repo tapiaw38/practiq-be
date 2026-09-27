@@ -56,7 +56,6 @@ func TestPresignGetURLSignsStoredObject(t *testing.T) {
 	}
 }
 
-// A material can hold a link we never stored; signing it would corrupt it.
 func TestPresignGetURLLeavesForeignURLsAlone(t *testing.T) {
 	s := testStorage()
 	foreign := "https://www.youtube.com/watch?v=abc"

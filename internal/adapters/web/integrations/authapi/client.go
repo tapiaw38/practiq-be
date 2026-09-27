@@ -20,12 +20,9 @@ type (
 
 	Client interface {
 		GetByEmail(ctx context.Context, bearerToken, email string) (*UserInfo, error)
-		// GetBatch resolves display identity (name/email) for a set of
-		// usernames in one round trip — open to any authenticated caller.
-		// Unknown usernames are silently omitted from the result.
+
 		GetBatch(ctx context.Context, bearerToken string, usernames []string) ([]UserInfo, error)
-		// GetTokenVersion reads the version auth-api-be currently holds, so a
-		// token issued before a password change can be refused here too.
+
 		GetTokenVersion(ctx context.Context, bearerToken, userID string) (uint, error)
 	}
 
@@ -34,10 +31,6 @@ type (
 		http    *http.Client
 	}
 
-	// UpstreamError carries auth-api-be's status so callers can tell a caller
-	// problem from a practiq-be problem. A 401 here means the caller's own
-	// token was rejected — reporting that as a 500 sent people looking for a
-	// server fault when the answer was to sign in again.
 	UpstreamError struct {
 		Status int
 		Detail string

@@ -8,8 +8,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// List returns the grades of the given schools. A nil slice means no narrowing,
-// which is a platform superadmin — not "no schools", which returns nothing.
 func (r *repository) List(ctx context.Context, schoolIDs []string) ([]domain.Grade, error) {
 	query := `
 		SELECT id, name, COALESCE(description, ''), visual_theme, created_by, created_at

@@ -21,9 +21,6 @@ func (f *fakeCourses) Get(context.Context, string) (*domain.Course, error) {
 	return f.course, nil
 }
 
-// payingTeacher keeps these tests about membership. Whether the school is paid
-// up is its own rule, with its own tests; leaving it unset would panic here and
-// hide what each case is actually asserting.
 type payingTeacher struct{ payments.Client }
 
 func (payingTeacher) GetEntitlement(context.Context, string) (*payments.Entitlement, error) {
@@ -78,8 +75,7 @@ func TestEnsureCanManageCourse(t *testing.T) {
 			members: []domain.SchoolMember{{SchoolID: "school-2", Role: domain.SchoolRoleAdmin, Active: true}},
 		},
 		{
-			// Course.Get joins an active school, so a closed one reads as no
-			// course at all — for the operator too.
+
 			name:         "a course that does not read back",
 			course:       nil,
 			isSuperAdmin: true,
@@ -119,8 +115,7 @@ func TestOwnedSchoolIDSelected(t *testing.T) {
 			selected: "school-2",
 		},
 		{
-			// Without this a superadmin could create a course in an
-			// institution but not the grade or subject that course needs.
+
 			name:         "a superadmin gets the school they selected",
 			isSuperAdmin: true,
 			selected:     "school-2",

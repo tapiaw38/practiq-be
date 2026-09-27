@@ -11,9 +11,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/revocation"
 )
 
-// AuthMiddleware accepts a nil checker, which skips the revocation lookup and
-// leaves a token good until it expires — the behaviour before auth-api-be
-// could be asked whether it had been revoked.
 func AuthMiddleware(checker *revocation.Checker) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
@@ -77,24 +74,14 @@ func HasRole(c *gin.Context, expected ...string) bool {
 	return false
 }
 
-// Auth roles are global operational permissions. Practiq's student/teacher
-// capability lives in user_profiles.profile_type, so Auth can evolve its role
-// model without changing academic authorization.
 const (
 	RoleSuperAdmin = "superadmin"
 )
 
-// IsSuperAdmin responde si quien hace el pedido administra la plataforma. Es el
-// único permiso que saltea las reglas de propiedad y de asignación
-// docente-alumno, así que vive acá y no repetido en cada handler: cuando la
-// condición se escribía a mano, "admin" terminó incluido en la lista y todo
-// profesor quedó con el alcance del administrador.
 func IsSuperAdmin(c *gin.Context) bool {
 	return HasRole(c, RoleSuperAdmin)
 }
 
-// IsTeacher reads the product capability loaded from Practiq's profile. A
-// superadmin still has operational access without becoming a teacher profile.
 func IsTeacher(c *gin.Context) bool {
 	if IsSuperAdmin(c) {
 		return true
@@ -104,8 +91,6 @@ func IsTeacher(c *gin.Context) bool {
 	return value
 }
 
-// LoadProfileType runs after JWT validation. Missing profiles are expected
-// during first-login onboarding, and receive no teacher capability.
 func LoadProfileType(profiles userprofile.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		profile, err := profiles.Get(context.Background(), GetUserID(c))

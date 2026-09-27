@@ -9,14 +9,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-// EnsureCanLinkTeacherStudent refuses a requester who does not administer a
-// school both the teacher and the student already belong to.
-//
-// Teacher-student assignment was superadmin-only, and the usecase itself had
-// no school check — the route gate was the only thing standing between a
-// school admin and linking people outside their school. Opening the route
-// without this would let an admin of school A link a teacher from school B
-// to a student from school C.
 func EnsureCanLinkTeacherStudent(
 	ctx context.Context,
 	app *appcontext.Context,
@@ -49,10 +41,6 @@ func EnsureCanLinkTeacherStudent(
 	return apperrors.NewForbiddenError()
 }
 
-// EnsureCanViewAssignmentsFor refuses a requester who is neither the target
-// user nor administers a school the target belongs to. It reads one side of
-// a teacher-student link (a teacher's students, or a student's teachers)
-// without requiring the caller to know the other side.
 func EnsureCanViewAssignmentsFor(
 	ctx context.Context,
 	app *appcontext.Context,

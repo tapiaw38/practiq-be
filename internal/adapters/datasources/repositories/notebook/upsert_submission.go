@@ -7,10 +7,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// ErrStaleSubmission reports a delivery the student has already superseded.
-//
-// It is not a failure the caller should retry or surface: the newer answer is
-// already stored, and this one arriving late changes nothing.
 var ErrStaleSubmission = fmt.Errorf("a newer submission for this page is already stored")
 
 func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubmission) error {
@@ -54,10 +50,7 @@ func (r *repository) UpsertSubmission(ctx context.Context, s domain.NotebookSubm
 	}
 
 	if rowsAffected == 0 {
-		// Two different reasons land here, and they are told apart because one
-		// is an error and the other is the guard working. A row already holding
-		// a newer version means this delivery was superseded; anything else
-		// means the page is gone.
+
 		var newerExists bool
 		if err := r.db.QueryRowContext(ctx, `
 			SELECT EXISTS (

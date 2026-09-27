@@ -11,15 +11,11 @@ import (
 )
 
 type (
-	// PlansUsecase is the plan catalogue. Reading it is open to any teacher —
-	// they need to see what they could move to — while changing it is not.
 	PlansUsecase interface {
 		List(ctx context.Context) (*PlansOutput, apperrors.ApplicationError)
 		Create(ctx context.Context, in PlanInput) (*PlanOutput, apperrors.ApplicationError)
 		Update(ctx context.Context, planID int, in PlanInput) (*PlanOutput, apperrors.ApplicationError)
-		// Deactivate takes a plan off the shelf. Nothing deletes a plan:
-		// subscriptions point at theirs, and people keep paying for what they
-		// bought after it stops being sold.
+
 		Deactivate(ctx context.Context, planID int) (*PlanOutput, apperrors.ApplicationError)
 	}
 
@@ -27,9 +23,6 @@ type (
 		contextFactory appcontext.Factory
 	}
 
-	// PlanInput is what a superadmin sets. MaxStudents is Practiq's own idea
-	// of what the plan grants and travels in the payments plan's metadata,
-	// which that service stores without reading.
 	PlanInput struct {
 		Name        string   `json:"name"`
 		Description string   `json:"description"`
@@ -110,8 +103,6 @@ func (u *plansUsecase) write(
 	return &PlanOutput{Data: toCatalogPlan(*plan)}, nil
 }
 
-// toPlanInput puts Practiq's allowance into the plan's metadata. Only what the
-// caller named is sent, so editing a price cannot blank a limit by omission.
 func toPlanInput(in PlanInput) payments.PlanInput {
 	out := payments.PlanInput{
 		Name:        in.Name,
@@ -124,8 +115,7 @@ func toPlanInput(in PlanInput) payments.PlanInput {
 	if in.MaxStudents != nil {
 		out.Metadata = map[string]any{
 			"max_students": *in.MaxStudents,
-			// Carried so the teacher's own screen can name their plan without
-			// reading the catalogue.
+
 			"name": in.Name,
 		}
 	}

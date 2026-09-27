@@ -42,7 +42,6 @@ func (u *assignToCourseUsecase) Execute(ctx context.Context, requesterID, course
 		return nil, apperrors.NewBadRequestError("strategy_id is required")
 	}
 
-	// Verify strategy exists
 	strategy, err := app.Repositories.LearningStrategy.Get(ctx, input.StrategyID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.LearningStrategyGetError, err)

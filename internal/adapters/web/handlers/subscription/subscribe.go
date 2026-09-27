@@ -16,7 +16,7 @@ func NewSubscribeHandler(uc ucSubscription.SubscribeUsecase) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
 		}
-		// The teacher comes from the token, never from the body.
+
 		if appErr := uc.Execute(c, middlewares.GetUserID(c), c.GetHeader("Authorization"), input); appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
@@ -26,9 +26,6 @@ func NewSubscribeHandler(uc ucSubscription.SubscribeUsecase) gin.HandlerFunc {
 	}
 }
 
-// NewHostedCheckoutHandler answers with the address to send the teacher to so
-// they can authorise the charge at Mercado Pago, paying with their balance
-// instead of a card.
 func NewHostedCheckoutHandler(uc ucSubscription.HostedCheckoutUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var input ucSubscription.HostedCheckoutInput
@@ -46,8 +43,6 @@ func NewHostedCheckoutHandler(uc ucSubscription.HostedCheckoutUsecase) gin.Handl
 	}
 }
 
-// NewChangePlanHandler moves a paying teacher to another plan, charging only
-// the difference for what is left of the period they already bought.
 func NewChangePlanHandler(uc ucSubscription.ChangePlanUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var input ucSubscription.ChangePlanInput
@@ -65,8 +60,6 @@ func NewChangePlanHandler(uc ucSubscription.ChangePlanUsecase) gin.HandlerFunc {
 	}
 }
 
-// NewCheckoutConfigHandler serves the gateway's public key, which the browser
-// needs to turn a card into a token without the card passing through us.
 func NewCheckoutConfigHandler(publicKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.JSON(http.StatusOK, ucSubscription.CheckoutConfig(publicKey))

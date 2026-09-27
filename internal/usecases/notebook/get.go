@@ -69,7 +69,6 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		}
 	}
 
-	// Attach student submissions to each page
 	if studentID != "" {
 		for i := range nb.Pages {
 			sub, _ := app.Repositories.Notebook.GetSubmission(ctx, nb.Pages[i].ID, studentID)

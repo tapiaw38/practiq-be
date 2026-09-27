@@ -14,7 +14,7 @@ func TestClassifyContentType(t *testing.T) {
 	}{
 		{"application/pdf", FileKindPDF, ".pdf"},
 		{"AUDIO/WEBM", FileKindAudio, ".webm"},
-		// Browsers append codec parameters when recording.
+
 		{"audio/webm;codecs=opus", FileKindAudio, ".webm"},
 		{" image/jpeg ", FileKindImage, ".jpg"},
 		{"application/vnd.openxmlformats-officedocument.wordprocessingml.document", FileKindDocument, ".docx"},
@@ -43,8 +43,7 @@ func TestResolveContentType(t *testing.T) {
 	})
 
 	t.Run("an empty type falls back to sniffing", func(t *testing.T) {
-		// Browsers sometimes send no type at all; the file must still land with
-		// the type it really is, since that is what gets stored and reported.
+
 		contentType, kind, _, err := ResolveContentType("", pdf)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -69,7 +68,7 @@ func TestBuildFileKeyIsNotFiledUnderImage(t *testing.T) {
 	if !strings.HasPrefix(key, "file/attachments/student-1/") || !strings.HasSuffix(key, ".pdf") {
 		t.Errorf("unexpected key layout: %s", key)
 	}
-	// Path parts are sanitised, so a crafted user id cannot escape the prefix.
+
 	escaped := buildFileKey("attachments", "../../etc", ".pdf")
 	if strings.Contains(escaped, "..") {
 		t.Errorf("key must not contain traversal segments: %s", escaped)
@@ -77,7 +76,7 @@ func TestBuildFileKeyIsNotFiledUnderImage(t *testing.T) {
 }
 
 func TestClassifyContentTypeRejectsUnknown(t *testing.T) {
-	// The whitelist is what keeps executables and scripts out of the bucket.
+
 	for _, contentType := range []string{
 		"application/x-msdownload",
 		"application/octet-stream",
@@ -90,9 +89,6 @@ func TestClassifyContentTypeRejectsUnknown(t *testing.T) {
 	}
 }
 
-// The stored content type decides the assistant channel and answers the
-// exercise's accepted-format check, so a declaration the bytes contradict has
-// to be rejected rather than trusted.
 func TestResolveContentTypeRejectsMismatchedBytes(t *testing.T) {
 	pdf := []byte("%PDF-1.4\n%âãÏÓ\nstartxref\n0\n%%EOF\n")
 
@@ -113,8 +109,7 @@ func TestResolveContentTypeRejectsMismatchedBytes(t *testing.T) {
 	})
 
 	t.Run("unsniffable bytes keep the declaration", func(t *testing.T) {
-		// http.DetectContentType cannot identify these; rejecting here would
-		// break every format Go does not know.
+
 		opaque := []byte{0x1A, 0x45, 0xDF, 0xA3, 0x01, 0x02, 0x03, 0x04}
 		contentType, kind, _, err := ResolveContentType("audio/webm", opaque)
 		if err != nil {
@@ -126,10 +121,6 @@ func TestResolveContentTypeRejectsMismatchedBytes(t *testing.T) {
 	})
 }
 
-// A statement's material used to be images and audio only, so a teacher whose
-// exercise came on a PDF had to screenshot it. The rule was written twice and
-// widening one copy left every upload answering 415 from the other, which is
-// why it now lives in one place and is pinned here.
 func TestAllowedAsStatementMaterial(t *testing.T) {
 	for _, tc := range []struct {
 		kind FileKind
@@ -147,8 +138,6 @@ func TestAllowedAsStatementMaterial(t *testing.T) {
 	}
 }
 
-// The rule runs on the kind the bytes resolve to, not on what the client
-// declared, so a renamed binary cannot walk in behind a PDF's content type.
 func TestStatementMaterialFollowsTheResolvedKind(t *testing.T) {
 	pdf := []byte("%PDF-1.4\n and enough trailing bytes for sniffing to work")
 

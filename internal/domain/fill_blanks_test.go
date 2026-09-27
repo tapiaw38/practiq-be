@@ -32,9 +32,7 @@ func TestBlankIDsInStatement(t *testing.T) {
 }
 
 func TestParseBlanksAnswerRejectsCollidingKeys(t *testing.T) {
-	// "01" and "1" name the same blank. Deciding between them would depend on
-	// Go's randomised map order, so the same answer would grade differently on
-	// each attempt. Run it enough times that a coin flip could not pass.
+
 	for i := 0; i < 100; i++ {
 		if _, err := ParseBlanksAnswer(`{"01":"a","1":"b"}`); !errors.Is(err, ErrDuplicateAnswerID) {
 			t.Fatalf("expected ErrDuplicateAnswerID, got %v", err)

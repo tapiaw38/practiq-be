@@ -9,7 +9,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-// Actions a teacher may take on their own subscription.
 const (
 	ActionPause  = "pause"
 	ActionResume = "resume"
@@ -17,12 +16,6 @@ const (
 )
 
 type (
-	// ManageMineUsecase pauses, resumes or cancels the asking teacher's
-	// subscription.
-	//
-	// It takes no subscription id. The teacher's subscription is looked up from
-	// their own identity, so there is no id for a caller to swap for somebody
-	// else's — the one thing that must not be possible here.
 	ManageMineUsecase interface {
 		Execute(ctx context.Context, teacherID, action string) apperrors.ApplicationError
 	}
@@ -61,19 +54,13 @@ func (u *manageMineUsecase) Execute(ctx context.Context, teacherID, action strin
 	return nil
 }
 
-// currentSubscription finds the one subscription a teacher can act on.
-//
-// Every subscription is read, not only the live one: a paused subscription is
-// not an entitlement, and looking only at entitlements would make resuming
-// impossible for exactly the teachers who need it.
 func currentSubscription(ctx context.Context, app *appcontext.Context, teacherID string) (*payments.Subscription, apperrors.ApplicationError) {
 	subscriptions, err := app.Integrations.Payments.ListSubscriptions(ctx, teacherID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SubscriptionUnavailableError, err)
 	}
 	for _, subscription := range subscriptions {
-		// Cancelled agreements are terminal at the gateway and cannot be
-		// acted on again.
+
 		if subscription.Status == "cancelled" || subscription.Status == "canceled" {
 			continue
 		}

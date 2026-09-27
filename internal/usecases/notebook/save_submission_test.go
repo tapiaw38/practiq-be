@@ -2,11 +2,6 @@ package notebook
 
 import "testing"
 
-// AddPage uploads the teacher's page image and stores the URL it gets back, so
-// ContentData is normally an https link. isLikelyImageData only recognised
-// base64, and a URL is not base64-like, so the link reached the model verbatim
-// as "respuesta correcta esperada: https://….png" and every submission came
-// back UNREADABLE.
 func TestExpectedAnswerHidesAnUploadedPageImage(t *testing.T) {
 	uploaded := "https://practiq-images-264914792937-sa-east-1-an.s3.sa-east-1.amazonaws.com/image/notebook/xQDQCpOzZzLkBQPqQIvIFUSRRGquCv/85154628b0a1f1c2ab2e75d49df0e6fb.png"
 	if got := normalizeNotebookExpectedAnswer(uploaded); got != "[imagen del docente]" {

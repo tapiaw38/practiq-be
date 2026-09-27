@@ -11,7 +11,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-// subjectNameConstraint is the unique index from migration 000041.
 const subjectNameConstraint = "idx_subjects_school_name"
 
 type (
@@ -43,8 +42,6 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Resolved here rather than taken from the request: a caller must not be
-	// able to file a grade or subject under a school they do not belong to.
 	schoolID, appErr := school.OwnedSchoolIDSelected(ctx, app, input.CreatedBy, input.IsSuperAdmin, input.SchoolID)
 	if appErr != nil {
 		return nil, appErr

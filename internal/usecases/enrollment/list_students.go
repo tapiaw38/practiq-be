@@ -41,8 +41,6 @@ func NewListStudentsUsecase(contextFactory appcontext.Factory) ListStudentsUseca
 func (u *listStudentsUsecase) Execute(ctx context.Context, input ListStudentsInput) (*ListStudentsOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// El padrón de un curso es dato de terceros: lo ve quien dicta ese curso, el
-	// admin de su escuela, o un superadmin.
 	if _, appErr := school.EnsureCanManageCourse(ctx, app, input.RequesterID, input.IsSuperAdmin, input.CourseID); appErr != nil {
 		return nil, appErr
 	}

@@ -6,9 +6,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// A static segment and a parameter share a position in the school routes:
-// /schools/mine and /schools/:id. Some routers refuse that outright, and the
-// refusal is a panic at registration — the server would not start at all.
 func TestSchoolRoutesDoNotConflict(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {

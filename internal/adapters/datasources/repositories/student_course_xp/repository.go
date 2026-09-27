@@ -25,11 +25,9 @@ type CourseXP struct {
 	TotalXP  int
 }
 
-// LeaderboardEntry carries no name: identity lives in auth-api-be, not in
-// this database. The usecase resolves it.
 type LeaderboardEntry struct {
 	StudentID string
-	// AvatarSeed does live here: it is a practiq preference, unlike the name.
+
 	AvatarSeed string
 	TotalXP    int
 	Position   int

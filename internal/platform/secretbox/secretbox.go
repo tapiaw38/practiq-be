@@ -16,12 +16,10 @@ var (
 	ErrCiphertext = errors.New("secretbox: ciphertext is not valid")
 )
 
-// Box seals and opens short secrets with AES-256-GCM.
 type Box struct {
 	aead cipher.AEAD
 }
 
-// New derives the cipher from a passphrase of any length.
 func New(key string) (*Box, error) {
 	if strings.TrimSpace(key) == "" {
 		return nil, ErrNoKey
@@ -38,7 +36,6 @@ func New(key string) (*Box, error) {
 	return &Box{aead: aead}, nil
 }
 
-// Seal returns base64(nonce || ciphertext).
 func (b *Box) Seal(plaintext string) (string, error) {
 	nonce := make([]byte, b.aead.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -48,7 +45,6 @@ func (b *Box) Seal(plaintext string) (string, error) {
 	return base64.StdEncoding.EncodeToString(sealed), nil
 }
 
-// Open reverses Seal.
 func (b *Box) Open(encoded string) (string, error) {
 	raw, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil {
@@ -65,7 +61,6 @@ func (b *Box) Open(encoded string) (string, error) {
 	return string(plaintext), nil
 }
 
-// Last4 renders a secret for display without revealing it.
 func Last4(secret string) string {
 	secret = strings.TrimSpace(secret)
 	if len(secret) <= 4 {

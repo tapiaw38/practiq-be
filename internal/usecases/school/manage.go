@@ -14,14 +14,7 @@ import (
 )
 
 type (
-	// ManageUsecase covers what an operator does with institutions and what an
-	// institution's admin does with its people.
-	//
-	// Personal schools are not created here: they appear when a teacher signs
-	// up. An institution exists because somebody agreed to invoice it, which is
-	// a conversation, not a form a teacher fills in.
 	ManageUsecase interface {
-		// List and Create are the platform superadmin's.
 		List(ctx context.Context, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError)
 		Create(ctx context.Context, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
 		Update(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in SchoolInput) (*SchoolOutput, apperrors.ApplicationError)
@@ -29,10 +22,9 @@ type (
 		Suspend(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError)
 		Reopen(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError)
 		Archive(ctx context.Context, isSuperAdmin bool, id, bearerToken string) (*ArchiveOutput, apperrors.ApplicationError)
-		// Mine is what the asking user belongs to, for the school selector.
+
 		Mine(ctx context.Context, requesterID, bearerToken string) (*SchoolsOutput, apperrors.ApplicationError)
-		// AddMember is the superadmin assigning an institution's admin, and
-		// that admin adding teachers and students.
+
 		AddMember(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID string, in MemberInput) apperrors.ApplicationError
 		RemoveMember(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID, userID string) apperrors.ApplicationError
 		ListMembers(ctx context.Context, requesterID string, isSuperAdmin bool, schoolID, bearerToken string) (*MembersOutput, apperrors.ApplicationError)
@@ -44,12 +36,10 @@ type (
 
 	SchoolInput struct {
 		Name string `json:"name"`
-		// Kind and Billing are only meaningful to a superadmin creating an
-		// institution; a personal school is always subscription-billed.
+
 		Kind    string `json:"kind"`
 		Billing string `json:"billing"`
-		// AdminUserID is required when a platform operator creates an
-		// institution: there must never be an institution without an admin.
+
 		AdminUserID string `json:"admin_user_id"`
 	}
 
@@ -69,11 +59,9 @@ type (
 		Kind    string `json:"kind"`
 		Billing string `json:"billing"`
 		Status  string `json:"status"`
-		// Role is the asking user's role in it, empty when they are only
-		// looking as a superadmin.
+
 		Role string `json:"role,omitempty"`
-		// Owner and Plan are filled for personal schools only: an institution
-		// is invoiced by contract and has no single owner to bill.
+
 		Owner *SchoolOwner `json:"owner,omitempty"`
 		Plan  *SchoolPlan  `json:"plan,omitempty"`
 	}
@@ -239,8 +227,7 @@ func (u *manageUsecase) Create(ctx context.Context, in SchoolInput) (*SchoolOutp
 	}
 	billing := in.Billing
 	if billing == "" {
-		// An institution created by hand is invoiced by hand. Defaulting to
-		// subscription would cap it at the free plan on its first student.
+
 		billing = domain.SchoolBillingDirect
 	}
 	if kind != domain.SchoolKindInstitution {
@@ -289,9 +276,7 @@ func (u *manageUsecase) Update(ctx context.Context, requesterID string, isSuperA
 	}
 	update := domain.School{Name: strings.TrimSpace(in.Name)}
 	if isSuperAdmin {
-		// What a school costs and what it allows are the operator's to change.
-		// An admin renaming their own school must not be able to move it onto
-		// direct billing and stop paying.
+
 		if current.Kind == domain.SchoolKindInstitution {
 			update.Kind = in.Kind
 			update.Billing = in.Billing
@@ -310,9 +295,6 @@ func (u *manageUsecase) Update(ctx context.Context, requesterID string, isSuperA
 	return u.read(ctx, app, id, "")
 }
 
-// Suspend is a reversible operational pause. Unlike Close, it does not mark
-// the institution as ended or require name confirmation; both states remove
-// it from member scope until Reopen makes it active again.
 func (u *manageUsecase) Suspend(ctx context.Context, isSuperAdmin bool, id string) (*SchoolOutput, apperrors.ApplicationError) {
 	if !isSuperAdmin {
 		return nil, apperrors.NewForbiddenError()
@@ -334,8 +316,6 @@ func (u *manageUsecase) Suspend(ctx context.Context, isSuperAdmin bool, id strin
 	return u.read(ctx, app, id, "")
 }
 
-// Close preserves academic and billing history but removes every member from
-// the active scope. Only a platform superadmin can close or reopen a school.
 func (u *manageUsecase) Close(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in CloseInput) (*SchoolOutput, apperrors.ApplicationError) {
 	if !isSuperAdmin {
 		return nil, apperrors.NewForbiddenError()
@@ -357,8 +337,7 @@ func (u *manageUsecase) Close(ctx context.Context, requesterID string, isSuperAd
 	if err := app.Repositories.School.Close(ctx, id, requesterID, strings.TrimSpace(in.Reason)); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SchoolLookupError, err)
 	}
-	// Existing codes must become unusable with the school. RequireActive in
-	// redeem is the second guard if a concurrent request races this update.
+
 	if err := app.Repositories.StudentInvitation.RevokeForSchool(ctx, id); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.InvitationRevokeError, err)
 	}
@@ -434,14 +413,11 @@ func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSup
 	if school == nil {
 		return apperrors.NewNotFoundError("school not found")
 	}
-	// A personal school is one teacher and their students. Letting its owner
-	// add teachers would turn it into an institution without anyone agreeing to
-	// invoice one.
+
 	if school.Kind == domain.SchoolKindPersonal && role != domain.SchoolRoleStudent {
 		return apperrors.NewForbiddenError()
 	}
-	// An upsert may demote the only administrator. Reject it before changing
-	// the row, exactly as RemoveMember does.
+
 	members, err := app.Repositories.School.ListMembers(ctx, schoolID)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
@@ -464,20 +440,12 @@ func (u *manageUsecase) AddMember(ctx context.Context, requesterID string, isSup
 		break
 	}
 
-	// The same limit every other way in goes through. This one was open: the
-	// "Usuarios" panel adds a student straight to the school, so without it a
-	// teacher could pass their plan from the one screen built for it.
 	if role == domain.SchoolRoleStudent && !wasActiveStudent {
 		if appErr := subscription.EnsureCanAddStudent(ctx, app, schoolID, requesterID, in.UserID); appErr != nil {
 			return appErr
 		}
 	}
 
-	// A person joins a school by their Practiq profile, which exists once they
-	// have signed in. Without this the insert failed on a foreign key and
-	// surfaced as "failed to resolve the school" — a 500 about the wrong thing,
-	// which sent an admin looking at the school instead of at the person they
-	// were adding.
 	profile, err := app.Repositories.UserProfile.Get(ctx, in.UserID)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.ProfileGetError, err)
@@ -503,9 +471,7 @@ func (u *manageUsecase) RemoveMember(ctx context.Context, requesterID string, is
 	if appErr := EnsureAdministers(ctx, app, requesterID, isSuperAdmin, schoolID); appErr != nil {
 		return appErr
 	}
-	// Removing the last admin would leave an active school nobody can
-	// administer. This applies to a superadmin too: they can close/reopen, not
-	// accidentally turn an operating school ownerless.
+
 	members, err := app.Repositories.School.ListMembers(ctx, schoolID)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.SchoolLookupError, err)
@@ -522,8 +488,7 @@ func (u *manageUsecase) RemoveMember(ctx context.Context, requesterID string, is
 			break
 		}
 	}
-	// Keep a normal school admin from removing themself even if another admin
-	// exists; use a handover instead.
+
 	if !isSuperAdmin && userID == requesterID {
 		return apperrors.NewBadRequestError("you cannot remove yourself from a school you administer")
 	}
@@ -586,9 +551,6 @@ func toSchoolData(s domain.School, role string) SchoolData {
 	return SchoolData{ID: s.ID, Name: s.Name, Kind: s.Kind, Billing: s.Billing, Status: s.Status, Role: role}
 }
 
-// resolvePersonalSchoolNames fixes display names produced by the initial SQL
-// migration. Auth owns legal names, so the database could only use created_by
-// there. Keep an owner-renamed school intact; only replace known legacy names.
 func resolvePersonalSchoolNames(ctx context.Context, app *appcontext.Context, bearerToken string, schools []domain.School) ([]domain.School, apperrors.ApplicationError) {
 	ownerIDs := make([]string, 0, len(schools))
 	for _, school := range schools {

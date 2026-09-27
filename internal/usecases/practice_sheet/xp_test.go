@@ -120,7 +120,6 @@ func TestAwardPracticeXPPaysAttemptAndCorrectAndCompletion(t *testing.T) {
 	xp := awardPracticeXP(context.Background(), xpApp(repo), "student-1", sheet,
 		answered("e1", "e2"), exercises, false)
 
-	// dos intentos (+1 c/u), un acierto (+10) y la practica completa (+10)
 	const expected = xpAttempt*2 + xpCorrect + xpPracticeComplete
 	if xp.Gained != expected {
 		t.Fatalf("esperaba %d XP, dio %d", expected, xp.Gained)

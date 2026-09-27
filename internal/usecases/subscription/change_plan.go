@@ -12,12 +12,6 @@ import (
 )
 
 type (
-	// ChangePlanUsecase moves a paying teacher to another plan.
-	//
-	// Separate from subscribing because the money works differently: there is
-	// already an agreement being charged, and it is restated rather than
-	// replaced. Subscribing again would charge a whole new month on top of the
-	// one already paid for.
 	ChangePlanUsecase interface {
 		Execute(ctx context.Context, teacherID, bearerToken string, in ChangePlanInput) (*ChangePlanOutput, apperrors.ApplicationError)
 	}
@@ -28,15 +22,12 @@ type (
 
 	ChangePlanInput struct {
 		PlanID int `json:"plan_id"`
-		// CardTokenID and PaymentMethodID pay the prorated difference, and are
-		// only needed when moving up. Single use, like any card token.
+
 		CardTokenID     string `json:"card_token_id"`
 		PaymentMethodID string `json:"payment_method_id"`
 	}
 
 	ChangePlanData struct {
-		// Charged is what was taken now for the rest of the current period.
-		// Zero when moving down: the cheaper price starts at renewal.
 		Charged float64 `json:"charged"`
 	}
 
@@ -56,9 +47,6 @@ func (u *changePlanUsecase) Execute(ctx context.Context, teacherID, bearerToken 
 		return nil, apperrors.NewBadRequestError("a plan is required")
 	}
 
-	// The payer is whoever is asking, and their email comes from auth-api. A
-	// card token is not enough to identify anybody: it says how to charge, not
-	// who to charge.
 	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{teacherID})
 	if appErr != nil {
 		return nil, appErr

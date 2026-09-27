@@ -20,8 +20,6 @@ func escapeMultipartQuotes(value string) string {
 	return multipartQuoteEscaper.Replace(value)
 }
 
-// EvaluateAttachment grades a file the student uploaded as their answer. Audio
-// and images use media channels; PDF/DOCX use Gillie's document channel.
 func (g *gateway) EvaluateAttachment(ctx context.Context, cfg Config, input AttachmentEvaluationInput) (EvaluationResult, error) {
 	if !g.IsConfigured(cfg) {
 		return EvaluationResult{}, errors.New("assistant service not configured")
@@ -55,7 +53,6 @@ func (g *gateway) EvaluateAttachment(ctx context.Context, cfg Config, input Atta
 	return parseEvaluationResponse(response)
 }
 
-// attachmentFieldFor maps a file kind to the assistant's multipart field.
 func attachmentFieldFor(kind string) (string, error) {
 	switch kind {
 	case AttachmentKindAudio:

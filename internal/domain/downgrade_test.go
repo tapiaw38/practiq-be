@@ -6,7 +6,7 @@ import (
 )
 
 func TestStudentsToDeactivate(t *testing.T) {
-	// Least recently active first, which is the order the caller supplies.
+
 	byActivity := []string{"dormant", "old", "recent", "active", "today"}
 
 	cases := []struct {
@@ -26,30 +26,27 @@ func TestStudentsToDeactivate(t *testing.T) {
 			want: "",
 		},
 		{
-			// The default: the ones who have not practised in longest go
-			// first, and whoever never practised goes before them.
+
 			name: "without a choice the least recently active go",
 			max:  2,
 			want: "dormant,old,recent",
 		},
 		{
-			// The teacher's call wins, even when it keeps someone dormant.
+
 			name:   "a choice is honoured",
 			max:    2,
 			chosen: []string{"dormant", "today"},
 			want:   "old,recent,active",
 		},
 		{
-			// Choosing fewer than the plan allows leaves room, and the
-			// automatic order fills it rather than cutting more than needed.
+
 			name:   "a partial choice is filled by activity",
 			max:    3,
 			chosen: []string{"today"},
 			want:   "dormant,old",
 		},
 		{
-			// Asking to keep more than the plan allows cannot be honoured as
-			// given; the extra falls back to the order.
+
 			name:   "a choice bigger than the plan is truncated",
 			max:    2,
 			chosen: []string{"dormant", "old", "recent", "active"},
@@ -72,9 +69,6 @@ func TestStudentsToDeactivate(t *testing.T) {
 	}
 }
 
-// Whatever is deactivated, what is left must fit the plan. A rule that cuts too
-// few leaves a school over its limit; one that cuts too many takes students
-// away for nothing.
 func TestWhatSurvivesAlwaysFitsThePlan(t *testing.T) {
 	byActivity := []string{"a", "b", "c", "d", "e", "f"}
 

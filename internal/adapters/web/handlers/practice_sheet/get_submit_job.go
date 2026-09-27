@@ -29,12 +29,11 @@ func NewGetSubmitJobHandler(repo submitjob.Repository) gin.HandlerFunc {
 			return
 		}
 
-		// Authorization check: only the job owner or admin can view results
 		if !isSuperAdmin && job.StudentID != requesterID {
 			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "cannot view other user's submit job results"})
 			return
 		}
-		// Preserve original JSON response shape
+
 		response := gin.H{
 			"status":     job.Status,
 			"created_at": job.CreatedAt,

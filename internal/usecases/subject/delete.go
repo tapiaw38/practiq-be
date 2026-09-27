@@ -26,9 +26,6 @@ func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
 func (u *deleteUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string) apperrors.ApplicationError {
 	app := u.contextFactory()
 
-	// The route lets a teacher ask; this decides which rows they may touch.
-	// Without it, opening these routes beyond the platform superadmin would let
-	// any teacher edit another school's subjects.
 	current, err := app.Repositories.Subject.Get(ctx, id)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.SubjectGetError, err)

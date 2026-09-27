@@ -11,8 +11,7 @@ import (
 
 func NewListHandler(uc ucReview.ListUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// include_reviewed is kept for the existing clients; `reviewed` is the
-		// tri-state the filter bar uses.
+
 		reviewed := c.Query("reviewed")
 		if reviewed == "" && c.Query("include_reviewed") != "true" {
 			reviewed = "unreviewed"

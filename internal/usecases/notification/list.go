@@ -45,8 +45,6 @@ func (u *listUsecase) Execute(ctx context.Context, input ListInput) (*ListOutput
 		return nil, apperrors.NewApplicationError(mappings.NotificationListError, err)
 	}
 
-	// Always the full unread count, even when the list is filtered or truncated:
-	// the badge would be wrong otherwise.
 	unread, err := app.Repositories.Notification.CountUnread(ctx, input.UserID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotificationListError, err)

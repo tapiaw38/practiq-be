@@ -18,9 +18,6 @@ type input struct {
 	APIKey  string `json:"api_key"`
 }
 
-// Get reports what is configured without ever returning the key itself. The
-// last four characters are enough to tell two keys apart, which is the only
-// question an operator asks of a key they already set.
 func Get(r repo.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		stored, err := r.Get(c)
@@ -37,9 +34,6 @@ func Get(r repo.Repository) gin.HandlerFunc {
 	}
 }
 
-// Update writes the settings. The key is write-only: sending it blank keeps
-// whatever is stored, so changing the URL alone never asks for the secret
-// again and never risks blanking it by omission.
 func Update(r repo.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var in input
@@ -53,9 +47,7 @@ func Update(r repo.Repository) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "gillie:bad-url", "message": "base_url is required"})
 			return
 		}
-		// The same validation every assistant call applies, applied where the
-		// value is set: an operator finds out here rather than through a failed
-		// evaluation, and a URL pointing at internal infrastructure is refused.
+
 		if err := assistant.ValidateBaseURL(baseURL); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "gillie:bad-url", "message": err.Error()})
 			return

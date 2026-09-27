@@ -33,7 +33,6 @@ var (
 		Message:      "resource not found",
 	}
 
-	// Learning Strategy errors
 	LearningStrategyListError = ErrorDetails{
 		InternalCode: "learning-strategy:list-error",
 		StatusCode:   http.StatusInternalServerError,
@@ -76,7 +75,6 @@ var (
 		Message:      "failed to unassign learning strategy from course",
 	}
 
-	// Course Progress errors
 	CourseProgressGetError = ErrorDetails{
 		InternalCode: "course-progress:get-error",
 		StatusCode:   http.StatusInternalServerError,
@@ -89,7 +87,6 @@ var (
 		Message:      "failed to list course progress",
 	}
 
-	// Notebook Submission errors
 	NotebookSubmissionGetError = ErrorDetails{
 		InternalCode: "notebook-submission:get-error",
 		StatusCode:   http.StatusInternalServerError,

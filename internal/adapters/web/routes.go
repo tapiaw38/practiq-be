@@ -39,9 +39,7 @@ import (
 )
 
 func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, gillie gilliesettingsRepo.Repository, revoked *revocation.Checker) {
-	// Landing catalogue. It deliberately exposes only active, sellable plans;
-	// everything that identifies a teacher or manages a subscription remains
-	// behind the authenticated API group below.
+
 	public := app.Group("/api/public")
 	public.GET("/subscription-plans", subscription.NewPublicListPlansHandler(uc.Subscription.Plans))
 	public.GET("/site-contact", sitecontact.Public(contacts))
@@ -50,7 +48,6 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.Use(middlewares.AuthMiddleware(revoked))
 	api.Use(middlewares.LoadProfileType(userProfiles))
 
-	// Profile
 	api.POST("/profile", userprofile.NewSyncHandler(uc.Profile.Sync))
 	api.GET("/profile", userprofile.NewGetHandler(uc.Profile.Get))
 	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
@@ -60,22 +57,17 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
 	adminOnly.GET("/site-contact", sitecontact.Get(contacts))
 	adminOnly.PUT("/site-contact", sitecontact.Update(contacts))
-	// One assistant for the whole platform, set by the superadmin. The key is
-	// stored encrypted and never comes back out: GET answers with its last four
-	// characters, which is all anyone needs to tell two keys apart.
+
 	adminOnly.GET("/gillie-settings", gilliesettings.Get(gillie))
 	adminOnly.PUT("/gillie-settings", gilliesettings.Update(gillie))
 	teacherOnly := api.Group("/")
 	teacherOnly.Use(middlewares.RequireTeacher())
-	// School-scoped: school.EnsureCanViewAssignmentsFor in the usecase, same
-	// rule as teacher-student assignment above.
+
 	teacherOnly.PUT("/profile/:id/ui-theme", userprofile.NewUpdateUIThemeByIDHandler(uc.Profile.UpdateUITheme))
 	teacherOnly.GET("/profile/find-by-email", userprofile.NewFindByEmailHandler(uc.Profile.FindByEmail))
 	adminOnly.PUT("/profile/:id/academic-status", userprofile.NewUpdateAcademicStatusByIDHandler(uc.Profile.UpdateAcademicStatus))
 	adminOnly.PUT("/profile/:id/type", userprofile.NewUpdateProfileTypeByIDHandler(uc.Profile.UpdateProfileType))
 
-	// Courses. Los use cases validan que el curso sea del profesor; el grupo
-	// evita además que un alumno llegue siquiera a intentarlo.
 	teacherOnly.POST("/courses", handlerCourse.NewCreateHandler(uc.Course.Create))
 	api.GET("/courses", handlerCourse.NewListHandler(uc.Course.List))
 	api.GET("/courses/:id", handlerCourse.NewGetHandler(uc.Course.Get))
@@ -83,12 +75,6 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.PATCH("/courses/:id/status", handlerCourse.NewSetStatusHandler(uc.Course.SetStatus))
 	teacherOnly.DELETE("/courses/:id", handlerCourse.NewDeleteHandler(uc.Course.Delete))
 
-	// Grades. La estructura académica es institucional: la escribe el
-	// administrador. El listado queda abierto porque el alumno arma con él su
-	// propia navegación.
-	// Managing the academic catalogue moved from the platform superadmin to
-	// whoever administers the school. The group only says a teacher may ask;
-	// the use cases decide which rows they may touch, by school.
 	teacherOnly.POST("/grades", handlerGrade.NewCreateHandler(uc.Grade.Create))
 	api.GET("/grades", handlerGrade.NewListHandler(uc.Grade.List))
 	teacherOnly.PUT("/grades/:id", handlerGrade.NewUpdateHandler(uc.Grade.Update))
@@ -97,51 +83,39 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.GET("/grades/:id/members", handlerGrade.NewListMembersHandler(uc.Grade.ListMembers))
 	teacherOnly.DELETE("/grades/:id/members/:userId", handlerGrade.NewRemoveMemberHandler(uc.Grade.RemoveMember))
 	api.GET("/users/:userId/grades", handlerGrade.NewListUserGradesHandler(uc.Grade.ListUserGrades))
-	// Batches the call above: dashboards were firing one request per student
-	// to build the "which grade is this student in" list.
+
 	api.POST("/grades/batch-by-users", handlerGrade.NewListGradesByUsersHandler(uc.Grade.ListGradesByUsers))
 
-	// Subjects. Mismo criterio que grades.
 	teacherOnly.POST("/subjects", handlerSubject.NewCreateHandler(uc.Subject.Create))
 	api.GET("/subjects", handlerSubject.NewListHandler(uc.Subject.List))
 	teacherOnly.PUT("/subjects/:id", handlerSubject.NewUpdateHandler(uc.Subject.Update))
 	teacherOnly.DELETE("/subjects/:id", handlerSubject.NewDeleteHandler(uc.Subject.Delete))
 
-	// Teacher/student assignments
-	// School-scoped now: the usecases check school.EnsureCanLinkTeacherStudent /
-	// EnsureCanViewAssignmentsFor, so a school admin only reaches people who
-	// share their school. A platform superadmin still passes everywhere.
 	teacherOnly.POST("/teacher-student-assignments", handlerAssignment.NewAssignHandler(uc.Assignment.Assign))
 	teacherOnly.DELETE("/teacher-student-assignments/:teacherId/:studentId", handlerAssignment.NewUnassignHandler(uc.Assignment.Unassign))
 	teacherOnly.GET("/teachers/:teacherId/students", handlerAssignment.NewListStudentsHandler(uc.Assignment.ListStudents))
 	teacherOnly.GET("/students/:studentId/teachers", handlerAssignment.NewListTeachersHandler(uc.Assignment.ListTeachers))
 	api.GET("/teachers/me/students", handlerAssignment.NewListMyStudentsHandler(uc.Assignment.ListStudents))
 
-	// Invitaciones: el docente genera y revoca el código; el alumno lo canjea y
-	// queda vinculado sin que intervenga el administrador.
 	teacherOnly.POST("/invitations", handlerInvitation.NewCreateHandler(uc.Invitation.Create))
 	teacherOnly.GET("/invitations/active", handlerInvitation.NewGetActiveHandler(uc.Invitation.GetActive))
 	teacherOnly.DELETE("/invitations/:id", handlerInvitation.NewRevokeHandler(uc.Invitation.Revoke))
 	api.POST("/invitations/redeem", handlerInvitation.NewRedeemHandler(uc.Invitation.Redeem))
 
-	// Enrollments
 	api.POST("/courses/:id/enroll", enrollment.NewEnrollHandler(uc.Enrollment.Enroll))
 	api.GET("/courses/:id/students", enrollment.NewListStudentsHandler(uc.Enrollment.ListStudents))
 
-	// Materials
 	teacherOnly.POST("/courses/:id/materials", material.NewCreateHandler(uc.Material.Create))
 	api.GET("/courses/:id/materials", material.NewListHandler(uc.Material.List))
 	api.GET("/materials/:id", material.NewGetHandler(uc.Material.Get))
 	teacherOnly.PUT("/materials/:id", material.NewUpdateHandler(uc.Material.Update))
 	teacherOnly.DELETE("/materials/:id", material.NewDeleteHandler(uc.Material.Delete))
 
-	// Topics
 	teacherOnly.POST("/courses/:id/topics", handlerTopic.NewCreateHandler(uc.Topic.Create))
 	api.GET("/courses/:id/topics", handlerTopic.NewListHandler(uc.Topic.List))
 	teacherOnly.PUT("/topics/:id", handlerTopic.NewUpdateHandler(uc.Topic.Update))
 	teacherOnly.DELETE("/topics/:id", handlerTopic.NewDeleteHandler(uc.Topic.Delete))
 
-	// Exercises
 	teacherOnly.POST("/topics/:id/exercise-drafts/ai", ai.NewExerciseDraftsHandler(uc.AI.Proxy, uc.Exercise.List))
 	teacherOnly.POST("/topics/:id/exercises", exercise.NewCreateHandler(uc.Exercise.Create))
 	api.GET("/topics/:id/exercises", exercise.NewListHandler(uc.Exercise.List))
@@ -149,7 +123,6 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.PUT("/exercises/:id", exercise.NewUpdateHandler(uc.Exercise.Update))
 	teacherOnly.DELETE("/exercises/:id", exercise.NewDeleteHandler(uc.Exercise.Delete))
 
-	// Practice Sheets
 	teacherOnly.POST("/courses/:id/practice-sheets", practicesheet.NewCreateHandler(uc.PracticeSheet.Create))
 	api.GET("/courses/:id/practice-sheets", practicesheet.NewListHandler(uc.PracticeSheet.List))
 	api.GET("/practice-sheets/:id", practicesheet.NewGetHandler(uc.PracticeSheet.Get))
@@ -160,19 +133,16 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.POST("/practice-sheets/:id/submit-async", practicesheet.NewSubmitAsyncHandler(uc.PracticeSheet.Submit, submitJobRepo))
 	api.GET("/practice-sheets/submit-jobs/:jobId", practicesheet.NewGetSubmitJobHandler(submitJobRepo))
 
-	// Student Progress (self-service)
 	api.GET("/students/me/progress", studentprogress.NewGetMyProgressHandler(uc.Progress.GetMy))
 	api.GET("/students/me/dashboard", studentprogress.NewDashboardHandler(uc.Progress.Dashboard))
 	api.GET("/students/me/courses/:id/progress", studentprogress.NewGetCourseProgressHandler(uc.Progress.GetCourse))
 	api.GET("/students/me/courses/:id/leaderboard", studentprogress.NewGetCourseLeaderboardHandler(uc.Progress.GetCourseLeaderboard))
 
-	// Teacher view of student progress
 	api.GET("/teachers/me/students/:studentId/progress", studentprogress.NewGetStudentProgressHandler(uc.Progress.GetStudentProgress))
 	api.GET("/teachers/me/students/:studentId/courses/:courseId/progress", studentprogress.NewGetStudentCourseProgressHandler(uc.Progress.GetStudentCourseProgress))
 	api.GET("/teachers/me/students/:studentId/attempts", studentprogress.NewGetStudentAttemptsHandler(uc.Progress.GetStudentAttempts))
 	teacherOnly.GET("/teachers/me/students/:studentId/report.pdf", studentreport.NewGeneratePDFHandler(uc.Report.GeneratePDF))
 
-	// AI Tutor
 	api.POST("/ai/conversations", ai.NewCreateConversationHandler(uc.AI.CreateConversation))
 	api.GET("/ai/conversations/:id/messages", ai.NewGetMessagesHandler(uc.AI.GetMessages))
 	api.POST("/ai/help", ai.NewHelpHandler(uc.AI.Help))
@@ -185,10 +155,8 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.POST("/assistant-proxy/conversation/:id/message", ai.NewProxySendMessageHandler(uc.AI.Proxy))
 	api.POST("/assistant-proxy/conversation/:id/message/text", ai.NewProxySendTextMessageHandler(uc.AI.Proxy))
 
-	// Course levels
 	api.GET("/courses/:id/levels", courselevel.NewGetHandler(uc.CourseLevel.Get))
 
-	// Notebooks
 	teacherOnly.POST("/courses/:id/notebooks", handlerNB.NewCreateHandler(uc.Notebook.Create))
 	api.GET("/courses/:id/notebooks", handlerNB.NewListHandler(uc.Notebook.List))
 	api.GET("/notebooks/:id", handlerNB.NewGetHandler(uc.Notebook.Get))
@@ -205,28 +173,19 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.POST("/notebook-submissions/:id/review", handlerNB.NewReviewSubmissionHandler(uc.Notebook.ReviewSubmission))
 	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
 
-	// Attachment answers the assistant could not grade
-	// Reading the catalogue is open to teachers: they have to see what they
-	// could move to. Changing it is not.
 	teacherOnly.GET("/subscription-plans", subscription.NewListPlansHandler(uc.Subscription.Plans))
 	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
-	// No subscription id in these paths: the one being acted on is the
-	// caller's, so there is nothing to swap for somebody else's.
+
 	teacherOnly.GET("/teachers/me/subscription/checkout-config", subscription.NewCheckoutConfigHandler(config.GetConfigService().ServerConfig.MercadoPagoPublicKey))
 	teacherOnly.POST("/teachers/me/subscription", subscription.NewSubscribeHandler(uc.Subscription.Subscribe))
-	// Paying with a Mercado Pago balance instead of a card: the teacher
-	// authorises the agreement at the gateway, so no card reaches the browser.
+
 	teacherOnly.POST("/teachers/me/subscription/hosted-checkout", subscription.NewHostedCheckoutHandler(uc.Subscription.HostedCheckout))
-	// Changing plan is not subscribing again: the agreement is restated, so a
-	// mid-cycle move costs the difference rather than a whole new month.
+
 	teacherOnly.POST("/teachers/me/subscription/change-plan", subscription.NewChangePlanHandler(uc.Subscription.ChangePlan))
 	teacherOnly.POST("/teachers/me/subscription/pause", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionPause))
 	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
 	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))
 
-	// Institutions exist because somebody agreed to invoice one, so an operator
-	// creates them and names their admins. Personal schools are not created
-	// here: they appear when a teacher signs up.
 	adminOnly.GET("/schools", handlerSchool.NewListHandler(uc.School.Manage))
 	adminOnly.POST("/schools", handlerSchool.NewCreateHandler(uc.School.Manage))
 	adminOnly.POST("/schools/:id/suspend", handlerSchool.NewSuspendHandler(uc.School.Manage))
@@ -234,20 +193,13 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	adminOnly.POST("/schools/:id/reopen", handlerSchool.NewReopenHandler(uc.School.Manage))
 	adminOnly.GET("/schools/:id/archive", handlerSchool.NewArchiveHandler(uc.School.Manage))
 
-	// The school selector is also needed by students. It is read-only and the
-	// usecase returns only the caller's active memberships. Campus uses this as
-	// its source of tenant scope; authorization remains in Practiq, where the
-	// membership source of truth lives.
 	api.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))
 
-	// An institution's admin runs its people; a superadmin passes everywhere.
 	teacherOnly.PUT("/schools/:id", handlerSchool.NewUpdateHandler(uc.School.Manage))
 	teacherOnly.GET("/schools/:id/members", handlerSchool.NewListMembersHandler(uc.School.Manage))
 	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.Manage))
 	teacherOnly.DELETE("/schools/:id/members/:userId", handlerSchool.NewRemoveMemberHandler(uc.School.Manage))
 
-	// A downgrade leaves more students than the new plan allows. The teacher
-	// sees who would go and may choose who stays before it is applied.
 	teacherOnly.GET("/teachers/me/subscription/downgrade", subscription.NewDowngradePreviewHandler(uc.Subscription.Downgrade))
 	teacherOnly.POST("/teachers/me/subscription/downgrade", subscription.NewDowngradeApplyHandler(uc.Subscription.Downgrade))
 	teacherOnly.POST("/teachers/me/students/:studentId/reactivate", subscription.NewReactivateStudentHandler(uc.Subscription.Downgrade))
@@ -260,28 +212,23 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))
 	teacherOnly.GET("/attempt-reviews/:id/statement-image", handlerReview.NewStatementImageHandler(uc.AttemptReview.StatementImage))
 
-	// File uploads (attachment answers, teacher materials)
 	api.POST("/uploads", handlerUpload.NewHandler(uc.Upload.Upload))
 
-	// Notifications
 	api.GET("/notifications", handlerNotification.NewListHandler(uc.Notification.List))
 	api.POST("/notifications/:id/read", handlerNotification.NewMarkReadHandler(uc.Notification.MarkRead))
 	api.POST("/notifications/read-all", handlerNotification.NewMarkAllReadHandler(uc.Notification.MarkAllRead))
 	api.DELETE("/notifications/:id", handlerNotification.NewDeleteHandler(uc.Notification.Delete))
 
-	// Learning Strategies
 	api.GET("/learning-strategies", handlerLS.NewListHandler(uc.LearningStrategy.List))
 	api.GET("/learning-strategies/:id", handlerLS.NewGetHandler(uc.LearningStrategy.Get))
 	adminOnly.POST("/learning-strategies", handlerLS.NewCreateHandler(uc.LearningStrategy.Create))
 	adminOnly.PUT("/learning-strategies/:id", handlerLS.NewUpdateHandler(uc.LearningStrategy.Update))
 	adminOnly.DELETE("/learning-strategies/:id", handlerLS.NewDeleteHandler(uc.LearningStrategy.Delete))
 
-	// Course Learning Strategies
 	api.GET("/courses/:id/strategies", handlerLS.NewListByCourseHandler(uc.LearningStrategy.ListByCourse))
 	teacherOnly.POST("/courses/:id/strategies", handlerLS.NewAssignToCourseHandler(uc.LearningStrategy.AssignToCourse))
 	teacherOnly.DELETE("/course-learning-strategies/:id", handlerLS.NewUnassignFromCourseHandler(uc.LearningStrategy.UnassignFromCourse))
 
-	// Course Progress
 	teacherOnly.GET("/students/:studentId/courses/:courseId/progress", handlerCP.NewGetForStudentHandler(uc.CourseProgress.GetForStudent))
 	teacherOnly.GET("/students/:studentId/progress", handlerCP.NewListForStudentHandler(uc.CourseProgress.ListForStudent))
 }

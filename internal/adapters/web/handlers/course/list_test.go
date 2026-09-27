@@ -21,8 +21,6 @@ func (s *listUsecaseSpy) Execute(_ context.Context, input ucCourse.ListInput) (*
 	return &ucCourse.ListOutput{Data: []ucCourse.CourseData{}}, nil
 }
 
-// listAs runs the handler with the identity a request would carry after the
-// auth middleware, and reports the filter the usecase was asked for.
 func listAs(t *testing.T, userID string, roles []auth.RoleClaim, schoolID string) ucCourse.ListInput {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -59,9 +57,6 @@ func TestListNarrowsATeacherToTheirOwnCourses(t *testing.T) {
 	}
 }
 
-// A superadmin opening a school operates it rather than teaching in it.
-// Filtering by ownership showed them an empty school and had them re-create
-// courses that were already there.
 func TestListShowsASuperAdminEveryCourseOfTheSelectedSchool(t *testing.T) {
 	got := listAs(t, "operator-1", []auth.RoleClaim{{Name: "superadmin"}}, "school-1")
 

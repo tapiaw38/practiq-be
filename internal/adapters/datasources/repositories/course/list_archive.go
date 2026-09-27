@@ -6,8 +6,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// ListArchive deliberately bypasses the active-school filter used by normal
-// course reads. It is only exposed through the superadmin archive endpoint.
 func (r *repository) ListArchive(ctx context.Context, schoolID string) ([]domain.Course, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT c.id, c.teacher_id, COALESCE(g.school_id::text, s.school_id::text, ''),

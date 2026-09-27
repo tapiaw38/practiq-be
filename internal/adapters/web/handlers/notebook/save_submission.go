@@ -26,9 +26,7 @@ func NewSaveSubmissionHandler(uc ucNB.SaveSubmissionUsecase) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
-		// Versioned like the async path, and on the same clock: the two write
-		// to the same row, so a delivery sent here must be ordered against one
-		// still being processed there.
+
 		if err := uc.Execute(c, ucNB.SaveSubmissionInput{
 			PageID:     pageID,
 			StudentID:  studentID,
@@ -36,8 +34,7 @@ func NewSaveSubmissionHandler(uc ucNB.SaveSubmissionUsecase) gin.HandlerFunc {
 			AnswerText: input.AnswerText,
 			Version:    time.Now().UTC().UnixNano(),
 		}); err != nil {
-			// The student already replaced this answer. Nothing to save and
-			// nothing to report: the newer one is stored.
+
 			if errors.Is(err, notebookRepo.ErrStaleSubmission) {
 				c.JSON(http.StatusNoContent, nil)
 				return

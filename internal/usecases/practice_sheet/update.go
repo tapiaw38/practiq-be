@@ -45,7 +45,6 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Verify practice sheet exists and check ownership
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetGetError, err)
@@ -58,7 +57,6 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, appErr
 	}
 
-	// Switching a level test back to practice drops its schedule.
 	level := input.Level
 	if level < 1 {
 		level = 1

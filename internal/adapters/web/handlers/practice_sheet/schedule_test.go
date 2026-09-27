@@ -14,8 +14,7 @@ func TestParseScheduledAt(t *testing.T) {
 	})
 
 	t.Run("offset is normalized to UTC", func(t *testing.T) {
-		// The browser sends the teacher's local time with its offset; storing it
-		// as-is would make the gate fire at the wrong moment.
+
 		at, err := parseScheduledAt("2026-09-01T14:30:00-03:00")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

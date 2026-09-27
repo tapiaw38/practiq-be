@@ -8,14 +8,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// ListDashboardSummaries returns, for every course a student is enrolled in,
-// the counts and level the home screen shows.
-//
-// Set-based on purpose. The screen used to ask for practice sheets, notebooks
-// and levels once per course, which was three round trips per course on top of
-// the courses call itself. Rewriting that as a loop of queries here would move
-// the N+1 from the network to the database rather than remove it, so each fact
-// is one aggregate over all the student's courses at once.
 func (r *repository) ListDashboardSummaries(ctx context.Context, studentID string) ([]domain.CourseDashboardSummary, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		WITH student_courses AS (

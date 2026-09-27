@@ -22,8 +22,7 @@ func NewStatementImageHandler(uc ucExercise.StatementImageUsecase) gin.HandlerFu
 			c.JSON(appErr.StatusCode(), appErr)
 			return
 		}
-		// Private: the statement belongs to one course. The window is short
-		// because a teacher who redraws it expects to see the new one.
+
 		c.Header("Cache-Control", "private, max-age=300")
 		c.Data(http.StatusOK, output.ContentType, output.Content)
 	}

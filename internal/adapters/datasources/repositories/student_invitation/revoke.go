@@ -2,8 +2,6 @@ package studentinvitation
 
 import "context"
 
-// Revoke pide el teacher_id además del id: sin eso, conocer el id de una
-// invitación ajena alcanzaría para darla de baja.
 func (r *repository) Revoke(ctx context.Context, id, teacherID string) error {
 	query := `
 		UPDATE student_invitations

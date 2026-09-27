@@ -10,9 +10,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 )
 
-// fakeSchoolsByUser keys membership by user, unlike fakeSchools in
-// scope_test.go, because these checks compare different users' memberships
-// against each other.
 type fakeSchoolsByUser struct {
 	schoolRepo.Repository
 	byUser map[string][]domain.SchoolMember
@@ -47,8 +44,7 @@ func TestEnsureCanLinkTeacherStudent(t *testing.T) {
 			wantAllowed: true,
 		},
 		{
-			// The reason the check exists. Without it, an admin of school A
-			// could link a teacher from school B to a student from school C.
+
 			name: "an admin may not link people from a school they don't administer",
 			byUser: map[string][]domain.SchoolMember{
 				"admin":   admin,

@@ -8,8 +8,7 @@ import (
 )
 
 func (r *repository) GetDailyAttempts(ctx context.Context, studentID, courseID string, from, to *time.Time) ([]domain.DailyAttemptCount, error) {
-	// An answer nobody graded is not an attempt the student got wrong: counting
-	// it dragged the accuracy in their report down for work no one ever read.
+
 	query := `
 		SELECT
 			DATE(sa.created_at) as date,

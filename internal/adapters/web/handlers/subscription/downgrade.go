@@ -24,11 +24,9 @@ func NewDowngradePreviewHandler(uc ucSubscription.DowngradeUsecase) gin.HandlerF
 func NewDowngradeApplyHandler(uc ucSubscription.DowngradeUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var body struct {
-			// Keep is the teacher's choice of who stays. Empty means the
-			// automatic order: least recently active go first.
 			Keep []string `json:"keep"`
 		}
-		// A body is optional: applying without one takes the automatic order.
+
 		_ = c.ShouldBindJSON(&body)
 
 		output, appErr := uc.Apply(c, middlewares.GetUserID(c), body.Keep)

@@ -14,15 +14,13 @@ func TestPersonalSchoolName(t *testing.T) {
 			want:        "Mi escuela de Ana García",
 		},
 		{
-			// identity.FullName falls back to the user id when auth-api-be has
-			// no name, and an id is not a name to show anyone.
+
 			name:        "no name keeps the placeholder",
 			teacherName: "",
 			want:        PlaceholderSchoolName,
 		},
 		{
-			// Half a name with nothing after it reads as a bug
-			// on a screen, so whitespace counts as no name.
+
 			name:        "whitespace is no name",
 			teacherName: "   ",
 			want:        PlaceholderSchoolName,

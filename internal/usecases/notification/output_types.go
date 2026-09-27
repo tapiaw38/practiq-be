@@ -12,7 +12,7 @@ type (
 		Body         string `json:"body,omitempty"`
 		ResourceType string `json:"resource_type,omitempty"`
 		ResourceID   string `json:"resource_id,omitempty"`
-		// ScheduledAt is UTC; the client renders it in the user's timezone.
+
 		ScheduledAt string `json:"scheduled_at,omitempty"`
 		Read        bool   `json:"read"`
 		CreatedAt   string `json:"created_at"`

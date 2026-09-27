@@ -12,8 +12,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/identity"
 )
 
-// leaderboardTop is how many places the table shows before it cuts to the
-// student's own row.
 const leaderboardTop = 10
 
 type (
@@ -26,10 +24,8 @@ type (
 	}
 
 	LeaderboardEntryData struct {
-		// Shortened for display: classmates recognise each other by first name,
-		// and a ranking of minors is no place for a full surname.
 		Name string `json:"name"`
-		// Opaque token the client draws the avatar from; empty means none.
+
 		AvatarSeed string `json:"avatar_seed,omitempty"`
 		TotalXP    int    `json:"total_xp"`
 		Position   int    `json:"position"`
@@ -38,7 +34,7 @@ type (
 
 	GetCourseLeaderboardOutput struct {
 		Data []LeaderboardEntryData `json:"data"`
-		// Set when the student's place falls outside the visible top.
+
 		Me *LeaderboardEntryData `json:"me,omitempty"`
 	}
 )
@@ -50,8 +46,6 @@ func NewGetCourseLeaderboardUsecase(contextFactory appcontext.Factory) GetCourse
 func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, courseID, bearerToken string) (*GetCourseLeaderboardOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// The ranking exposes classmates, so course membership is the gate: without
-	// this, any authenticated user could read any course's table by id.
 	courses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{StudentID: studentID})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
@@ -90,8 +84,7 @@ func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, co
 			Position:   entry.Position,
 			IsMe:       entry.StudentID == studentID,
 		}
-		// The query appends the student's own row past the cut when the top does
-		// not already hold it, so only that trailing row becomes Me.
+
 		if item.IsMe && i >= leaderboardTop {
 			me := item
 			output.Me = &me
@@ -103,9 +96,6 @@ func (u *getCourseLeaderboardUsecase) Execute(ctx context.Context, studentID, co
 	return &output, nil
 }
 
-// shortDisplayName renders "Walter Tapia" as "Walter T.". A profile with no
-// surname keeps just the first name, and one with neither still has to render
-// as something rather than leak the raw id.
 func shortDisplayName(info authapi.UserInfo) string {
 	first := strings.TrimSpace(info.FirstName)
 	last := strings.TrimSpace(info.LastName)

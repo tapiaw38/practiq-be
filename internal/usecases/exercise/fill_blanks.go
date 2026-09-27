@@ -7,9 +7,6 @@ import (
 
 const typeFillBlanks = "fill_blanks"
 
-// validateFillBlanks rejects a fill-in-the-blanks exercise a student could not
-// solve. The editor checks the same rules, but the API is also reachable from
-// the MCP server and from scripts, so the UI cannot be the only gate.
 func validateFillBlanks(exerciseType, question, metadata, correctAnswer string) apperrors.ApplicationError {
 	if exerciseType != typeFillBlanks {
 		return nil

@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// NewSubmitJobID generates a random hex ID for submit jobs.
 func NewSubmitJobID() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err != nil {

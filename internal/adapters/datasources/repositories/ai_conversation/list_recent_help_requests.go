@@ -6,7 +6,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// ListRecentHelpRequests keeps exercise memory bounded and scoped to its owner.
 func (r *repository) ListRecentHelpRequests(ctx context.Context, studentID, exerciseID string, limit int) ([]domain.AIHelpRequest, error) {
 	query := `
 		SELECT id, student_id, COALESCE(exercise_id::text, ''), question,

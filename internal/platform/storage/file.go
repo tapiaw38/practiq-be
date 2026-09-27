@@ -9,19 +9,10 @@ import (
 	"strings"
 )
 
-// Storage is an alias for the historical ImageStorage name, which now also
-// carries audio and documents.
 type Storage = ImageStorage
 
-// MaxUploadBytes caps a single upload. Audio recordings and scanned PDFs are
-// the large cases; anything past this is likely a mistake.
-//
-// 50 MiB accommodates scans and longer audio without allowing unbounded
-// request bodies. Larger media should move to multipart uploads.
-const MaxUploadBytes = 50 << 20 // 50 MiB
+const MaxUploadBytes = 50 << 20
 
-// FileKind groups accepted content types into the buckets the product talks
-// about, so exercises can say "accepts audio" instead of listing MIME types.
 type FileKind string
 
 const (
@@ -34,8 +25,6 @@ const (
 
 var ErrUnsupportedFileType = errors.New("unsupported file type")
 
-// acceptedTypes is a whitelist: an unknown content type is rejected rather
-// than stored, so the bucket never receives arbitrary binaries.
 var acceptedTypes = map[string]struct {
 	kind FileKind
 	ext  string
@@ -63,8 +52,6 @@ var acceptedTypes = map[string]struct {
 	"application/vnd.oasis.opendocument.text": {FileKindDocument, ".odt"},
 }
 
-// ClassifyContentType reports the bucket a content type belongs to. Parameters
-// such as "audio/webm;codecs=opus" are stripped before matching.
 func ClassifyContentType(contentType string) (FileKind, string, error) {
 	base := strings.ToLower(strings.TrimSpace(contentType))
 	if index := strings.Index(base, ";"); index >= 0 {
@@ -77,19 +64,6 @@ func ClassifyContentType(contentType string) (FileKind, string, error) {
 	return entry.kind, entry.ext, nil
 }
 
-// ResolveContentType returns the content type an upload will actually be
-// stored with: the declared one when the whitelist accepts it *and* the bytes
-// do not say otherwise, else the sniffed one.
-//
-// Checking the declaration alone used to be enough, because the type only
-// decided how the object was served. It no longer is: the stored type now
-// picks the assistant channel an attachment is sent through and answers the
-// exercise's accepted-format check, so PDF bytes declared as audio/mpeg would
-// slip past an audio-only exercise and be handed to the voice channel.
-//
-// http.DetectContentType only recognizes some formats; when it cannot tell
-// (application/octet-stream and friends) the declaration stands, since
-// rejecting there would break every format Go cannot sniff.
 func ResolveContentType(contentType string, body []byte) (string, FileKind, string, error) {
 	if kind, ext, err := ClassifyContentType(contentType); err == nil {
 		if sniffedKind, _, sniffErr := ClassifyContentType(http.DetectContentType(body)); sniffErr == nil && conflictingKinds(kind, sniffedKind) {
@@ -97,8 +71,7 @@ func ResolveContentType(contentType string, body []byte) (string, FileKind, stri
 		}
 		return contentType, kind, ext, nil
 	}
-	// Some browsers send an empty or generic type; sniff the bytes before
-	// rejecting the upload.
+
 	sniffed := http.DetectContentType(body)
 	kind, ext, err := ClassifyContentType(sniffed)
 	if err != nil {
@@ -107,12 +80,6 @@ func ResolveContentType(contentType string, body []byte) (string, FileKind, stri
 	return sniffed, kind, ext, nil
 }
 
-// conflictingKinds reports a declaration the bytes contradict.
-//
-// Audio and video are never treated as a conflict: WebM and Ogg are the same
-// container either way, so a voice recording is sniffed as video/webm and
-// rejecting it would break the student's audio answers. Everything else that
-// Go can identify has to agree.
 func conflictingKinds(declared, sniffed FileKind) bool {
 	if declared == sniffed {
 		return false
@@ -123,9 +90,6 @@ func conflictingKinds(declared, sniffed FileKind) bool {
 	return !(mediaContainer(declared) && mediaContainer(sniffed))
 }
 
-// UploadFile stores a file and returns its URL. contentType is trusted only
-// after passing the whitelist; when the client sends nothing usable the bytes
-// are sniffed instead.
 func (s *S3ImageStorage) UploadFile(ctx context.Context, folder, userID, filename, contentType string, body []byte) (string, error) {
 	if len(body) == 0 {
 		return "", errors.New("empty file")
@@ -142,8 +106,6 @@ func (s *S3ImageStorage) UploadFile(ctx context.Context, folder, userID, filenam
 		return "", fmt.Errorf("%w: an exercise's material may be an image, audio, a PDF or a document", ErrUnsupportedFileType)
 	}
 
-	// The extension always comes from the verified content type, never from the
-	// client-supplied filename.
 	key := buildFileKey(folder, userID, ext)
 	if err := s.putObject(ctx, key, contentType, body); err != nil {
 		return "", err
@@ -151,21 +113,14 @@ func (s *S3ImageStorage) UploadFile(ctx context.Context, folder, userID, filenam
 	return s.objectURL(key), nil
 }
 
-// buildFileKey mirrors buildImageKey but under a "file" prefix, so audio and
-// documents do not end up filed under "image/". Existing objects keep working:
-// lookups parse the full URL, not the prefix.
 func buildFileKey(folder, userID, ext string) string {
 	return path.Join("file", cleanPathPart(folder), cleanPathPart(userID), randomHex(16)+ext)
 }
 
-// UploadFile on the noop storage keeps local development working without S3
-// credentials; there is nowhere to put the bytes, so it reports that.
 func (NoopImageStorage) UploadFile(ctx context.Context, folder, userID, filename, contentType string, body []byte) (string, error) {
 	return "", errors.New("file storage is not configured")
 }
 
-// FetchFile reads back a stored object, so an uploaded answer can be forwarded
-// to the assistant for grading.
 func (s *S3ImageStorage) FetchFile(ctx context.Context, url string) ([]byte, string, error) {
 	key, ok := s.keyFromValue(url)
 	if !ok {
@@ -185,15 +140,6 @@ func (NoopImageStorage) FetchFile(ctx context.Context, url string) ([]byte, stri
 	return nil, "", errors.New("file storage is not configured")
 }
 
-// AllowedAsStatementMaterial says what an exercise's statement may carry.
-//
-// It lives here, beside FileKind, because the rule was written twice -- once
-// in the upload usecase and once in this package -- and widening it to accept
-// documents in only the first left every PDF answering 415 from the second.
-//
-// Video is the one kind left out: nothing renders it beside the statement and
-// no assistant channel reads it, so it would store a file the student is shown
-// a bare link to and the assistant ignores.
 func AllowedAsStatementMaterial(kind FileKind) bool {
 	switch kind {
 	case FileKindImage, FileKindAudio, FileKindPDF, FileKindDocument:

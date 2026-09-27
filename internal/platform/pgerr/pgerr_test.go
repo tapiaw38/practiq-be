@@ -24,9 +24,7 @@ func TestIsUniqueViolation(t *testing.T) {
 			want:       true,
 		},
 		{
-			// The reason the constraint is named: a table carries more than
-			// one unique index, and "that name is taken" would be the wrong
-			// answer for a different one.
+
 			name:       "a duplicate on another index",
 			err:        dup,
 			constraint: "idx_subjects_school_name",

@@ -5,8 +5,6 @@ import (
 	"testing"
 )
 
-// scoreWith mirrors the accounting the submit loop does, so the rule "an answer
-// nobody graded must not count as wrong" is pinned down.
 func scoreWith(results []attachmentOutcome) (correct, total int, score float64, allUngraded bool) {
 	total = len(results)
 	for _, outcome := range results {
@@ -24,8 +22,6 @@ func scoreWith(results []attachmentOutcome) (correct, total int, score float64, 
 	return
 }
 
-// A file the assistant resolved counts right away, on a level test too: a
-// verdict it could reach is not a reason to hold the student behind a person.
 func TestAssistantGradedAnswerScoresImmediately(t *testing.T) {
 	approved := true
 	outcome := attachmentOutcome{
@@ -53,8 +49,7 @@ func TestAssistantGradedAnswerScoresImmediately(t *testing.T) {
 
 func TestUngradedAttachmentsAreExcludedFromScore(t *testing.T) {
 	t.Run("an ungraded file does not drag the score down", func(t *testing.T) {
-		// One correct answer plus an ungradeable PDF should read as 100%,
-		// not 50%.
+
 		_, total, score, allUngraded := scoreWith([]attachmentOutcome{
 			{IsCorrect: true},
 			{Ungraded: true},
@@ -97,8 +92,6 @@ func TestUngradedAttachmentsAreExcludedFromScore(t *testing.T) {
 	})
 }
 
-// The teacher only corrects level tests: the homework notebook has its own
-// queue, and a practice must resolve on submit instead of waiting on anyone.
 func TestOnlyLevelTestsGoToTheTeacher(t *testing.T) {
 	if !teacherGradesSheet(sheetTypeLevelTest) {
 		t.Error("a level test decides promotion, so a teacher confirms it")
@@ -111,8 +104,6 @@ func TestOnlyLevelTestsGoToTheTeacher(t *testing.T) {
 	}
 }
 
-// An answer nobody graded is explained differently on each sheet: only a level
-// test can promise a correction.
 func TestUngradedFeedbackOnlyPromisesReviewOnALevelTest(t *testing.T) {
 	if got := ungradedAttachmentFeedback(true); got == ungradedAttachmentFeedback(false) {
 		t.Error("a practice must not be told a teacher will correct it")
@@ -120,8 +111,7 @@ func TestUngradedFeedbackOnlyPromisesReviewOnALevelTest(t *testing.T) {
 	if got := statementMediaFeedback(true); got == statementMediaFeedback(false) {
 		t.Error("a practice must not be told a teacher will correct it")
 	}
-	// "pedí revisión" pointed the student at a correction a practice no longer
-	// offers.
+
 	if strings.Contains(unreadableCanvasFeedback(false), "revisión") ||
 		strings.Contains(unreadableCanvasFeedback(false), "docente") {
 		t.Error("a practice must not send the student after a review nobody will do")
@@ -131,9 +121,6 @@ func TestUngradedFeedbackOnlyPromisesReviewOnALevelTest(t *testing.T) {
 	}
 }
 
-// A handwritten answer nobody transcribed used to fall through to the string
-// comparison and score as wrong against an empty answer. On a level test that
-// cost the student the promotion for a transcription that never ran.
 func TestUntranscribedHandwritingIsNotWrong(t *testing.T) {
 	for _, test := range []struct {
 		name                                     string
@@ -156,8 +143,6 @@ func TestUntranscribedHandwritingIsNotWrong(t *testing.T) {
 	}
 }
 
-// Promotion follows what the assistant could resolve: every answer decided ->
-// the score stands; anything it could not -> the test waits for the teacher.
 func TestLevelTestPromotionWaitsOnlyForWhatTheAssistantCouldNotResolve(t *testing.T) {
 	const passThreshold = 75.0
 
@@ -185,7 +170,6 @@ func TestLevelTestPromotionWaitsOnlyForWhatTheAssistantCouldNotResolve(t *testin
 		t.Run(test.name, func(t *testing.T) {
 			correct, total, score, _ := scoreWith(test.results)
 
-			// On a level test every ungraded answer is a pending one.
 			pending := false
 			for _, outcome := range test.results {
 				if outcome.Ungraded {
@@ -204,8 +188,6 @@ func TestLevelTestPromotionWaitsOnlyForWhatTheAssistantCouldNotResolve(t *testin
 	}
 }
 
-// A practice keeps going: what the assistant could not resolve is dropped, and
-// only what it did read is corrected.
 func TestPracticeGradesOnlyWhatTheAssistantCouldRead(t *testing.T) {
 	correct, total, score, allUngraded := scoreWith([]attachmentOutcome{
 		{IsCorrect: true},

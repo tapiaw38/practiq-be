@@ -11,8 +11,6 @@ import (
 
 const timeFormat = "2006-01-02T15:04:05Z"
 
-// mediaLinkTTL has to outlive solving the sheet without leaving a shareable
-// link around for long. Reloading the sheet issues fresh ones.
 const mediaLinkTTL = time.Hour
 
 type (
@@ -25,12 +23,9 @@ type (
 		Explanation   string `json:"explanation,omitempty"`
 		Difficulty    int    `json:"difficulty"`
 		Metadata      string `json:"metadata"`
-		// MediaViewURL is the temporary URL for the statement's attached media.
-		// Metadata keeps the canonical one so it can be written back unchanged.
+
 		MediaViewURL string `json:"media_view_url,omitempty"`
-		// HasTeacherImage says the statement was drawn by hand. The drawing is
-		// fetched from the exercise's statement-image endpoint, never embedded:
-		// one canvas outweighed the whole sheet around it.
+
 		HasTeacherImage bool `json:"has_teacher_image,omitempty"`
 	}
 
@@ -49,23 +44,21 @@ type (
 		Level      int    `json:"level"`
 		SheetType  string `json:"sheet_type"`
 		TestStyle  string `json:"test_style"`
-		// ScheduledAt is empty when the sheet can be taken at any time.
+
 		ScheduledAt string `json:"scheduled_at,omitempty"`
-		// AvailableUntil closes the window; empty means it stays open.
+
 		AvailableUntil string `json:"available_until,omitempty"`
-		// MaxAttempts and TimeLimitMinutes are what the teacher set; null in
-		// both cases means no limit, which is how the form reads them back.
+
 		MaxAttempts      *int `json:"max_attempts"`
 		TimeLimitMinutes *int `json:"time_limit_minutes"`
-		// AttemptsUsed and Deadline are the asking student's own standing, so
-		// the page can show what is left rather than announce it on refusal.
+
 		AttemptsUsed    int                 `json:"attempts_used,omitempty"`
 		AttemptsAllowed int                 `json:"attempts_allowed,omitempty"`
 		Deadline        string              `json:"deadline,omitempty"`
 		CreatedBy       string              `json:"created_by"`
 		CreatedAt       string              `json:"created_at"`
 		Exercises       []SheetExerciseData `json:"exercises"`
-		// StreakDays is global student state, never limited to this sheet's topic.
+
 		StreakDays int `json:"streak_days"`
 	}
 
@@ -75,12 +68,9 @@ type (
 		StudentAnswer string `json:"student_answer"`
 		CorrectAnswer string `json:"correct_answer"`
 		AIFeedback    string `json:"ai_feedback,omitempty"`
-		// NeedsTeacherReview marks an answer handed to the teacher. Only a level
-		// test does that; on a practice it is always false.
+
 		NeedsTeacherReview bool `json:"needs_teacher_review,omitempty"`
-		// NotGraded marks an answer nobody could put a verdict on. It is left
-		// out of the score rather than counted as wrong, so the student must be
-		// told it was skipped instead of shown it as an error.
+
 		NotGraded bool `json:"not_graded,omitempty"`
 	}
 
@@ -120,8 +110,7 @@ func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeache
 			MediaViewURL:    mediaViewURL(app, pse.Exercise),
 			HasTeacherImage: pse.Exercise.TeacherImage() != "",
 		}
-		// Correct answers and explanations are teacher-only data. The backend
-		// grades submissions, so students never need either in the sheet payload.
+
 		if includeTeacherData {
 			exercise.CorrectAnswer = pse.Exercise.CorrectAnswer
 			exercise.Explanation = pse.Exercise.Explanation
@@ -137,13 +126,6 @@ func toSheetData(app *appcontext.Context, ps domain.PracticeSheet, includeTeache
 	return data
 }
 
-// toSheetSummary is the listing shape: the sheet, and the identity of the
-// exercises on it, without their bodies.
-//
-// Every listing consumer only counts the exercises or collects their ids. The
-// statement, its metadata and the signed media belong to the practice screen,
-// which loads a single sheet by id. Sending them once per sheet made one course
-// listing 46 KB, of which 93% was base64 images.
 func toSheetSummary(ps domain.PracticeSheet) PracticeSheetData {
 	exercises := make([]SheetExerciseData, 0, len(ps.Exercises))
 	for _, pse := range ps.Exercises {
@@ -195,22 +177,13 @@ func sheetScalars(ps domain.PracticeSheet) PracticeSheetData {
 	return data
 }
 
-// studentMetadata strips everything a student must not see before solving.
-//
-// Two things are removed:
-//   - media_url, the stable bucket URL (MediaViewURL carries a signed one)
-//   - the answer of every fill-blank, which is the solution itself
-//
-// Blank ids, the option pool and the layout stay: the student needs them to
-// render the exercise, and the pool alone does not say which option goes where.
 func studentMetadata(metadata string) string {
 	if strings.TrimSpace(metadata) == "" {
 		return ""
 	}
 	var values map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(metadata), &values); err != nil {
-		// Metadata may hold fill-blank answers. A malformed value cannot be
-		// redacted reliably, so fail closed instead of returning a secret.
+
 		return "{}"
 	}
 	delete(values, "media_url")
@@ -219,7 +192,7 @@ func studentMetadata(metadata string) string {
 		if redacted, err := redactBlankAnswers(raw); err == nil {
 			values["blanks"] = redacted
 		} else {
-			// Unknown shape: drop it rather than risk shipping the answers.
+
 			delete(values, "blanks")
 		}
 	}
@@ -242,8 +215,6 @@ func redactBlankAnswers(raw json.RawMessage) (json.RawMessage, error) {
 	return json.Marshal(blanks)
 }
 
-// mediaViewURL signs the statement's media so the browser can load it. An
-// unsigned or unconfigured storage just means no media is shown.
 func mediaViewURL(app *appcontext.Context, e domain.Exercise) string {
 	url := e.MediaURL()
 	if url == "" || app == nil || app.ImageStorage == nil {

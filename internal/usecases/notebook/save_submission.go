@@ -24,11 +24,7 @@ type (
 		StudentID  string
 		CanvasData string
 		AnswerText string
-		// Version orders this delivery against others from the same student.
-		// It is set where the request is accepted, not here: saving runs after
-		// the assistant replies, and by then two deliveries may be in flight
-		// and about to finish in the wrong order. Zero means "not ordered",
-		// which the repository treats as always applicable.
+
 		Version int64
 	}
 
@@ -62,18 +58,15 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	if !hasAccess {
 		return fmt.Errorf("forbidden")
 	}
-	// Same rule as practice: an archived course stays readable but takes no
-	// more work.
+
 	if appErr := school.EnsureCourseAcceptsWork(ctx, app, notebook.CourseID); appErr != nil {
 		return fmt.Errorf("this course is closed: it no longer accepts submissions")
 	}
-	// And the same rule for a student their school deactivated: what they
-	// already wrote stays readable, nothing new goes in.
+
 	if appErr := school.EnsureStudentCanWork(ctx, app, input.StudentID, notebook.CourseID); appErr != nil {
 		return fmt.Errorf("tu docente pausó tu acceso: podés ver lo que ya hiciste, pero no entregar")
 	}
 
-	// Get course for grade context
 	course, _ := app.Repositories.Course.Get(ctx, notebook.CourseID)
 	gradeName := ""
 	if course != nil {
@@ -92,8 +85,6 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 
 	statementReady := ensurePageStatement(ctx, app, notebook.TeacherID, page)
 
-	// Whether a teacher is needed is decided at the end, from what the assistant
-	// managed to do. It is read here because the OCR path rewrites canvasForOCR.
 	hasStudentWork := strings.TrimSpace(input.AnswerText) != "" || strings.TrimSpace(input.CanvasData) != ""
 
 	if statementReady && page != nil && app.Integrations.AssistantGateway != nil && app.Integrations.AssistantGateway.IsConfigured(assistantCfg) {
@@ -170,24 +161,10 @@ func evaluateNotebookSubmission(
 	)
 }
 
-// submissionNeedsTeacherReview is the whole rule: the student handed in work
-// and the assistant produced no verdict on it — it never read the answer, or
-// read it and could not decide. A verdict stands on its own, right or wrong,
-// and an empty page is nobody's homework.
-//
-// An unverified transcription of the teacher's statement does not call anyone
-// in. It can be misread, and the page editor exists so a teacher can check it,
-// but making every submission on such a page wait turned the queue into every
-// submission and left students with no result at all.
 func submissionNeedsTeacherReview(hasStudentWork bool, aiIsCorrect *bool) bool {
 	return hasStudentWork && aiIsCorrect == nil
 }
 
-// buildNotebookPromptContext describes the page to whichever call is looking at
-// it. The statement goes in when it is known: the model reading a student's
-// handwriting is the one stage that sees the image, and knowing the exercise
-// says "5+1=" is what tells a badly closed 1 from a 4. Without it the strokes
-// are read blind.
 func buildNotebookPromptContext(page *domain.NotebookPage) string {
 	if page == nil {
 		return "Cuaderno"
@@ -217,12 +194,6 @@ func normalizeNotebookExpectedAnswer(contentData string) string {
 	return value
 }
 
-// AddPage uploads a teacher's page image and stores the resulting URL, so
-// ContentData is routinely an https link rather than the base64 isLikelyImageData
-// looks for — and a URL is not base64-like, so it slipped through and reached the
-// model verbatim as "respuesta correcta esperada: https://….png". Kept separate
-// from isLikelyImageData because AddPage uses that one to decide what to upload,
-// and an already-uploaded URL must not be uploaded again.
 func isImageURL(value string) bool {
 	if !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") {
 		return false

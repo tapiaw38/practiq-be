@@ -16,24 +16,11 @@ import (
 
 const sheetTypeLevelTest = "level_test"
 
-// isCourseTeacher reports whether the requester manages the course. The
-// course's teacher, the school's admin and a superadmin bypass the schedule so
-// they can review a test before its date.
 func isCourseTeacher(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, courseID string) bool {
 	_, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID)
 	return appErr == nil
 }
 
-// ensureSheetIsOpen gates a scheduled level test to its availability window.
-// Teachers and admins bypass it so they can review or reprogram the sheet.
-//
-// The window opens at ScheduledAt and closes at AvailableUntil. A nil
-// AvailableUntil leaves it open, which is what the student UI has always
-// promised ("Disponible en la fecha").
-//
-// This used to return "expired" for everything from ScheduledAt onwards, with
-// no window ever defined — so a scheduled test was blocked before the date and
-// expired from the date on, and could never be taken at all.
 func ensureSheetIsOpen(ctx context.Context, app *appcontext.Context, ps *domain.PracticeSheet, requesterID string, isSuperAdmin bool) apperrors.ApplicationError {
 	if isCourseTeacher(ctx, app, requesterID, isSuperAdmin, ps.CourseID) {
 		return nil
@@ -73,8 +60,6 @@ const (
 	windowClosed
 )
 
-// sheetWindowState is the schedule rule on its own: no context, no
-// repositories, so the branch that used to be inverted can be pinned by a test.
 func sheetWindowState(ps *domain.PracticeSheet, now time.Time) windowState {
 	if ps.ScheduledAt == nil {
 		return windowOpen
@@ -88,9 +73,6 @@ func sheetWindowState(ps *domain.PracticeSheet, now time.Time) windowState {
 	return windowOpen
 }
 
-// notifyScheduledLevelTest tells every enrolled student when a level test gets a
-// date. Unscheduling or switching the sheet back to practice removes the
-// notification instead.
 func notifyScheduledLevelTest(ctx context.Context, app *appcontext.Context, ps domain.PracticeSheet) {
 	if ps.SheetType != sheetTypeLevelTest || ps.ScheduledAt == nil {
 		if err := app.Repositories.Notification.DeleteByResource(ctx, domain.NotificationLevelTestScheduled, ps.ID); err != nil {
@@ -110,8 +92,6 @@ func notifyScheduledLevelTest(ctx context.Context, app *appcontext.Context, ps d
 		courseTitle = course.Title
 	}
 
-	// No date in the body on purpose: scheduled_at travels structured so the
-	// client renders it in the student's own timezone.
 	body := "Tenés una prueba de nivel programada"
 	if courseTitle != "" {
 		body = fmt.Sprintf("%s en %s", body, courseTitle)

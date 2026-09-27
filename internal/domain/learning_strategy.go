@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// LearningStrategy represents a learning strategy entity stored in DB
 type LearningStrategy struct {
 	ID          string
 	Name        string
@@ -15,7 +14,6 @@ type LearningStrategy struct {
 	CreatedAt   time.Time
 }
 
-// CourseLearningStrategy represents the assignment of a strategy to a course
 type CourseLearningStrategy struct {
 	ID                  string
 	CourseID            string
@@ -28,7 +26,6 @@ type CourseLearningStrategy struct {
 	StrategyDescription string
 }
 
-// MasteryInput is used by LearningStrategyService for mastery calculations
 type MasteryInput struct {
 	TotalAttempts    int
 	CorrectAttempts  int
@@ -63,16 +60,13 @@ func (k *kumonStrategy) CalculateMasteryScore(input MasteryInput) float64 {
 
 	baseScore := float64(input.CorrectAttempts) / float64(input.TotalAttempts) * 100
 
-	// Deduct 2 points per hint used
 	hintPenalty := float64(input.HintsUsed) * 2
 	baseScore = math.Max(0, baseScore-hintPenalty)
 
-	// Bonus for perfect score with no hints
 	if input.CorrectAttempts == input.TotalAttempts && input.HintsUsed == 0 {
 		baseScore = math.Min(100, baseScore+5)
 	}
 
-	// Weighted average: 70% new score + 30% existing
 	newScore := baseScore*0.7 + input.CurrentScore*0.3
 	return math.Round(newScore*100) / 100
 }

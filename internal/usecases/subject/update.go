@@ -37,9 +37,6 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// The route lets a teacher ask; this decides which rows they may touch.
-	// Without it, opening these routes beyond the platform superadmin would let
-	// any teacher edit another school's subjects.
 	current, err := app.Repositories.Subject.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SubjectGetError, err)

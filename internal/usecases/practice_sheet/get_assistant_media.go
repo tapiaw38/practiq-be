@@ -27,8 +27,6 @@ func NewGetAssistantMediaUsecase(contextFactory appcontext.Factory) GetAssistant
 	return &getAssistantMediaUsecase{contextFactory: contextFactory}
 }
 
-// Execute serves only media belonging to a sheet the requester can open. This
-// avoids browser-to-bucket CORS requirements and never accepts an arbitrary URL.
 func (u *getAssistantMediaUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, sheetID, exerciseID string) (*AssistantMediaOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, sheetID)

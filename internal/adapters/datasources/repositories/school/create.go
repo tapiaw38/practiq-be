@@ -16,9 +16,6 @@ func (r *repository) Create(ctx context.Context, s domain.School) (string, error
 	return id, err
 }
 
-// CreateWithAdmin keeps an institution and its first administrator atomic.
-// An institution with no active admin is unusable by design, not a valid
-// intermediate state a partially failed request may leave behind.
 func (r *repository) CreateWithAdmin(ctx context.Context, s domain.School, adminID string) (string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {

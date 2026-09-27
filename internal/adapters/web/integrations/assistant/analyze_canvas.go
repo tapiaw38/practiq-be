@@ -25,11 +25,6 @@ func (g *gateway) AnalyzeCanvas(ctx context.Context, cfg Config, canvasData, cor
 	return g.analyzeCanvas(ctx, cfg, canvasData, buildCanvasPrompt(correctAnswer), isExpectedCanvasResponse)
 }
 
-// AnalyzeNotebookCanvas reads a whole notebook page rather than one exercise's
-// final answer. It cannot share AnalyzeCanvas's prompt: that one asks for the
-// final answer only and rejects anything past 120 characters, so a faithful
-// transcription of a page of worked problems was thrown away as malformed and
-// retried until the attempts ran out.
 func (g *gateway) AnalyzeNotebookCanvas(ctx context.Context, cfg Config, canvasData, pageContext string) (string, error) {
 	return g.analyzeCanvas(ctx, cfg, canvasData, buildNotebookCanvasPrompt(pageContext), isExpectedNotebookResponse)
 }
@@ -232,8 +227,6 @@ func buildNotebookStatementPrompt(pageContext string) string {
 		"Contexto de la pagina: " + context + "."
 }
 
-// A page of worked problems is legitimately long, so this only guards against
-// the assistant answering with something that is not a transcription at all.
 func isExpectedNotebookResponse(raw string) bool {
 	value := normalizeCanvasResponse(raw)
 	if value == "" {
@@ -245,16 +238,13 @@ func isExpectedNotebookResponse(raw string) bool {
 	if isCanvasVerdict(value) {
 		return false
 	}
-	// No fence check here, unlike the single-answer version below:
-	// normalizeCanvasResponse strips ``` before this runs, so testing for it
-	// can never fire. A fenced answer arrives already unwrapped and usable.
+
 	if strings.HasPrefix(value, "{") || strings.HasPrefix(value, "[") {
 		return false
 	}
 	return len(value) <= maxNotebookTranscriptionChars
 }
 
-// Long enough for a full page, short enough that a runaway answer still fails.
 const maxNotebookTranscriptionChars = 4000
 
 func isExpectedCanvasResponse(raw string) bool {
@@ -265,8 +255,7 @@ func isExpectedCanvasResponse(raw string) bool {
 	if strings.EqualFold(value, unreadableResponse) {
 		return true
 	}
-	// Gillie's conversational tutor can return a review verdict instead of
-	// transcribing the handwriting. A verdict is never a student answer.
+
 	if isCanvasVerdict(value) {
 		return false
 	}

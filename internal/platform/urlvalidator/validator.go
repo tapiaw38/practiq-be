@@ -8,21 +8,20 @@ import (
 )
 
 var (
-	// Blocked IP ranges for SSRF protection
 	blockedNetworks = []*net.IPNet{
-		// Private IPv4 ranges (RFC 1918)
+
 		parseCIDR("10.0.0.0/8"),
 		parseCIDR("172.16.0.0/12"),
 		parseCIDR("192.168.0.0/16"),
-		// Localhost
+
 		parseCIDR("127.0.0.0/8"),
-		// Link-local addresses
+
 		parseCIDR("169.254.0.0/16"),
-		// Loopback IPv6
+
 		parseCIDR("::1/128"),
-		// Link-local IPv6
+
 		parseCIDR("fe80::/10"),
-		// Unique local IPv6
+
 		parseCIDR("fc00::/7"),
 	}
 )
@@ -40,7 +39,6 @@ type Options struct {
 	AllowedPrivateHostnames []string
 }
 
-// ValidateURL validates a URL to prevent SSRF attacks.
 func ValidateURL(rawURL string, allowedDomains []string) error {
 	return ValidateURLWithOptions(rawURL, Options{AllowedDomains: allowedDomains})
 }
@@ -126,7 +124,7 @@ func matchesDomain(hostname, allowedDomain string) bool {
 	}
 
 	if strings.HasPrefix(allowedDomain, "*.") {
-		baseDomain := allowedDomain[2:] // Remove "*."
+		baseDomain := allowedDomain[2:]
 		if strings.HasSuffix(hostname, "."+baseDomain) {
 			return true
 		}

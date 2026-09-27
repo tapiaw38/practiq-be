@@ -10,21 +10,17 @@ import (
 	ucUpload "github.com/tapiaw38/practiq-be/internal/usecases/upload"
 )
 
-// allowedFolders keeps the client from choosing arbitrary bucket prefixes.
 var allowedFolders = map[string]bool{
 	"attachments": true,
 	"materials":   true,
 	"exercises":   true,
 }
 
-// multipartOverhead leaves room for the form boundaries and the folder field
-// on top of the file itself.
 const multipartOverhead = 1 << 20
 
 func NewHandler(uc ucUpload.Usecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Cap the body before parsing: otherwise gin buffers the whole
-		// multipart (memory, then disk) before the size check below runs.
+
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, storage.MaxUploadBytes+multipartOverhead)
 
 		fileHeader, err := c.FormFile("file")

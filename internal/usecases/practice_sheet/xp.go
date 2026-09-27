@@ -23,9 +23,6 @@ type xpExercise struct {
 	Ungraded   bool
 }
 
-// XPBreakdownEntry groups awards of the same kind so the client can show one
-// bubble per reason instead of one per exercise. The wording stays in the UI:
-// what the server owns is which reasons paid and how much.
 type XPBreakdownEntry struct {
 	EventType string `json:"event_type"`
 	Points    int    `json:"points"`
@@ -38,12 +35,8 @@ type xpOutcome struct {
 	Breakdown []XPBreakdownEntry
 }
 
-// The return value is named because the deferred balance fallback below writes
-// to it: a deferred function cannot reach an unnamed result.
 func awardPracticeXP(ctx context.Context, app *appcontext.Context, studentID string, sheet *domain.PracticeSheet, attempts []AttemptInput, exercises []xpExercise, levelTestPassed bool) (result xpOutcome) {
-	// A submission that earns nothing still has to report the balance the
-	// student already had. Reporting the zero value here would tell a student
-	// with 500 XP that they have none.
+
 	balanceKnown := false
 	defer func() {
 		if balanceKnown {
@@ -57,9 +50,6 @@ func awardPracticeXP(ctx context.Context, app *appcontext.Context, studentID str
 		result.Balance = current
 	}()
 
-	// Awards arrive one per exercise; the client wants one bubble per reason.
-	// Insertion order is the order they were earned, which is the order the
-	// bubbles should appear in.
 	breakdownIndex := map[string]int{}
 	countIn := func(eventType string, points int) {
 		if position, ok := breakdownIndex[eventType]; ok {
@@ -78,8 +68,7 @@ func awardPracticeXP(ctx context.Context, app *appcontext.Context, studentID str
 			Points: points, PracticeSheetID: sheet.ID, ExerciseID: exerciseID,
 		})
 		if err != nil {
-			// XP is motivational metadata. A temporary failure must never make a
-			// correctly saved academic submission fail.
+
 			log.Printf("[practice_xp] award failed student_id=%s course_id=%s event=%s err=%v", studentID, sheet.CourseID, eventKey, err)
 			return
 		}

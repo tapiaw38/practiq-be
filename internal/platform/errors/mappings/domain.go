@@ -3,7 +3,6 @@ package mappings
 import "net/http"
 
 var (
-	// Course errors
 	CourseCreateError = ErrorDetails{
 		InternalCode: "course:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -35,7 +34,6 @@ var (
 		Message:      "failed to list courses",
 	}
 
-	// Grade errors
 	GradeCreateError = ErrorDetails{
 		InternalCode: "grade:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -77,7 +75,6 @@ var (
 		Message:      "failed to list grade members",
 	}
 
-	// Subject errors
 	SubjectCreateError = ErrorDetails{
 		InternalCode: "subject:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -109,7 +106,6 @@ var (
 		Message:      "subject not found",
 	}
 
-	// Teacher/student assignment errors
 	AssignmentCreateError = ErrorDetails{
 		InternalCode: "assignment:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -126,7 +122,6 @@ var (
 		Message:      "failed to list assignments",
 	}
 
-	// Topic errors
 	TopicCreateError = ErrorDetails{
 		InternalCode: "topic:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -158,7 +153,6 @@ var (
 		Message:      "failed to delete topic",
 	}
 
-	// Exercise errors
 	ExerciseCreateError = ErrorDetails{
 		InternalCode: "exercise:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -185,7 +179,6 @@ var (
 		Message:      "exercise not found",
 	}
 
-	// Material errors
 	MaterialCreateError = ErrorDetails{
 		InternalCode: "material:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -217,7 +210,6 @@ var (
 		Message:      "failed to delete material",
 	}
 
-	// Practice sheet errors
 	PracticeSheetCreateError = ErrorDetails{
 		InternalCode: "practice-sheet:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -309,7 +301,6 @@ var (
 		Message:      "failed to submit practice sheet",
 	}
 
-	// Enrollment errors
 	EnrollmentCreateError = ErrorDetails{
 		InternalCode: "enrollment:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -326,7 +317,6 @@ var (
 		Message:      "student already enrolled in this course",
 	}
 
-	// Progress errors
 	ProgressGetError = ErrorDetails{
 		InternalCode: "progress:get:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -338,7 +328,6 @@ var (
 		Message:      "failed to get attempt",
 	}
 
-	// AI errors
 	AIConversationCreateError = ErrorDetails{
 		InternalCode: "ai:conversation:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -365,7 +354,6 @@ var (
 		Message:      "failed to generate curiosities",
 	}
 
-	// Profile errors
 	ProfileSyncError = ErrorDetails{
 		InternalCode: "profile:sync:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -376,16 +364,13 @@ var (
 		StatusCode:   http.StatusInternalServerError,
 		Message:      "failed to resolve the school",
 	}
-	// StudentLimitReachedError is 402: the request is well formed and the
-	// caller is allowed, what is missing is a bigger plan.
+
 	StudentLimitReachedError = ErrorDetails{
 		InternalCode: "subscription:student_limit:reached",
 		StatusCode:   http.StatusPaymentRequired,
 		Message:      "your plan does not allow more students",
 	}
-	// SubscriptionUnavailableError covers the payments service being
-	// unreachable or refusing a change. It is 502 rather than 500: nothing is
-	// wrong here, the answer came from somewhere else.
+
 	SubscriptionUnavailableError = ErrorDetails{
 		InternalCode: "subscription:payments:unavailable",
 		StatusCode:   http.StatusBadGateway,
@@ -402,7 +387,6 @@ var (
 		Message:      "failed to update profile",
 	}
 
-	// Notebook errors
 	NotebookUpdateError = ErrorDetails{
 		InternalCode: "notebook:update:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -424,7 +408,6 @@ var (
 		Message:      "notebook not found",
 	}
 
-	// Student invitation errors
 	InvitationCreateError = ErrorDetails{
 		InternalCode: "invitation:create:error",
 		StatusCode:   http.StatusInternalServerError,
@@ -445,8 +428,7 @@ var (
 		StatusCode:   http.StatusInternalServerError,
 		Message:      "failed to redeem invitation",
 	}
-	// Un solo mensaje para código inexistente, vencido o revocado: distinguirlos
-	// le diría a quien prueba códigos al azar cuáles existen.
+
 	InvitationInvalidCodeError = ErrorDetails{
 		InternalCode: "invitation:redeem:invalid-code",
 		StatusCode:   http.StatusNotFound,

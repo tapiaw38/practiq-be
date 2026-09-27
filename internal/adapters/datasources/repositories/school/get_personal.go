@@ -19,7 +19,7 @@ func (r *repository) GetPersonal(ctx context.Context, ownerID string) (*domain.S
 		LIMIT 1
 	`, ownerID).Scan(&s.ID, &s.Name, &s.Kind, &s.Billing, &s.Status, &s.CreatedBy, &s.CreatedAt, &s.ClosedAt, &s.ClosedBy, &s.CloseReason)
 	if errors.Is(err, sql.ErrNoRows) {
-		// Not having one is the normal state of a student, not a failure.
+
 		return nil, nil
 	}
 	if err != nil {

@@ -10,16 +10,8 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-// batchSize mirrors auth-api-be's own cap on GET /user/batch.
 const batchSize = 200
 
-// Names resolves display identity for a set of usernames in one or more
-// round trips to auth-api-be, deduplicated and chunked to the endpoint's
-// cap. Unknown ids are simply absent from the result map — callers should
-// fall back to the bare id when a lookup misses.
-// A rejected token is reported as 401 rather than 500: the status decision
-// lives here because this is the only place that sees auth-api-be's own
-// response, and every caller used to flatten it into a server error.
 func Names(ctx context.Context, client authapi.Client, bearerToken string, ids []string) (map[string]authapi.UserInfo, apperrors.ApplicationError) {
 	unique := make(map[string]bool, len(ids))
 	deduped := make([]string, 0, len(ids))
@@ -64,8 +56,6 @@ func ByEmail(ctx context.Context, client authapi.Client, bearerToken, email stri
 	return info, nil
 }
 
-// FullName joins first and last name, falling back to the bare id when the
-// lookup missed (unknown id, or auth-api-be call failed upstream).
 func FullName(info authapi.UserInfo, fallbackID string) string {
 	name := strings.TrimSpace(info.FirstName + " " + info.LastName)
 	if name == "" {

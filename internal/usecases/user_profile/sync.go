@@ -25,10 +25,7 @@ type (
 		ID          string
 		ProfileType string
 		Timezone    string
-		// BearerToken is the caller's own "Bearer <jwt>" header, forwarded to
-		// auth-api-be to resolve the caller's own display name — never
-		// trusted from the request body, since that would let the client
-		// claim any name it likes.
+
 		BearerToken string
 	}
 
@@ -48,9 +45,7 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
-	// A profile type is selected exactly once during Practiq onboarding. This
-	// stops a student from turning into a teacher by replaying POST /profile,
-	// while keeping Auth roles out of product authorization.
+
 	profileType := input.ProfileType
 	if existing != nil {
 		profileType = existing.ProfileType
@@ -88,15 +83,6 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 	return &SyncOutput{Data: toProfileData(*updated, displayName, info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }
 
-// ensurePersonalSchool gives a teacher the school they administer.
-//
-// It runs on every sync rather than only on the first, because the schools
-// migration could not name these: teacher names live in auth-api-be, so the SQL
-// left a placeholder. The first sync that can resolve a real name replaces it.
-//
-// Failures are logged and swallowed. A teacher who cannot log in because their
-// school could not be created is a worse outcome than one who logs in and gets
-// it on the next sync, and this runs on every request that touches the profile.
 func ensurePersonalSchool(ctx context.Context, app *appcontext.Context, profile domain.UserProfile, displayName string) {
 	if profile.ProfileType != "teacher" {
 		return
@@ -111,8 +97,7 @@ func ensurePersonalSchool(ctx context.Context, app *appcontext.Context, profile 
 	wanted := domain.PersonalSchoolName(displayName)
 
 	if existing != nil {
-		// Only the placeholder is replaced. A teacher who renamed their school
-		// keeps that name; overwriting it on every login would undo their edit.
+
 		if existing.Name == domain.PlaceholderSchoolName && wanted != domain.PlaceholderSchoolName {
 			if err := app.Repositories.School.Rename(ctx, existing.ID, wanted); err != nil {
 				log.Printf("[schools] rename failed school_id=%s err=%v", existing.ID, err)

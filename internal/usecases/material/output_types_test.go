@@ -8,8 +8,7 @@ import (
 )
 
 func TestToMaterialPreviewCutsWithoutBreakingAccents(t *testing.T) {
-	// The repository hands back previewChars+1 characters, which is how a text
-	// that merely ends at the limit is told apart from one that continues.
+
 	cases := []struct {
 		name          string
 		text          string
@@ -35,8 +34,7 @@ func TestToMaterialPreviewCutsWithoutBreakingAccents(t *testing.T) {
 			wantTruncated: true,
 		},
 		{
-			// Cutting bytes instead of runes would leave half an "ó" behind and
-			// the response would not be valid UTF-8.
+
 			name:          "accents are not split in half",
 			text:          strings.Repeat("ó", previewChars+1),
 			wantLen:       previewChars,

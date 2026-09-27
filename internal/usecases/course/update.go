@@ -27,9 +27,7 @@ type (
 		Description string `json:"description"`
 		Level       string `json:"level"`
 		Subject     string `json:"subject"`
-		// Status is optional. Empty keeps whatever the course already has: the
-		// edit form does not have to carry the lifecycle to rename a course,
-		// and sending nothing must not silently unpublish it.
+
 		Status string `json:"status"`
 	}
 

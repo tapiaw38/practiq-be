@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// parseScheduledAt accepts an RFC 3339 timestamp and normalizes it to UTC. An
-// empty value clears the schedule.
 func parseScheduledAt(value string) (*time.Time, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {

@@ -2,16 +2,6 @@ package studentcoursexp
 
 import "context"
 
-// LeaderboardByCourse ranks everyone who belongs to the course, whether they
-// have earned anything or not: a student with no XP row is on zero, not
-// missing. Membership is either a direct enrolment or the course's grade,
-// the same pair every other course read resolves against.
-//
-// Two window functions rather than one. Position is a RANK so equal scores
-// share a place — at the start of a course everybody is on zero and printing
-// 1, 2, 3 down an arbitrary order would invent a ranking nobody earned. The
-// cut to the top N rides on ROW_NUMBER instead, because a RANK of 1 shared by
-// thirty students would let all thirty through a `position <= 10` filter.
 func (r *repository) LeaderboardByCourse(ctx context.Context, courseID, studentID string, top int) ([]LeaderboardEntry, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		WITH members AS (

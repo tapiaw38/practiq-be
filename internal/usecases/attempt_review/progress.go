@@ -13,12 +13,6 @@ const (
 	levelTestPassThreshold = 75.0
 )
 
-// applyLevelTestOutcome promotes the student once the last pending answer of a
-// level test has been corrected. Without this the block the test puts on
-// promotion would never lift: the teacher would approve and nothing would move.
-//
-// Practice sheets are left alone on purpose — their mastery score is recomputed
-// on the student's next round.
 func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attemptID string) {
 	attemptCtx, err := app.Repositories.StudentAttempt.GetAttemptContext(ctx, attemptID)
 	if err != nil {
@@ -34,7 +28,7 @@ func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attempt
 		log.Printf("[attempt_review] could not read sheet outcome sheet_id=%s err=%v", attemptCtx.PracticeSheetID, err)
 		return
 	}
-	// Still waiting on other answers, or nothing to score.
+
 	if outcome.Pending > 0 || outcome.Total == 0 {
 		return
 	}
@@ -52,8 +46,6 @@ func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attempt
 		return
 	}
 
-	// The sheet carries the level this test belongs to and the course it lives
-	// in; the attempt context has neither.
 	sheet, err := app.Repositories.PracticeSheet.Get(ctx, attemptCtx.PracticeSheetID)
 	if err != nil || sheet == nil {
 		log.Printf("[attempt_review] could not read sheet sheet_id=%s err=%v", attemptCtx.PracticeSheetID, err)
@@ -71,15 +63,8 @@ func applyLevelTestOutcome(ctx context.Context, app *appcontext.Context, attempt
 		currentLevel = progress.CurrentLevel
 	}
 
-	// Passing a test for level N means level N+1, an absolute target rather
-	// than an increment. Editing feedback on an already-reviewed attempt runs
-	// this again, and `currentLevel + 1` promoted the student one more level
-	// every time.
 	targetLevel := sheet.Level + 1
-	// Course progression and topic progression can have diverged because older
-	// reviews only advanced the topic. Repair the course independently: a topic
-	// already at the target must not prevent this test from unlocking the next
-	// course level.
+
 	advanceCourseProgress(ctx, app, attemptCtx.StudentID, sheet.CourseID, targetLevel)
 	if currentLevel >= targetLevel {
 		log.Printf("[attempt_review] promotion already applied student_id=%s sheet_id=%s level=%d",

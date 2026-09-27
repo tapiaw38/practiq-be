@@ -11,8 +11,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-// requesterCanReadExercise allows the course's teacher and anyone taking the
-// course, which is the same audience the exercise listing already serves.
 func requesterCanReadExercise(ctx context.Context, app *appcontext.Context, requesterID string, isSuperAdmin bool, topicID string) apperrors.ApplicationError {
 	if isSuperAdmin {
 		return nil

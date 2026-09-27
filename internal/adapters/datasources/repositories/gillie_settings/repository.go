@@ -32,8 +32,6 @@ func (r *repository) Get(ctx context.Context) (v Settings, err error) {
 	return v, err
 }
 
-// Save keeps the stored key when APIKeyEncrypted is empty, so editing the base
-// URL alone never needs the secret to travel again.
 func (r *repository) Save(ctx context.Context, v Settings) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO gillie_settings (id, base_url, api_key_encrypted, api_key_last4, updated_by, updated_at)

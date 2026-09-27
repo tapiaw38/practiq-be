@@ -26,16 +26,13 @@ type ImageStorage interface {
 	IsConfigured() bool
 	UploadDataURI(ctx context.Context, folder, userID, dataURI string) (string, error)
 	ResolveDataURI(ctx context.Context, value string) (string, error)
-	// UploadFile stores audio, PDFs and documents alongside images.
+
 	UploadFile(ctx context.Context, folder, userID, filename, contentType string, body []byte) (string, error)
-	// FetchFile reads a stored object back, for forwarding to the assistant.
+
 	FetchFile(ctx context.Context, url string) ([]byte, string, error)
-	// PresignGetURL turns a stored object URL into a temporary URL a browser
-	// can open directly, so the bucket stays private. Reports false when the
-	// value is not one of our objects, and returns it unchanged.
+
 	PresignGetURL(rawURL string, ttl time.Duration) (string, bool)
-	// OwnsFileURL reports whether rawURL is an object uploaded by userID in the
-	// given folder. It is used before persisting references from user metadata.
+
 	OwnsFileURL(rawURL, folder, userID string) bool
 }
 
@@ -218,10 +215,6 @@ func (s *S3ImageStorage) getObject(ctx context.Context, key string) ([]byte, str
 	return body, resp.Header.Get("Content-Type"), nil
 }
 
-// PresignGetURL builds a SigV4 query-signed GET URL. The signature carries the
-// authorization, so the browser can fetch the object without credentials and
-// the bucket never needs to be public. Range requests keep working, which is
-// what makes video and PDF streaming viable without proxying bytes through us.
 func (s *S3ImageStorage) PresignGetURL(rawURL string, ttl time.Duration) (string, bool) {
 	key, ok := s.keyFromValue(rawURL)
 	if !ok {
@@ -277,8 +270,6 @@ func (s *S3ImageStorage) PresignGetURL(rawURL string, ttl time.Duration) (string
 	return u.String() + "&X-Amz-Signature=" + signature, true
 }
 
-// OwnsFileURL prevents metadata from turning another private object in the
-// bucket into a browser-accessible, signed URL.
 func (s *S3ImageStorage) OwnsFileURL(rawURL, folder, userID string) bool {
 	key, ok := s.keyFromValue(rawURL)
 	if !ok {

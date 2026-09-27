@@ -54,10 +54,6 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSu
 		return nil, apperrors.NewNotFoundError("student not found")
 	}
 
-	// Sharing one course with the student is enough to pass HasAccess, but the
-	// unfiltered report used to load every topic row — including courses that
-	// belong to other teachers. Without a course filter, restrict it to the
-	// requester's own courses.
 	var ownCourseIDs map[string]bool
 	if !isSuperAdmin && filter.CourseID == "" {
 		ownCourses, err := app.Repositories.Course.List(ctx, courseRepo.ListFilterOptions{TeacherID: teacherID})
@@ -123,9 +119,6 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSu
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
 
-	// The report is generated for a teacher, but the streak belongs to the
-	// student, so it is measured in the student's zone rather than anyone
-	// else's.
 	studentLoc := domain.StudentLocation("")
 	if student != nil {
 		studentLoc = domain.StudentLocation(student.Timezone)
@@ -215,7 +208,7 @@ func filterProgressByDate(progress []domain.StudentTopicProgress, from, to *time
 }
 
 func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, courseProgress []domain.StudentCourseProgress, topicProgress []domain.StudentTopicProgress) []domain.CourseProgressItem {
-	// Batch load all topics
+
 	topicIDs := make([]string, 0, len(topicProgress))
 	for _, tp := range topicProgress {
 		topicIDs = append(topicIDs, tp.TopicID)
@@ -229,7 +222,6 @@ func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, cour
 		}
 	}
 
-	// Build course -> topics mapping
 	courseTopics := make(map[string][]domain.StudentTopicProgress)
 	for _, tp := range topicProgress {
 		if topic, ok := topicMap[tp.TopicID]; ok {
@@ -237,7 +229,6 @@ func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, cour
 		}
 	}
 
-	// Batch load all courses
 	courseIDs := make([]string, 0, len(courseProgress))
 	for _, cp := range courseProgress {
 		courseIDs = append(courseIDs, cp.CourseID)
@@ -251,7 +242,6 @@ func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, cour
 		}
 	}
 
-	// Build items
 	items := make([]domain.CourseProgressItem, 0, len(courseProgress))
 	for _, cp := range courseProgress {
 		course, ok := courseMap[cp.CourseID]
@@ -259,7 +249,6 @@ func buildCourseProgressItems(ctx context.Context, app *appcontext.Context, cour
 			continue
 		}
 
-		// Get topics for this course
 		topics := courseTopics[cp.CourseID]
 		topicCount := len(topics)
 		avgMastery := 0.0
@@ -295,9 +284,7 @@ func calculateSummary(progress []domain.StudentTopicProgress, dailyAttempts []do
 
 	for _, p := range progress {
 		totalMastery += p.MasteryScore
-		// Through the same decay the screen applies: the raw column keeps the
-		// streak a student had when they stopped, so a report could show 12
-		// days for someone who has not practised in a month.
+
 		if streak := domain.EffectiveStreak(p, loc); streak > maxStreak {
 			maxStreak = streak
 		}
@@ -329,8 +316,6 @@ func calculateSummary(progress []domain.StudentTopicProgress, dailyAttempts []do
 	}
 }
 
-// filterProgressByCourses keeps only the topics that belong to the given
-// courses. Topic rows carry no course id, so the topic is resolved to find it.
 func filterProgressByCourses(
 	ctx context.Context,
 	app *appcontext.Context,
@@ -340,8 +325,7 @@ func filterProgressByCourses(
 	kept := make([]domain.StudentTopicProgress, 0, len(progress))
 	for _, p := range progress {
 		topic, err := app.Repositories.Topic.Get(ctx, p.TopicID)
-		// A topic that cannot be resolved (deleted course) is dropped: the
-		// safe default for a report that crosses teachers is to omit.
+
 		if err != nil || topic == nil || !allowed[topic.CourseID] {
 			continue
 		}

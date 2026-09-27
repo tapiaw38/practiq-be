@@ -16,9 +16,7 @@ func TestStudentMetadataHidesSolutions(t *testing.T) {
 	if strings.Contains(got, "media_url") {
 		t.Fatalf("the canonical bucket URL leaked: %s", got)
 	}
-	// The secret is the blank-to-option mapping, not the words themselves:
-	// the option pool legitimately contains every answer, shuffled, because the
-	// student picks from it. What must not ship is which one goes where.
+
 	if strings.Contains(got, `"answer"`) {
 		t.Fatalf("a blank answer leaked: %s", got)
 	}
@@ -27,7 +25,7 @@ func TestStudentMetadataHidesSolutions(t *testing.T) {
 	if err := json.Unmarshal([]byte(got), &values); err != nil {
 		t.Fatalf("result is not JSON: %v", err)
 	}
-	// What the student still needs to render the exercise.
+
 	if values["layout"] != "text" {
 		t.Fatalf("layout was dropped: %s", got)
 	}

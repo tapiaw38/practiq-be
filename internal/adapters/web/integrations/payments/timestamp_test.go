@@ -6,12 +6,8 @@ import (
 	"time"
 )
 
-// The payments service serialises naive datetimes. time.Time rejects them for
-// want of an offset, and the failure is not a wrong date: the whole decode
-// fails, the entitlement reads as a payments outage, and a teacher who paid is
-// shown the free plan.
 func TestEntitlementSurvivesATimestampWithoutAZone(t *testing.T) {
-	// Copied from what the service actually answered.
+
 	body := `{"user_id":"teacher-1","active":true,"subscription_id":10,"plan_id":1,` +
 		`"access_until":"2026-10-24T02:49:15","metadata":{"max_students":5,"name":"Inicial"}}`
 

@@ -1,11 +1,3 @@
-// Package payments talks to the payments service, which owns money: plans,
-// subscriptions and whatever the gateway says about them.
-//
-// It deliberately knows nothing about what a plan allows. The payments service
-// stores that as opaque metadata on the plan and hands it back untouched, and
-// this package passes it through as a map for the domain to interpret. That is
-// what lets Practiq change who counts as a student — a rule that has already
-// changed once — without deploying the payments service.
 package payments
 
 import (
@@ -22,7 +14,6 @@ import (
 )
 
 type (
-	// Plan is one purchasable plan. Limits live in Metadata.
 	Plan struct {
 		ID            int            `json:"id"`
 		Name          string         `json:"name"`
@@ -35,24 +26,17 @@ type (
 		Active        int            `json:"active"`
 	}
 
-	// Entitlement answers "is this user paid up, and what does their plan
-	// allow" in one call.
 	Entitlement struct {
 		UserID         string     `json:"user_id"`
 		Active         bool       `json:"active"`
 		SubscriptionID *int       `json:"subscription_id"`
 		PlanID         *int       `json:"plan_id"`
 		AccessUntil    *Timestamp `json:"access_until"`
-		// Status is the agreement's, which Active no longer implies: somebody
-		// paused or cancelled keeps the access they paid for until
-		// AccessUntil, and the screen still has to offer them a way back.
+
 		Status   string         `json:"status"`
 		Metadata map[string]any `json:"metadata"`
 	}
 
-	// PlanInput is what a superadmin can set. Amount and limits are separate
-	// concerns: the first is what the gateway charges, the second is what
-	// Practiq reads out of Metadata.
 	PlanInput struct {
 		Name        string         `json:"name,omitempty"`
 		Description string         `json:"description,omitempty"`
@@ -75,23 +59,16 @@ type (
 		PlanID int    `json:"plan_id"`
 		UserID string `json:"user_id"`
 		Status string `json:"status"`
-		// CurrentPeriodEnd is the last day already paid for. Needed to tell a
-		// plan that lapsed yesterday from one that lapsed last year, which is
-		// the whole of the grace period.
+
 		CurrentPeriodEnd *Timestamp `json:"current_period_end"`
 	}
 
-	// HostedSubscriptionInput subscribes somebody who is not giving us a card,
-	// because they intend to pay with their Mercado Pago balance.
 	HostedSubscriptionInput struct {
 		PlanID     int    `json:"plan_id"`
 		UserID     string `json:"user_id"`
 		PayerEmail string `json:"payer_email"`
 	}
 
-	// ChangePlanInput moves a live subscription to another plan. The card is
-	// for the prorated difference only: the agreement keeps charging whatever
-	// it already has on file.
 	ChangePlanInput struct {
 		PlanID          int    `json:"plan_id"`
 		UserID          string `json:"user_id"`
@@ -100,7 +77,6 @@ type (
 		PaymentMethodID string `json:"payment_method_id"`
 	}
 
-	// PlanChange reports what the move cost. Charged is zero moving down.
 	PlanChange struct {
 		SubscriptionID int     `json:"subscription_id"`
 		PlanID         int     `json:"plan_id"`
@@ -108,8 +84,6 @@ type (
 		Charged        float64 `json:"charged"`
 	}
 
-	// HostedSubscription is an agreement waiting for the payer to authorise it
-	// at the gateway. Nothing is charged until they do.
 	HostedSubscription struct {
 		SubscriptionID int    `json:"subscription_id"`
 		Status         string `json:"status"`
@@ -117,35 +91,22 @@ type (
 	}
 
 	Client interface {
-		// ListPlans returns the plans on offer, cheapest first is not
-		// guaranteed — the caller orders them.
 		ListPlans(ctx context.Context) ([]Plan, error)
-		// GetEntitlement never returns an error for "no subscription": an
-		// inactive entitlement is the normal state of a teacher on the free
-		// plan, not a failure.
+
 		GetEntitlement(ctx context.Context, userID string) (*Entitlement, error)
-		// ListSubscriptions returns every subscription a user has, whatever
-		// its status. GetEntitlement only reports live ones, so a paused
-		// subscription is invisible to it and could never be resumed.
+
 		ListSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
-		// CreateSubscription hands the gateway a card token the browser
-		// produced. The card itself never reaches us.
+
 		CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error)
-		// StartHostedSubscription returns somewhere to send the payer so they
-		// can authorise the agreement at the gateway, where their account
-		// balance is an option a card form cannot offer.
+
 		StartHostedSubscription(ctx context.Context, in HostedSubscriptionInput) (*HostedSubscription, error)
-		// ChangePlan restates the amount on the agreement rather than opening
-		// a second one, so a mid-cycle move costs the difference and not a
-		// whole new month.
+
 		ChangePlan(ctx context.Context, in ChangePlanInput) (*PlanChange, error)
 		CreatePlan(ctx context.Context, in PlanInput) (*Plan, error)
 		UpdatePlan(ctx context.Context, planID int, in PlanInput) (*Plan, error)
-		// DeactivatePlan takes a plan off the shelf. Subscriptions to it keep
-		// working, which is why nothing here deletes a plan.
+
 		DeactivatePlan(ctx context.Context, planID int) (*Plan, error)
-		// PauseSubscription stops the charges without ending the agreement, so
-		// it can be undone. CancelSubscription cannot.
+
 		PauseSubscription(ctx context.Context, subscriptionID int) (*Subscription, error)
 		ResumeSubscription(ctx context.Context, subscriptionID int) (*Subscription, error)
 		CancelSubscription(ctx context.Context, subscriptionID int) error
@@ -157,22 +118,10 @@ type (
 		http    *http.Client
 	}
 
-	// Timestamp reads an instant whether or not the payments service says which
-	// zone it is in.
-	//
-	// It serialises naive datetimes, so access_until arrives as
-	// "2026-10-24T02:49:15". time.Time insists on an offset and fails the whole
-	// decode, which turned a paid subscription into a payments outage and
-	// showed the teacher the free plan. A timestamp is not worth that.
 	Timestamp struct{ time.Time }
 
-	// Unavailable marks a payments outage, so callers can tell "this teacher
-	// has no subscription" from "we could not find out".
 	Unavailable struct{ Err error }
 
-	// Rejected is an expected 4xx answer from the payments product. It carries
-	// its public error code so the use case can guide a teacher without
-	// pretending that Mercado Pago is down.
 	Rejected struct {
 		StatusCode int
 		Code       string
@@ -180,8 +129,6 @@ type (
 	}
 )
 
-// timestampLayouts are tried in order. The offset-bearing one first, so a
-// service that does say the zone is believed rather than reinterpreted.
 var timestampLayouts = []string{
 	time.RFC3339Nano,
 	time.RFC3339,
@@ -195,8 +142,7 @@ func (t *Timestamp) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	for _, layout := range timestampLayouts {
-		// Naive datetimes are UTC: that is what the payments service stores,
-		// and reading them as local time would move an expiry by hours.
+
 		if parsed, err := time.ParseInLocation(layout, raw, time.UTC); err == nil {
 			t.Time = parsed
 			return nil
@@ -250,8 +196,7 @@ func (c *client) get(ctx context.Context, path string, out any) error {
 	if err != nil {
 		return &Unavailable{Err: err}
 	}
-	// The key is what identifies Practiq to the payments service; it also
-	// decides which product's rows the answer can contain.
+
 	req.Header.Set("X-API-Key", c.apiKey)
 
 	resp, err := c.http.Do(req)
@@ -391,13 +336,6 @@ func (c *client) send(ctx context.Context, method, path string, body any, out an
 	return nil
 }
 
-// rejectionDetail reads the payments service's two shapes of refusal.
-//
-// A gateway rejection is an object with a code; anything the service refuses
-// on its own is a bare string — HTTPException(detail="already_subscribed").
-// Reading only the object shape left every one of those with an empty code, so
-// they all came out as the fallback message: a teacher told to "probá de nuevo
-// en un rato" when the real answer was that they are already subscribed.
 func rejectionDetail(body []byte) (code, message string) {
 	var object struct {
 		Detail struct {
@@ -419,8 +357,7 @@ func rejectionDetail(body []byte) (code, message string) {
 }
 
 func (c *client) responseError(resp *http.Response) error {
-	// Payments only returns our own structured code/message. Read a bounded
-	// body anyway: gateway error pages must never become a memory risk.
+
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8<<10))
 	if resp.StatusCode < 400 || resp.StatusCode >= 500 {
 		return &Unavailable{Err: fmt.Errorf("payments responded %d", resp.StatusCode)}

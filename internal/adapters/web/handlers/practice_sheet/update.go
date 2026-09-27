@@ -16,13 +16,12 @@ type updateSheetInput struct {
 	SheetType   string   `json:"sheet_type"`
 	TestStyle   string   `json:"test_style"`
 	ExerciseIDs []string `json:"exercise_ids"`
-	// ScheduledAt is RFC 3339; empty clears the schedule.
+
 	ScheduledAt string `json:"scheduled_at"`
-	// MaxAttempts and TimeLimitMinutes are null or absent for "no limit", so
-	// clearing one is the same request as never setting it.
+
 	MaxAttempts      *int `json:"max_attempts"`
 	TimeLimitMinutes *int `json:"time_limit_minutes"`
-	// AvailableUntil is RFC 3339; empty leaves the window open.
+
 	AvailableUntil string `json:"available_until"`
 }
 
@@ -61,8 +60,7 @@ func NewUpdateHandler(uc ucPS.UpdateUsecase) gin.HandlerFunc {
 			})
 			return
 		}
-		// A window that closes before it opens locks the students out with no
-		// sign that anything is wrong.
+
 		if scheduledAt != nil && availableUntil != nil && !availableUntil.After(*scheduledAt) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"code":    "practice_sheet:invalid-window",

@@ -70,12 +70,11 @@ Ejemplo de formato: ["Dato curioso 1", "Dato curioso 2"]`, count, gradeContext, 
 func parseCuriositiesResponse(response string) ([]string, error) {
 	response = strings.TrimSpace(response)
 
-	// Try to extract JSON array from response
 	start := strings.Index(response, "[")
 	end := strings.LastIndex(response, "]")
 
 	if start == -1 || end == -1 || end <= start {
-		// If no JSON array found, try to parse as plain text lines
+
 		return parseAsLines(response), nil
 	}
 
@@ -86,7 +85,6 @@ func parseCuriositiesResponse(response string) ([]string, error) {
 		return parseAsLines(response), nil
 	}
 
-	// Filter empty strings and trim
 	var result []string
 	for _, c := range curiosities {
 		c = strings.TrimSpace(c)
@@ -103,7 +101,7 @@ func parseAsLines(response string) []string {
 	var result []string
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		// Remove common prefixes like "- ", "1. ", "• "
+
 		line = strings.TrimPrefix(line, "- ")
 		line = strings.TrimPrefix(line, "• ")
 		if len(line) > 2 && line[1] == '.' {

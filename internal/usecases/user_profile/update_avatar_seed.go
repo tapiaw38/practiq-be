@@ -41,8 +41,6 @@ func NewUpdateAvatarSeedUsecase(contextFactory appcontext.Factory) UpdateAvatarS
 func (u *updateAvatarSeedUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateAvatarSeedInput) (*UpdateAvatarSeedOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Same rule as the other profile writes: your own profile, or one in a
-	// school you administer.
 	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.ID); appErr != nil {
 		return nil, appErr
 	}
@@ -73,10 +71,6 @@ func (u *updateAvatarSeedUsecase) Execute(ctx context.Context, requesterID strin
 	return &UpdateAvatarSeedOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }
 
-// validAvatarSeed keeps the seed to characters that are safe to drop straight
-// into a URL or an SVG id. Empty is allowed: it clears the avatar back to the
-// default. The point is that the stored value can never be markup, a URL or
-// anything the client would resolve — only an opaque token to draw from.
 func validAvatarSeed(seed string) bool {
 	if len(seed) > maxAvatarSeedLength {
 		return false

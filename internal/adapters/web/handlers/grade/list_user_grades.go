@@ -13,8 +13,6 @@ func NewListUserGradesHandler(uc ucGrade.ListUserGradesUsecase) gin.HandlerFunc 
 	return func(c *gin.Context) {
 		userID := c.Param("userId")
 
-		// Los grados de otro usuario solo los ve quien da clase; el alumno,
-		// únicamente los propios.
 		if userID != middlewares.GetUserID(c) && !middlewares.IsTeacher(c) {
 			c.JSON(http.StatusForbidden, gin.H{"code": "common:forbidden", "message": "forbidden"})
 			return

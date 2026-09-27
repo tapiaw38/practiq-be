@@ -6,9 +6,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// The teacher is told a downgrade makes these students lose access. Until this
-// guard existed it did not: deactivating only stopped them counting against
-// the plan, so ten students dropped from a plan of fifteen kept working.
 func TestEnsureStudentCanWork(t *testing.T) {
 	course := &domain.Course{ID: "course-1", TeacherID: "teacher-1", SchoolID: "school-1"}
 

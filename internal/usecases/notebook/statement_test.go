@@ -18,8 +18,6 @@ func TestPageHasImageStatement(t *testing.T) {
 	}
 }
 
-// The teacher is called in only where the assistant fell short: it never read
-// the answer, or it read it and could not decide.
 func TestSubmissionNeedsTeacherReview(t *testing.T) {
 	correct := true
 	incorrect := false
@@ -46,8 +44,6 @@ func TestSubmissionNeedsTeacherReview(t *testing.T) {
 	}
 }
 
-// An unverified transcription of the teacher's statement used to send every
-// submission on that page to the teacher, even the ones graded cleanly.
 func TestUnverifiedStatementDoesNotForceReview(t *testing.T) {
 	graded := true
 	if submissionNeedsTeacherReview(true, &graded) {

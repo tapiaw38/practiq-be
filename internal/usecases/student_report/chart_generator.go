@@ -11,14 +11,14 @@ import (
 )
 
 var (
-	chartColorPrimary   = drawing.Color{R: 99, G: 102, B: 241, A: 255}  // Indigo
-	chartColorSecondary = drawing.Color{R: 124, G: 58, B: 237, A: 255}  // Violet
-	chartColorSuccess   = drawing.Color{R: 16, G: 185, B: 129, A: 255}  // Green
-	chartColorWarning   = drawing.Color{R: 245, G: 158, B: 11, A: 255}  // Amber
-	chartColorError     = drawing.Color{R: 239, G: 68, B: 68, A: 255}   // Red
-	chartColorMuted     = drawing.Color{R: 148, G: 163, B: 184, A: 255} // Slate 400
-	chartColorDark      = drawing.Color{R: 51, G: 65, B: 85, A: 255}    // Slate 700
-	chartColorLight     = drawing.Color{R: 241, G: 245, B: 249, A: 255} // Slate 100
+	chartColorPrimary   = drawing.Color{R: 99, G: 102, B: 241, A: 255}
+	chartColorSecondary = drawing.Color{R: 124, G: 58, B: 237, A: 255}
+	chartColorSuccess   = drawing.Color{R: 16, G: 185, B: 129, A: 255}
+	chartColorWarning   = drawing.Color{R: 245, G: 158, B: 11, A: 255}
+	chartColorError     = drawing.Color{R: 239, G: 68, B: 68, A: 255}
+	chartColorMuted     = drawing.Color{R: 148, G: 163, B: 184, A: 255}
+	chartColorDark      = drawing.Color{R: 51, G: 65, B: 85, A: 255}
+	chartColorLight     = drawing.Color{R: 241, G: 245, B: 249, A: 255}
 	chartColorBg        = drawing.Color{R: 255, G: 255, B: 255, A: 255}
 )
 
@@ -37,7 +37,6 @@ func GenerateMasteryBarChart(topics []domain.StudentTopicProgress, width, height
 		return nil, nil
 	}
 
-	// Sort by mastery descending and take top 10
 	sorted := make([]domain.StudentTopicProgress, len(topics))
 	copy(sorted, topics)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -115,14 +114,12 @@ func GenerateDailyAttemptsLineChart(daily []domain.DailyAttemptCount, width, hei
 		return nil, nil
 	}
 
-	// Sort by date
 	sorted := make([]domain.DailyAttemptCount, len(daily))
 	copy(sorted, daily)
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Date.Before(sorted[j].Date)
 	})
 
-	// Limit to last 14 days for cleaner chart
 	if len(sorted) > 14 {
 		sorted = sorted[len(sorted)-14:]
 	}

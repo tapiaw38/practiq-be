@@ -17,7 +17,6 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 )
 
-// fakeAssignments answers the two questions the allowance check asks.
 type fakeAssignments struct {
 	teacherstudentassignment.Repository
 	hasAccess bool
@@ -34,15 +33,13 @@ func (f *fakeAssignments) CountStudents(context.Context, string) (int, error) {
 
 type fakeSchools struct {
 	schoolRepo.Repository
-	// school is the teacher's own, returned by GetPersonal.
+
 	school *domain.School
-	// byID is every school reachable by name, so a test can have a teacher own
-	// one school while a student joins another.
+
 	byID     map[string]*domain.School
 	students int
 	memberOf []domain.SchoolMember
-	// studentsByActivity is the order the cap is applied in, least recently
-	// active first.
+
 	studentsByActivity []string
 }
 
@@ -62,9 +59,6 @@ func (f *fakeSchools) CountStudents(context.Context, string) (int, error) {
 	return f.students, nil
 }
 
-// memberOf is which schools the student already belongs to, and whether that
-// membership is still active. The limit asks this to decide whether adding
-// them again would move the count at all.
 func (f *fakeSchools) ListForUser(context.Context, string) ([]domain.SchoolMember, error) {
 	return f.memberOf, nil
 }
@@ -81,9 +75,6 @@ func (f *fakePayments) GetEntitlement(context.Context, string) (*payments.Entitl
 	return f.entitlement, f.err
 }
 
-// Answered because the grace window consults them: a plan that lapsed within
-// the last few days is still honoured, so an unpaid teacher is no longer one
-// lookup away from the free plan.
 func (f *fakePayments) ListSubscriptions(context.Context, string) ([]payments.Subscription, error) {
 	return f.subscriptions, f.err
 }
@@ -92,8 +83,6 @@ func (f *fakePayments) ListPlans(context.Context) ([]payments.Plan, error) {
 	return f.plans, f.err
 }
 
-// fakeProfiles carries the one thing the free plan depends on: how long ago
-// the teacher signed up, which is what the trial is counted from.
 type fakeProfiles struct {
 	userprofile.Repository
 	createdAt time.Time
@@ -103,7 +92,6 @@ func (f *fakeProfiles) Get(context.Context, string) (*domain.UserProfile, error)
 	return &domain.UserProfile{CreatedAt: f.createdAt}, nil
 }
 
-// withinTrial and pastTrial are the two sides of the free month.
 func withinTrial() *fakeProfiles {
 	return &fakeProfiles{createdAt: time.Now().AddDate(0, 0, -1)}
 }
@@ -147,8 +135,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 		payments    *fakePayments
 		schools     *fakeSchools
 		profiles    *fakeProfiles
-		// schoolID is the school the student joins. Empty means the teacher's
-		// own, which is what a direct assignment passes.
+
 		schoolID    string
 		wantRefused bool
 	}{
@@ -166,8 +153,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			wantRefused: true,
 		},
 		{
-			// These paths are idempotent. Re-running one must not start failing
-			// because the plan filled up in between; nothing is being added.
+
 			name:        "a student already in the school is always allowed",
 			assignments: &fakeAssignments{},
 			schools: func() *fakeSchools {
@@ -178,10 +164,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			payments: &fakePayments{entitlement: paidPlan(5)},
 		},
 		{
-			// The reason this asks about membership rather than about the
-			// teacher-student link. A downgrade deactivated this student, so
-			// they are not in the count — letting them back in is an addition,
-			// and it has to fit like any other.
+
 			name:        "a deactivated student is not already in, so the plan decides",
 			assignments: &fakeAssignments{hasAccess: true},
 			schools: func() *fakeSchools {
@@ -208,9 +191,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			profiles:    withinTrial(),
 		},
 		{
-			// The point of a trial. Once the free month is over the teacher
-			// subscribes or adds nobody, even though they are under the one
-			// student the free plan would otherwise allow.
+
 			name:        "an expired trial allows nobody at all",
 			assignments: &fakeAssignments{},
 			schools:     subscriptionSchool(0),
@@ -219,8 +200,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			wantRefused: true,
 		},
 		{
-			// Paying is what ends the trial's hold, so an expired one must not
-			// follow a teacher who subscribed.
+
 			name:        "a paid plan ignores the trial having run out",
 			assignments: &fakeAssignments{},
 			schools:     subscriptionSchool(3),
@@ -228,17 +208,14 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			profiles:    pastTrial(),
 		},
 		{
-			// The dangerous default. Treating an unreadable plan as the free
-			// one would stop every paying teacher from working whenever the
-			// payments service hiccups; one extra student costs far less.
+
 			name:        "a payments outage does not block the teacher",
 			assignments: &fakeAssignments{},
 			schools:     subscriptionSchool(500),
 			payments:    &fakePayments{err: errors.New("payments is down")},
 		},
 		{
-			// Institutions are invoiced outside the product, so there is no
-			// entitlement to read and nothing to cap.
+
 			name:        "a school billed directly has no limit",
 			assignments: &fakeAssignments{},
 			schools: &fakeSchools{
@@ -248,19 +225,14 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			payments: &fakePayments{entitlement: paidPlan(5)},
 		},
 		{
-			// A teacher who only works at institutions owns no school, and an
-			// institution's students are on nobody's subscription.
+
 			name:        "a teacher with no school of their own is not capped",
 			assignments: &fakeAssignments{},
 			schools:     &fakeSchools{school: nil},
 			payments:    &fakePayments{entitlement: paidPlan(5)},
 		},
 		{
-			// The bug this signature exists for. Every teacher is given a
-			// personal school on sign-up, so resolving the cap from the teacher
-			// charged an institution's student against that teacher's own plan
-			// — and refused them the moment it filled, over a limit the
-			// institution does not have.
+
 			name:        "a full personal plan does not refuse an institution's student",
 			assignments: &fakeAssignments{},
 			schools: &fakeSchools{
@@ -272,8 +244,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			schoolID: "inst",
 		},
 		{
-			// Institutions are invoiced by contract. The billing column saying
-			// otherwise does not create a per-student price nobody agreed to.
+
 			name:        "an institution is uncapped even when billed by subscription",
 			assignments: &fakeAssignments{},
 			schools: &fakeSchools{
@@ -285,8 +256,7 @@ func TestEnsureCanAddStudent(t *testing.T) {
 			schoolID: "inst",
 		},
 		{
-			// Naming the teacher's own school must behave exactly like naming
-			// none, or the same limit would depend on which caller asked.
+
 			name:        "naming the personal school still applies its plan",
 			assignments: &fakeAssignments{},
 			schools: &fakeSchools{
@@ -316,8 +286,6 @@ func TestEnsureCanAddStudent(t *testing.T) {
 	}
 }
 
-// A card that expires on a Friday must not lock a class out on Saturday. The
-// plan is honoured for a few days more, at its own cap — not the free one.
 func TestGraceKeepsTheLapsedPlan(t *testing.T) {
 	lapsedYesterday := payments.Timestamp{Time: time.Now().UTC().AddDate(0, 0, -1)}
 	lapsedLongAgo := payments.Timestamp{Time: time.Now().UTC().AddDate(0, 0, -domain.GraceDays-1)}
@@ -328,8 +296,7 @@ func TestGraceKeepsTheLapsedPlan(t *testing.T) {
 		wantMaxStudents int
 	}{
 		{"lapsed yesterday keeps the plan", &lapsedYesterday, 15},
-		// Past the grace window the trial decides, and this teacher's is spent:
-		// an allowance of zero, which is what puts their students in read-only.
+
 		{"grace spent falls to the expired trial", &lapsedLongAgo, 0},
 		{"no recorded period is not grace", nil, 0},
 	}
@@ -337,7 +304,7 @@ func TestGraceKeepsTheLapsedPlan(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app := appWith(nil, &fakePayments{
-				// Not entitled: nothing is being paid for any more.
+
 				entitlement: &payments.Entitlement{Active: false},
 				subscriptions: []payments.Subscription{
 					{ID: 10, PlanID: 2, Status: "cancelled", CurrentPeriodEnd: tc.periodEnd},
@@ -354,8 +321,7 @@ func TestGraceKeepsTheLapsedPlan(t *testing.T) {
 			if scope.Plan.MaxStudents != tc.wantMaxStudents {
 				t.Fatalf("max students = %d, want %d", scope.Plan.MaxStudents, tc.wantMaxStudents)
 			}
-			// Grace is never "active": nothing is being charged, and the screen
-			// must not offer it as a running subscription.
+
 			if scope.Active {
 				t.Fatal("a lapsed plan must not read as active")
 			}
@@ -363,8 +329,6 @@ func TestGraceKeepsTheLapsedPlan(t *testing.T) {
 	}
 }
 
-// The free month running out is not "one student over the cap": there is no
-// cap left, so the whole school stops adding work.
 func TestStudentsCanWork(t *testing.T) {
 	inGrace := payments.Timestamp{Time: time.Now().UTC().AddDate(0, 0, -1)}
 
@@ -420,14 +384,11 @@ func TestStudentsCanWork(t *testing.T) {
 	}
 }
 
-// Changing to a smaller plan deactivates nobody on purpose — the teacher gets
-// to choose. Until they do, the cap still has to bite, or a plan of five holds
-// fifteen students for as long as nobody opens the screen.
 func TestStudentMayWorkAppliesTheCapBeforeTheTeacherChooses(t *testing.T) {
 	paidForFive := &fakePayments{
 		entitlement: &payments.Entitlement{Active: true, Metadata: map[string]any{"max_students": float64(2)}},
 	}
-	// Least recently active first: the first two are the ones the cap drops.
+
 	schools := subscriptionSchool(4)
 	schools.studentsByActivity = []string{"dormant-1", "dormant-2", "working-1", "working-2"}
 

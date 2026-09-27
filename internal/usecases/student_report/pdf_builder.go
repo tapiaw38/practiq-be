@@ -19,19 +19,18 @@ const (
 	contentWidth = pageWidth - marginLeft - marginRight
 )
 
-// Colors
 var (
-	colorPrimary   = [3]int{99, 102, 241}  // Indigo
-	colorSecondary = [3]int{124, 58, 237}  // Violet
-	colorSuccess   = [3]int{16, 185, 129}  // Green
-	colorWarning   = [3]int{245, 158, 11}  // Amber
-	colorError     = [3]int{239, 68, 68}   // Red
-	colorDark      = [3]int{30, 41, 59}    // Slate 800
-	colorMuted     = [3]int{100, 116, 139} // Slate 500
-	colorLight     = [3]int{241, 245, 249} // Slate 100
+	colorPrimary   = [3]int{99, 102, 241}
+	colorSecondary = [3]int{124, 58, 237}
+	colorSuccess   = [3]int{16, 185, 129}
+	colorWarning   = [3]int{245, 158, 11}
+	colorError     = [3]int{239, 68, 68}
+	colorDark      = [3]int{30, 41, 59}
+	colorMuted     = [3]int{100, 116, 139}
+	colorLight     = [3]int{241, 245, 249}
 	colorWhite     = [3]int{255, 255, 255}
-	colorTableHead = [3]int{51, 65, 85}    // Slate 700
-	colorTableAlt  = [3]int{248, 250, 252} // Slate 50
+	colorTableHead = [3]int{51, 65, 85}
+	colorTableAlt  = [3]int{248, 250, 252}
 )
 
 type PDFBuilder struct {
@@ -74,40 +73,33 @@ func (b *PDFBuilder) Build() ([]byte, error) {
 func (b *PDFBuilder) renderHeader() {
 	pdf := b.pdf
 
-	// Top accent bar
 	pdf.SetFillColor(colorSecondary[0], colorSecondary[1], colorSecondary[2])
 	pdf.Rect(0, 0, pageWidth, 8, "F")
 
-	// Logo/Brand area
 	pdf.SetY(15)
 	pdf.SetFont("Arial", "B", 24)
 	pdf.SetTextColor(colorSecondary[0], colorSecondary[1], colorSecondary[2])
 	pdf.CellFormat(contentWidth, 10, "PRACTIQ", "", 1, "L", false, 0, "")
 
-	// Report title
 	pdf.SetFont("Arial", "", 11)
 	pdf.SetTextColor(colorMuted[0], colorMuted[1], colorMuted[2])
 	pdf.CellFormat(contentWidth, 5, "Reporte de Progreso Academico", "", 1, "L", false, 0, "")
 	pdf.Ln(8)
 
-	// Student info card
 	pdf.SetFillColor(colorLight[0], colorLight[1], colorLight[2])
 	cardY := pdf.GetY()
 	pdf.Rect(marginLeft, cardY, contentWidth, 28, "F")
 
-	// Student name
 	pdf.SetXY(marginLeft+8, cardY+5)
 	pdf.SetFont("Arial", "B", 14)
 	pdf.SetTextColor(colorDark[0], colorDark[1], colorDark[2])
 	pdf.CellFormat(100, 6, b.data.StudentName, "", 0, "L", false, 0, "")
 
-	// Student email
 	pdf.SetXY(marginLeft+8, cardY+12)
 	pdf.SetFont("Arial", "", 10)
 	pdf.SetTextColor(colorMuted[0], colorMuted[1], colorMuted[2])
 	pdf.CellFormat(100, 5, b.data.StudentEmail, "", 0, "L", false, 0, "")
 
-	// Period info (right side)
 	periodStr := "Periodo: Todo el historial"
 	if b.data.Period.From != nil && b.data.Period.To != nil {
 		periodStr = fmt.Sprintf("Periodo: %s al %s",
@@ -124,7 +116,6 @@ func (b *PDFBuilder) renderHeader() {
 	pdf.SetTextColor(colorMuted[0], colorMuted[1], colorMuted[2])
 	pdf.CellFormat(100, 4, periodStr, "", 0, "L", false, 0, "")
 
-	// Generation date (right side)
 	pdf.SetXY(contentWidth-40, cardY+5)
 	pdf.SetFont("Arial", "", 9)
 	pdf.CellFormat(40, 5, "Generado:", "", 0, "R", false, 0, "")
@@ -146,7 +137,6 @@ func (b *PDFBuilder) renderSummaryCards() {
 
 	b.renderSectionTitle("Resumen General")
 
-	// 3 cards per row
 	cardWidth := (contentWidth - 8) / 3
 	cardHeight := 22.0
 	startY := pdf.GetY()
@@ -170,21 +160,17 @@ func (b *PDFBuilder) renderSummaryCards() {
 		x := marginLeft + float64(col)*(cardWidth+4)
 		y := startY + float64(row)*(cardHeight+4)
 
-		// Card background
 		pdf.SetFillColor(colorLight[0], colorLight[1], colorLight[2])
 		pdf.RoundedRect(x, y, cardWidth, cardHeight, 2, "1234", "F")
 
-		// Color accent bar
 		pdf.SetFillColor(card.color[0], card.color[1], card.color[2])
 		pdf.Rect(x, y, 3, cardHeight, "F")
 
-		// Value
 		pdf.SetXY(x+8, y+4)
 		pdf.SetFont("Arial", "B", 16)
 		pdf.SetTextColor(colorDark[0], colorDark[1], colorDark[2])
 		pdf.CellFormat(cardWidth-12, 8, card.value, "", 0, "L", false, 0, "")
 
-		// Label
 		pdf.SetXY(x+8, y+13)
 		pdf.SetFont("Arial", "", 8)
 		pdf.SetTextColor(colorMuted[0], colorMuted[1], colorMuted[2])
@@ -203,7 +189,6 @@ func (b *PDFBuilder) renderTopicProgressSection() {
 	b.checkPageBreak(80)
 	b.renderSectionTitle("Dominio por Tema")
 
-	// Render chart
 	chartData, err := GenerateMasteryBarChart(b.data.TopicProgress, 520, 220)
 	if err == nil && chartData != nil {
 		imgName := "mastery_chart"
@@ -213,7 +198,6 @@ func (b *PDFBuilder) renderTopicProgressSection() {
 		pdf.Ln(58)
 	}
 
-	// Top 5 topics table
 	b.renderTopTopicsTable()
 }
 
@@ -225,7 +209,6 @@ func (b *PDFBuilder) renderTopTopicsTable() {
 		return
 	}
 
-	// Sort and limit
 	limit := 5
 	if len(topics) < limit {
 		limit = len(topics)
@@ -233,7 +216,6 @@ func (b *PDFBuilder) renderTopTopicsTable() {
 
 	b.checkPageBreak(50)
 
-	// Table header
 	colWidths := []float64{80, 30, 30, 40}
 	headers := []string{"Tema", "Dominio", "Nivel", "Intentos"}
 
@@ -246,7 +228,6 @@ func (b *PDFBuilder) renderTopTopicsTable() {
 	}
 	pdf.Ln(-1)
 
-	// Table rows
 	pdf.SetFont("Arial", "", 9)
 	for i := 0; i < limit; i++ {
 		t := topics[i]
@@ -257,7 +238,6 @@ func (b *PDFBuilder) renderTopTopicsTable() {
 			pdf.SetFillColor(colorWhite[0], colorWhite[1], colorWhite[2])
 		}
 
-		// Topic name
 		title := t.TopicTitle
 		if len(title) > 35 {
 			title = title[:32] + "..."
@@ -265,16 +245,13 @@ func (b *PDFBuilder) renderTopTopicsTable() {
 		pdf.SetTextColor(colorDark[0], colorDark[1], colorDark[2])
 		pdf.CellFormat(colWidths[0], 7, title, "", 0, "L", true, 0, "")
 
-		// Mastery with color
 		mc := b.masteryColorRGB(t.MasteryScore)
 		pdf.SetTextColor(mc[0], mc[1], mc[2])
 		pdf.CellFormat(colWidths[1], 7, fmt.Sprintf("%.0f%%", t.MasteryScore), "", 0, "C", true, 0, "")
 
-		// Level
 		pdf.SetTextColor(colorDark[0], colorDark[1], colorDark[2])
 		pdf.CellFormat(colWidths[2], 7, fmt.Sprintf("%d", t.CurrentLevel), "", 0, "C", true, 0, "")
 
-		// Attempts
 		pdf.CellFormat(colWidths[3], 7, fmt.Sprintf("%d/%d", t.CorrectAttempts, t.TotalAttempts), "", 0, "C", true, 0, "")
 		pdf.Ln(-1)
 	}
@@ -291,7 +268,6 @@ func (b *PDFBuilder) renderCourseTable() {
 	b.checkPageBreak(60)
 	b.renderSectionTitle("Progreso por Curso")
 
-	// Table header
 	colWidths := []float64{70, 25, 30, 30, 25}
 	headers := []string{"Curso", "Nivel", "Temas", "Dominio", "Actividad"}
 
@@ -304,7 +280,6 @@ func (b *PDFBuilder) renderCourseTable() {
 	}
 	pdf.Ln(-1)
 
-	// Table rows
 	pdf.SetFont("Arial", "", 9)
 	for i, c := range b.data.CourseProgress {
 		if i%2 == 0 {
@@ -349,7 +324,6 @@ func (b *PDFBuilder) renderActivitySection() {
 	b.checkPageBreak(80)
 	b.renderSectionTitle("Actividad Reciente")
 
-	// Render chart
 	chartData, err := GenerateDailyAttemptsLineChart(b.data.DailyAttempts, 520, 180)
 	if err == nil && chartData != nil {
 		imgName := "daily_chart"
@@ -359,7 +333,6 @@ func (b *PDFBuilder) renderActivitySection() {
 		pdf.Ln(50)
 	}
 
-	// Activity stats
 	b.renderActivityStats()
 }
 
@@ -370,7 +343,6 @@ func (b *PDFBuilder) renderActivityStats() {
 
 	pdf := b.pdf
 
-	// Calculate stats
 	var totalAttempts, totalCorrect, daysActive int
 	for _, d := range b.data.DailyAttempts {
 		totalAttempts += d.Total
@@ -385,7 +357,6 @@ func (b *PDFBuilder) renderActivityStats() {
 		avgPerDay = float64(totalAttempts) / float64(daysActive)
 	}
 
-	// Stats row
 	pdf.SetFont("Arial", "", 9)
 	pdf.SetTextColor(colorMuted[0], colorMuted[1], colorMuted[2])
 
@@ -402,7 +373,6 @@ func (b *PDFBuilder) renderSectionTitle(title string) {
 	pdf.SetTextColor(colorDark[0], colorDark[1], colorDark[2])
 	pdf.CellFormat(contentWidth, 8, title, "", 1, "L", false, 0, "")
 
-	// Underline
 	pdf.SetDrawColor(colorSecondary[0], colorSecondary[1], colorSecondary[2])
 	pdf.SetLineWidth(0.5)
 	y := pdf.GetY()

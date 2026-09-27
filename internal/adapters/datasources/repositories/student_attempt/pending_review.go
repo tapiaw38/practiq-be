@@ -8,28 +8,18 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/domain"
 )
 
-// PendingReviewFilter narrows the queue. Empty strings mean "no filter", the
-// same convention the notebook submission queue uses.
 type PendingReviewFilter struct {
 	TeacherID string
 	CourseID  string
 	StudentID string
-	// SheetType narrows the queue further, but the queue only ever contains
-	// level tests: a practice is graded on submit and never handed to a
-	// teacher, so filtering by "practice" returns nothing.
+
 	SheetType string
-	// Reviewed is "", "reviewed" or "unreviewed".
+
 	Reviewed string
 	Limit    int
 	Offset   int
 }
 
-// ListPendingReview returns answers requiring a teacher from that teacher's
-// courses: level test answers the assistant could not resolve. It used to admit
-// every answer carrying an attachment, which put files the assistant had
-// already graded in front of the teacher. Practice answers never qualify — a
-// practice is graded on submit and must not wait on a correction — and homework
-// has its own queue (see the notebook submission repository).
 func (r *repository) ListPendingReview(ctx context.Context, filter PendingReviewFilter) ([]domain.PendingAttemptReview, error) {
 	query := `
 		SELECT sa.id, sa.student_id, sa.exercise_id, e.question, e.type, COALESCE(e.metadata::text, ''),
@@ -60,8 +50,7 @@ func (r *repository) ListPendingReview(ctx context.Context, filter PendingReview
 	if limit <= 0 {
 		limit = 100
 	}
-	// One row past the page so the caller can tell whether another exists; a
-	// full page is not proof of it.
+
 	query += fmt.Sprintf(` LIMIT $%d OFFSET $%d`, len(args)+1, len(args)+2)
 	args = append(args, limit+1, filter.Offset)
 
@@ -103,15 +92,13 @@ func (r *repository) ListPendingReview(ctx context.Context, filter PendingReview
 		}
 		exercise := domain.Exercise{Metadata: exerciseMetadata}
 		review.StatementMediaURL = exercise.MediaURL()
-		// Only the flag: the image itself is fetched when the teacher opens it.
+
 		review.HasTeacherImage = exercise.TeacherImage() != ""
 		reviews = append(reviews, review)
 	}
 	return reviews, rows.Err()
 }
 
-// GetTeacherForAttempt resolves who owns the course an attempt belongs to, so
-// the review endpoint can reject anyone else.
 func (r *repository) GetTeacherForAttempt(ctx context.Context, attemptID string) (string, error) {
 	var teacherID string
 	err := r.db.QueryRowContext(ctx, `
@@ -128,8 +115,6 @@ func (r *repository) GetTeacherForAttempt(ctx context.Context, attemptID string)
 	return teacherID, err
 }
 
-// GetExerciseIDForAttempt resolves which exercise an attempt answered, so the
-// statement can be fetched without trusting an id from the client.
 func (r *repository) GetExerciseIDForAttempt(ctx context.Context, attemptID string) (string, error) {
 	var exerciseID string
 	err := r.db.QueryRowContext(ctx, `
@@ -141,8 +126,6 @@ func (r *repository) GetExerciseIDForAttempt(ctx context.Context, attemptID stri
 	return exerciseID, err
 }
 
-// Review records the teacher's verdict. The score follows the verdict so
-// progress reflects the corrected answer.
 func (r *repository) Review(ctx context.Context, attemptID string, isCorrect bool, feedback string) error {
 	score := 0.0
 	if isCorrect {

@@ -72,9 +72,6 @@ func (r *repository) Reopen(ctx context.Context, id string) error {
 	return err
 }
 
-// Update only touches what a caller named. Kind and billing decide what a
-// school allows and what it is charged, so blanking one by omission would
-// quietly change both.
 func (r *repository) Update(ctx context.Context, id string, s domain.School) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE schools SET
@@ -134,17 +131,6 @@ func (r *repository) CountStudents(ctx context.Context, schoolID string) (int, e
 	return count, err
 }
 
-// ListStudentsByActivity returns a school's active students, least recently
-// active first.
-//
-// That order is what a downgrade deactivates by. Ordering by seniority instead
-// would keep the students who finished months ago and cut the ones sitting in
-// class today: a teacher's oldest students are usually their most finished
-// ones. Students who never practised sort first, before anyone who did.
-// ListStudentsWithActivity is ListStudentsByActivity with the dates kept.
-//
-// The order alone tells a teacher nothing: choosing who stays means seeing who
-// has not practised since March, which is the very thing the order is built on.
 func (r *repository) ListStudentsWithActivity(ctx context.Context, schoolID string) ([]domain.StudentActivity, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT sm.user_id, activity.last_at
@@ -207,9 +193,6 @@ func (r *repository) ListStudentsByActivity(ctx context.Context, schoolID string
 	return ids, rows.Err()
 }
 
-// SetMemberActive is what a downgrade uses to push a student out of a plan and
-// what a teacher uses to bring one back. Nothing is deleted: the student keeps
-// their account and their history, and stops reaching this school's courses.
 func (r *repository) SetMemberActive(ctx context.Context, schoolID, userID string, active bool) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE school_members SET active = $3

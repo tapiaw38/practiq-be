@@ -32,10 +32,7 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 
 		jobID := utils.NewSubmitJobID()
 		now := time.Now().UTC()
-		// Taken here, where the delivery is accepted, and not inside the
-		// goroutine: what has to be ordered is the order the student sent
-		// them, and the goroutines finish in whatever order the assistant
-		// replies.
+
 		version := now.UnixNano()
 		if err := repo.Create(c.Request.Context(), domain.SubmitJob{
 			ID:        jobID,
@@ -45,10 +42,7 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 			CreatedAt: now,
 			UpdatedAt: now,
 		}); err != nil {
-			// Returning 202 with a job that was never stored hands the client an
-			// id that polls as not-found forever, while the submission still
-			// runs — so the student cannot see the result and may retry work
-			// that was already applied.
+
 			log.Printf("failed to create submit job: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"code":    "practice_sheet:submit-job-not-created",
@@ -73,9 +67,7 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 			})
 			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer finishCancel()
-			// A delivery the student has already replaced is not a failure to
-			// report. Telling them this one failed would send them to resubmit
-			// work that the newer answer already covers.
+
 			if errors.Is(err, notebookRepo.ErrStaleSubmission) {
 				if updateErr := repo.Update(finishCtx, domain.SubmitJob{
 					ID:     jid,

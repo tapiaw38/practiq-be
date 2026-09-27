@@ -31,7 +31,6 @@ func NewRemoveMemberUsecase(contextFactory appcontext.Factory) RemoveMemberUseca
 func (u *removeMemberUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID, userID string) (*RemoveMemberOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// The route lets a teacher ask; this decides whose grade they may touch.
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeGetError, err)

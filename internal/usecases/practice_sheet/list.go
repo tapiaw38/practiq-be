@@ -51,9 +51,6 @@ func (u *listUsecase) Execute(ctx context.Context, requesterID string, isSuperAd
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetListError, err)
 	}
 
-	// The listing carries no exercise bodies, so there is nothing here that
-	// depends on who is asking: the answers and statements it used to gate are
-	// no longer part of this payload at all.
 	var data []PracticeSheetData
 	for _, ps := range sheets {
 		data = append(data, toSheetSummary(ps))

@@ -27,11 +27,7 @@ func (r *repository) List(ctx context.Context, opts ListFilterOptions) ([]domain
 		query += fmt.Sprintf(` AND (EXISTS (SELECT 1 FROM enrollments e WHERE e.course_id = c.id AND e.student_id = $%d) OR EXISTS (SELECT 1 FROM grade_memberships gm WHERE gm.grade_id = c.grade_id AND gm.user_id = $%d))`, argIdx, argIdx)
 		args = append(args, opts.StudentID)
 		argIdx++
-		// A draft is not ready to be read, so it stays hidden even from a
-		// student already enrolled. Archived stays visible: they keep their own
-		// work and marks after the course ends. Every read path that asks
-		// "may this student open this course?" resolves it through here, so
-		// this one condition covers listings and content alike.
+
 		query += ` AND c.status IN ('published', 'archived')`
 	}
 	if opts.SchoolID != "" {

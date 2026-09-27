@@ -102,8 +102,6 @@ func (g *gateway) sendTextMessage(ctx context.Context, baseURL, apiKey, conversa
 	return lastAssistantMessage(resp.Body)
 }
 
-// lastAssistantMessage picks the newest assistant reply out of the conversation
-// payload the assistant returns after a message is posted.
 func lastAssistantMessage(body io.Reader) (string, error) {
 	responseBody, err := readAssistantResponseBody(body)
 	if err != nil {
@@ -131,8 +129,6 @@ func validateAssistantURL(rawURL string) error {
 	})
 }
 
-// ValidateBaseURL lets the admin panel refuse a URL at the moment it is set
-// with the same rule every call applies, instead of at the first evaluation.
 func ValidateBaseURL(rawURL string) error {
 	return validateAssistantURL(rawURL)
 }

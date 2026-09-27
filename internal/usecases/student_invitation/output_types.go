@@ -9,8 +9,7 @@ import (
 
 type InvitationData struct {
 	ID string `json:"id"`
-	// Code viaja sin guion y FormattedCode con él: el alumno escribe
-	// cualquiera de los dos y la pantalla muestra el legible.
+
 	Code          string     `json:"code"`
 	FormattedCode string     `json:"formatted_code"`
 	Uses          int        `json:"uses"`

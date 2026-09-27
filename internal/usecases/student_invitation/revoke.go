@@ -22,10 +22,6 @@ func NewRevokeUsecase(contextFactory appcontext.Factory) RevokeUsecase {
 	return &revokeUsecase{contextFactory: contextFactory}
 }
 
-// Execute no distingue entre una invitación ajena y una inexistente: el
-// repositorio filtra por teacher_id y en ambos casos no cambia ninguna fila.
-// Los alumnos ya vinculados siguen vinculados; revocar corta el ingreso de
-// nuevos, para desvincular está la baja de la asignación.
 func (u *revokeUsecase) Execute(ctx context.Context, id, teacherID string) apperrors.ApplicationError {
 	app := u.contextFactory()
 

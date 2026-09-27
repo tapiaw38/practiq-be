@@ -6,9 +6,7 @@ import (
 )
 
 func (r *repository) GetLastPracticedSheetID(ctx context.Context, studentID string) (string, error) {
-	// Joined through an active course: PracticeSheet.Get rejects sheets whose
-	// course is soft-deleted, so without this the progress payload advertised a
-	// "continue where you left off" sheet that could not be opened.
+
 	query := `
 		SELECT COALESCE(sa.practice_sheet_id::text, '')
 		FROM student_attempts sa

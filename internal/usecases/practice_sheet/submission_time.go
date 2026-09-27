@@ -7,8 +7,6 @@ import (
 
 type submissionReceivedAtKey struct{}
 
-// WithSubmissionReceivedAt preserves when an async submission reached the
-// server. A queued worker must not turn an on-time delivery into a timeout.
 func WithSubmissionReceivedAt(ctx context.Context, receivedAt time.Time) context.Context {
 	return context.WithValue(ctx, submissionReceivedAtKey{}, receivedAt)
 }

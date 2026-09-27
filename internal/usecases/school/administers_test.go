@@ -22,9 +22,7 @@ func TestEnsureAdministers(t *testing.T) {
 			wantAllowed: true,
 		},
 		{
-			// The reason the guard exists. Opening these routes beyond the
-			// platform superadmin without it lets any teacher rename another
-			// school's grades.
+
 			name:     "an admin may not touch another school",
 			members:  []domain.SchoolMember{{SchoolID: "mine", Role: domain.SchoolRoleAdmin, Active: true}},
 			schoolID: "someone-elses",
@@ -40,8 +38,7 @@ func TestEnsureAdministers(t *testing.T) {
 			schoolID: "school",
 		},
 		{
-			// Rows from before the split, or created while nothing assigned a
-			// school. The first teacher to find one must not take it over.
+
 			name:     "a row with no school belongs to nobody",
 			members:  []domain.SchoolMember{{SchoolID: "school", Role: domain.SchoolRoleAdmin, Active: true}},
 			schoolID: "",

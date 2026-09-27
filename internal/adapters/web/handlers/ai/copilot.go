@@ -9,7 +9,6 @@ import (
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
 )
 
-// Copilot response stays owned by Practiq. Gillie remains a text/audio engine.
 type copilotInput struct {
 	ExerciseID    string `json:"exercise_id"`
 	ContextID     string `json:"context_id"`
@@ -38,8 +37,7 @@ func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 		c.JSON(http.StatusOK, gin.H{"data": gin.H{
 			"context_id": input.ContextID,
 			"blocks":     []gin.H{{"type": intent, "content": output.Data.Response}},
-			// Only declarative prompt actions reach frontend. No remote tool name,
-			// selector or executable payload can be supplied by AI output.
+
 			"suggested_actions": []gin.H{
 				{"id": "hint", "type": "prompt", "label": "Otra pista", "prompt": "Dame otra pista sin revelar la respuesta."},
 				{"id": "explanation", "type": "prompt", "label": "Explicame", "prompt": "Explicame paso a paso usando el ejercicio actual."},
@@ -50,8 +48,6 @@ func NewCopilotHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 	}
 }
 
-// NewCopilotStreamHandler sends an immediate status event, then final structured
-// response. Gillie is intentionally unchanged: it currently returns complete text.
 func NewCopilotStreamHandler(help ucAI.HelpUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var input copilotInput

@@ -19,7 +19,7 @@ func TestSortSheetsForPath(t *testing.T) {
 	base := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
 
 	t.Run("oldest first", func(t *testing.T) {
-		// The listing arrives newest-first, which is what the teacher sees.
+
 		sheets := []domain.PracticeSheet{
 			{ID: "c", Title: "Practica 3", CreatedAt: base.Add(2 * time.Hour)},
 			{ID: "b", Title: "Practica 2", CreatedAt: base.Add(time.Hour)},
@@ -36,7 +36,7 @@ func TestSortSheetsForPath(t *testing.T) {
 	})
 
 	t.Run("same instant falls back to id", func(t *testing.T) {
-		// Whatever order the database hands these back in, the path is the same.
+
 		forward := []domain.PracticeSheet{
 			{ID: "a1", Title: "A", CreatedAt: base},
 			{ID: "b2", Title: "B", CreatedAt: base},

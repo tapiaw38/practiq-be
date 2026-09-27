@@ -37,7 +37,6 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Verify material exists and check ownership
 	material, err := app.Repositories.Material.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialGetError, err)
@@ -50,9 +49,6 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, apperrors.NewForbiddenError()
 	}
 
-	// Same rule as create, except an unchanged URL always passes: the file may
-	// predate this check, or belong to another teacher of the same course, and
-	// re-saving a title must not fail because of it.
 	if input.FileURL != "" && input.FileURL != material.FileURL &&
 		(app.ImageStorage == nil ||
 			!app.ImageStorage.OwnsFileURL(input.FileURL, materialsFolder, requesterID)) {

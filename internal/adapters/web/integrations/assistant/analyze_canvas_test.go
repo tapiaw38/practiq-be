@@ -21,9 +21,6 @@ func TestCanvasResponseAcceptsStudentAnswerOrUnreadable(t *testing.T) {
 	}
 }
 
-// A page of worked problems is the normal case here and is far past the 120
-// characters the single-answer check allows, which is what made every notebook
-// transcription look malformed and retry until the attempts ran out.
 func TestNotebookResponseAcceptsAFullPage(t *testing.T) {
 	page := "1) 2 + 3 = 5\n2) 4 + 4 = 8\n3) 10 - 7 = 3\n4) 6 + 6 = 12\n" +
 		"5) 9 - 2 = 7\n6) 8 + 5 = 13\n7) 12 - 4 = 8\n8) 3 + 9 = 12\n9) 15 - 6 = 9"
@@ -55,10 +52,6 @@ func TestNotebookResponseKeepsTheOtherGuards(t *testing.T) {
 	}
 }
 
-// normalizeCanvasResponse unwraps fences before any check sees them, so a
-// fenced transcription is usable rather than malformed. Pinned because the
-// original validator carried a Contains("```") guard that could never fire and
-// read as protection that was not there.
 func TestNotebookResponseUnwrapsFencedTranscription(t *testing.T) {
 	if !isExpectedNotebookResponse("```\n1) 2 + 3 = 5\n```") {
 		t.Fatal("a fenced transcription should be unwrapped and accepted")
@@ -68,8 +61,6 @@ func TestNotebookResponseUnwrapsFencedTranscription(t *testing.T) {
 	}
 }
 
-// The teacher's page image is uploaded and stored as a URL, so the expected
-// answer reached the model as "https://….png" instead of a placeholder.
 func TestNotebookPromptCarriesContextNotAURL(t *testing.T) {
 	prompt := buildNotebookCanvasPrompt("Cuaderno - Pagina 1. Titulo: Sumas. Instrucciones: resolve.")
 	if !strings.Contains(prompt, "Titulo: Sumas") {

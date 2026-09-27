@@ -12,9 +12,6 @@ type redeemInput struct {
 	Code string `json:"code" binding:"required"`
 }
 
-// NewCreateHandler genera el código del docente que hace el pedido. El
-// teacher_id sale del token: aceptarlo del cuerpo dejaría que un docente
-// genere códigos a nombre de otro.
 func NewCreateHandler(uc ucInvitation.CreateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		output, appErr := uc.Execute(c, middlewares.GetUserID(c))

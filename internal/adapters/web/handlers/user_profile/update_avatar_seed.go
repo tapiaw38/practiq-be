@@ -12,8 +12,6 @@ type avatarSeedInput struct {
 	AvatarSeed string `json:"avatar_seed"`
 }
 
-// Self-service only: the id comes from the token, never from the body, so
-// nobody repaints somebody else's avatar.
 func NewUpdateAvatarSeedHandler(uc ucProfile.UpdateAvatarSeedUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var input avatarSeedInput

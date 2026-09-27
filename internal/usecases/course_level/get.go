@@ -55,9 +55,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 		return nil, apperrors.NewApplicationError(mappings.InternalServerError, err)
 	}
 	sortSheetsForPath(sheets)
-	// A sheet owns its topic, but the level response previously discarded that
-	// relation. Resolve it once so student navigation can separate practices by
-	// subject without one topic query per sheet.
+
 	topicIDs := make([]string, 0, len(sheets))
 	seenTopics := make(map[string]struct{}, len(sheets))
 	for _, sheet := range sheets {
@@ -133,9 +131,7 @@ func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdm
 			if statusErr != nil {
 				return nil, apperrors.NewApplicationError(mappings.InternalServerError, statusErr)
 			}
-			// "Submitted" is what closes the test on screen, so it now means
-			// "no attempts left" rather than "sent once": a test that allows
-			// three stays open until the third.
+
 			submitted := attempts > 0
 			sd.AttemptsUsed = attempts
 			sd.AttemptsAllowed = s.AttemptsAllowed()
@@ -213,25 +209,16 @@ func requesterCanReadCourse(ctx context.Context, app *appcontext.Context, reques
 	return apperrors.NewForbiddenError()
 }
 
-// sortSheetsForPath puts the sheets in the order a student walks them.
-//
-// The listing they come from is newest-first, which is what a teacher wants of
-// their own work and the reverse of what a student should be handed: it put
-// Practica 2 above Practica 1. Sorted here rather than in the query, because
-// the teacher's listing reads the same one.
 func sortSheetsForPath(sheets []domain.PracticeSheet) {
 	sort.SliceStable(sheets, func(i, j int) bool {
 		if !sheets[i].CreatedAt.Equal(sheets[j].CreatedAt) {
 			return sheets[i].CreatedAt.Before(sheets[j].CreatedAt)
 		}
-		// Two sheets created in the same second have no order of their own, and
-		// the database is free to return them differently on every call. The id
-		// breaks the tie so the path does not rearrange itself between visits.
+
 		return sheets[i].ID < sheets[j].ID
 	})
 }
 
-// sortNotebooksForPath is the same reversal: the two sit on one path.
 func sortNotebooksForPath(notebooks []domain.Notebook) {
 	sort.SliceStable(notebooks, func(i, j int) bool {
 		if !notebooks[i].CreatedAt.Equal(notebooks[j].CreatedAt) {

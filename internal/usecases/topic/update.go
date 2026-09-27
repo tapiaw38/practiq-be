@@ -36,7 +36,6 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	// Verify topic exists and check ownership
 	topic, err := app.Repositories.Topic.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.TopicGetError, err)

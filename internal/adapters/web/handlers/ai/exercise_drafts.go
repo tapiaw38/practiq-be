@@ -17,15 +17,11 @@ import (
 	ucExercise "github.com/tapiaw38/practiq-be/internal/usecases/exercise"
 )
 
-// Drafts are deliberately not persisted. A teacher reviews every field before
-// the normal exercise creation endpoint writes anything to the course.
 const maxExerciseSourceBytes = 20 << 20
 
 func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// List uses the same requesterCanWriteTopic guard as create. Do this
-		// before accepting bytes, so a teacher cannot spend AI quota on another
-		// school's topic.
+
 		if _, appErr := exercises.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), ucExercise.ListInput{TopicID: c.Param("id"), Limit: 1}); appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
@@ -36,11 +32,7 @@ func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUse
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "Seleccioná un PDF, DOCX o imagen de hasta 20 MB."})
 			return
 		}
-		// A source file is one way to say what the exercises should be about;
-		// a written instruction is the other. Requiring the file meant a
-		// teacher who could describe the topic in a sentence had to find a
-		// document first. One of the two has to be there: with neither, there
-		// is nothing to base the exercises on.
+
 		instruction := strings.TrimSpace(c.PostForm("instruction"))
 		var (
 			content    []byte
@@ -102,8 +94,7 @@ func NewExerciseDraftsHandler(uc ucAI.ProxyUsecase, exercises ucExercise.ListUse
 }
 
 func createDraftConversation(c *gin.Context, uc ucAI.ProxyUsecase, userID string) (string, apperrors.ApplicationError) {
-	// Kept in Gillie only to use its existing document/OCR pipeline. Its title
-	// makes these ephemeral authoring conversations identifiable for cleanup.
+
 	payload := []byte(`{"title":"Practiq · borrador de ejercicios","is_sandbox":true}`)
 	response, appErr := uc.Execute(c, ucAI.ProxyInput{UserID: userID, Method: http.MethodPost, Path: "/conversation/", ContentType: "application/json", Body: payload})
 	if appErr != nil {
@@ -120,9 +111,6 @@ func createDraftConversation(c *gin.Context, uc ucAI.ProxyUsecase, userID string
 	return out.Data.ID, nil
 }
 
-// draftTypeRule turns the teacher's choice into an order the assistant can
-// follow. Offered as one option among four in a union, fill_blanks never came
-// back: the model answered with the simplest shape that satisfied the prompt.
 func draftTypeRule(exerciseType string) string {
 	switch exerciseType {
 	case "open_text":
@@ -212,9 +200,6 @@ func parseDrafts(body []byte, requestedType string) ([]map[string]interface{}, e
 	return nil, fmt.Errorf("assistant response missing")
 }
 
-// validateDraftShape is a boundary guard, not a replacement for the editor's
-// review. It makes the assistant contract match the manual exercise catalogue
-// and prevents unsupported or handwritten drafts from reaching the UI.
 func validateDraftShape(draft map[string]interface{}, requestedType string) error {
 	typ, _ := draft["type"].(string)
 	question, _ := draft["question"].(string)

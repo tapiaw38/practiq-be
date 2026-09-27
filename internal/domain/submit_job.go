@@ -4,12 +4,12 @@ import "time"
 
 type SubmitJob struct {
 	ID        string
-	Kind      string // "practice_sheet" or "notebook"
+	Kind      string
 	StudentID string
 	Status    string
 	ErrorCode string
 	Message   string
-	Result    []byte // JSON
+	Result    []byte
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

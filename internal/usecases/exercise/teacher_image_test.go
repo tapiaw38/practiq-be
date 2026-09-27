@@ -44,9 +44,7 @@ func TestStoreTeacherImage(t *testing.T) {
 			wantUp:   true,
 		},
 		{
-			// Responses no longer carry the drawing, so this is what the editor
-			// sends after opening an exercise and saving it unchanged. Losing
-			// the statement here would be the whole feature breaking quietly.
+
 			name:     "a save that omits the drawing keeps the stored one",
 			incoming: `{"options":["a"]}`,
 			previous: domain.Exercise{Metadata: `{"teacher_image":"` + storedURL + `"}`},
@@ -91,7 +89,6 @@ func TestStoreTeacherImage(t *testing.T) {
 	}
 }
 
-// A storage failure must not throw away what the teacher just drew.
 func TestStoreTeacherImageKeepsTheDrawingWhenUploadFails(t *testing.T) {
 	app := &appcontext.Context{ImageStorage: &fakeStorage{err: errors.New("s3 is down")}}
 

@@ -6,8 +6,6 @@ import (
 	"errors"
 )
 
-// Award records the event before increasing the balance. The unique event key
-// makes retries harmless: a request can be repeated without farming XP.
 func (r *repository) Award(ctx context.Context, input AwardInput) (result AwardResult, err error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -30,9 +28,7 @@ func (r *repository) Award(ctx context.Context, input AwardInput) (result AwardR
 		input.PracticeSheetID, input.ExerciseID,
 	).Scan(&points)
 	if errors.Is(err, sql.ErrNoRows) {
-		// The event key already existed, so this is a retry: report the
-		// balance without awarding again. A missing balance row is a zero
-		// balance, not a failure.
+
 		err = tx.QueryRowContext(ctx, `
 			SELECT total_xp FROM student_course_xp
 			WHERE student_id = $1 AND course_id = $2::uuid`, input.StudentID, input.CourseID,

@@ -10,7 +10,7 @@ func TestValidAvatarSeedAcceptsOpaqueTokens(t *testing.T) {
 		"robot-7",
 		"Bo_ttts9",
 		strings.Repeat("a", maxAvatarSeedLength),
-		// Empty clears the avatar back to the default.
+
 		"",
 	} {
 		if !validAvatarSeed(seed) {
@@ -20,8 +20,7 @@ func TestValidAvatarSeedAcceptsOpaqueTokens(t *testing.T) {
 }
 
 func TestValidAvatarSeedRejectsAnythingResolvable(t *testing.T) {
-	// The whole point of storing a seed is that it can never be a URL or
-	// markup: whatever lands here is rendered by the client.
+
 	for _, seed := range []string{
 		"https://evil.example/pwn.svg",
 		"<script>alert(1)</script>",

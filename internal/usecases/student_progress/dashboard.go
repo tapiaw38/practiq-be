@@ -11,17 +11,6 @@ import (
 )
 
 type (
-	// DashboardUsecase serves the student home in one call.
-	//
-	// The screen used to assemble itself from about eighteen requests five
-	// round trips deep: profile, then courses and progress, then practice
-	// sheets, notebooks and levels once per course. The server spent about
-	// 70ms of that; the rest was latency between Argentina and the API.
-	//
-	// It is named for the screen rather than something like "statistics" on
-	// purpose. A view-shaped endpoint can change with its view; a generic one
-	// accumulates half-used fields from every caller and stops being safe to
-	// touch.
 	DashboardUsecase interface {
 		Execute(ctx context.Context, studentID string) (*DashboardOutput, apperrors.ApplicationError)
 	}
@@ -32,8 +21,7 @@ type (
 
 	CourseSummaryData struct {
 		CourseID string `json:"course_id"`
-		// SchoolID and SchoolName let a student at two schools filter their
-		// home. Empty when the course predates the split.
+
 		SchoolID       string   `json:"school_id,omitempty"`
 		SchoolName     string   `json:"school_name,omitempty"`
 		Title          string   `json:"title"`
@@ -50,9 +38,7 @@ type (
 	DashboardData struct {
 		Courses  []CourseSummaryData `json:"courses"`
 		Progress []ProgressData      `json:"progress"`
-		// StreakDays is the student's best live streak. It goes through the
-		// domain rule rather than a SQL MAX so a streak the student already
-		// broke is not reported.
+
 		StreakDays           int                 `json:"streak_days"`
 		LastPracticedSheetID string              `json:"last_practiced_sheet_id,omitempty"`
 		ResumePractice       *ResumePracticeData `json:"resume_practice,omitempty"`
@@ -87,8 +73,6 @@ func (u *dashboardUsecase) Execute(ctx context.Context, studentID string) (*Dash
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
-	// XP is motivational metadata: losing it must not leave the student
-	// without courses, progress or streak. Degrade to zero and log.
 	xpByCourse := make(map[string]int)
 	if xpEntries, xpErr := app.Repositories.StudentCourseXP.ListByStudent(ctx, studentID); xpErr != nil {
 		log.Printf("[dashboard] could not load course xp student_id=%s err=%v", studentID, xpErr)
