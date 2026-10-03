@@ -1,0 +1,23 @@
+package studentinvitation
+
+import "context"
+
+func (r *repository) Revoke(ctx context.Context, id, teacherID string) error {
+	query := `
+		UPDATE student_invitations
+		SET revoked_at = NOW()
+		WHERE id = $1 AND teacher_id = $2 AND revoked_at IS NULL
+	`
+
+	_, err := r.db.ExecContext(ctx, query, id, teacherID)
+
+	return err
+}
+
+func (r *repository) RevokeForSchool(ctx context.Context, schoolID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE student_invitations SET revoked_at = NOW()
+		WHERE school_id = $1 AND revoked_at IS NULL
+	`, schoolID)
+	return err
+}

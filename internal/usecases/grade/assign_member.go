@@ -7,22 +7,34 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
+	schoolUC "github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-type AssignMemberUsecase interface {
-	Execute(context.Context, string, string) (*AssignMemberOutput, apperrors.ApplicationError)
+type (
+	AssignMemberUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID string, in AssignMemberInput) (*AssignMemberOutput, apperrors.ApplicationError)
+	}
+
+	assignMemberUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	AssignMemberInput struct {
+		UserID string `json:"user_id" binding:"required"`
+	}
+
+	AssignMemberOutput struct {
+		Data OperationResultData `json:"data"`
+	}
+)
+
+func NewAssignMemberUsecase(contextFactory appcontext.Factory) AssignMemberUsecase {
+	return &assignMemberUsecase{contextFactory: contextFactory}
 }
 
-type assignMemberUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewAssignMemberUsecase(factory appcontext.Factory) AssignMemberUsecase {
-	return &assignMemberUsecase{factory: factory}
-}
-
-func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *assignMemberUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID string, in AssignMemberInput) (*AssignMemberOutput, apperrors.ApplicationError) {
+	userID := in.UserID
+	app := u.contextFactory()
 
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)
 	if err != nil {
@@ -30,6 +42,10 @@ func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID strin
 	}
 	if grade == nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeNotFoundError, nil)
+	}
+
+	if appErr := schoolUC.EnsureAdministers(ctx, app, requesterID, isSuperAdmin, grade.SchoolID); appErr != nil {
+		return nil, appErr
 	}
 
 	profile, err := app.Repositories.UserProfile.Get(ctx, userID)
@@ -47,5 +63,5 @@ func (u *assignMemberUsecase) Execute(ctx context.Context, gradeID, userID strin
 		return nil, apperrors.NewApplicationError(mappings.GradeAssignMemberError, err)
 	}
 
-	return &AssignMemberOutput{Message: "member assigned successfully"}, nil
+	return &AssignMemberOutput{Data: toOperationResultData(domain.OperationResult{Message: "member assigned successfully"})}, nil
 }

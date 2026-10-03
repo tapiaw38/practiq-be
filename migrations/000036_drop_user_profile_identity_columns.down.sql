@@ -1,0 +1,2 @@
+ALTER TABLE user_profiles ADD COLUMN name VARCHAR(150);
+ALTER TABLE user_profiles ADD COLUMN email VARCHAR(150);

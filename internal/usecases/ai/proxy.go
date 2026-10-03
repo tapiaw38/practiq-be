@@ -3,54 +3,56 @@ package ai
 import (
 	"context"
 
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
 )
 
-type ProxyUsecase interface {
-	Execute(context.Context, ProxyInput) (*assistant.ProxyResponse, apperrors.ApplicationError)
-}
-
-type proxyUsecase struct {
-	factory appcontext.Factory
-}
-
-type ProxyInput struct {
-	UserID      string
-	Method      string
-	Path        string
-	ContentType string
-	Body        []byte
-}
-
-func NewProxyUsecase(factory appcontext.Factory) ProxyUsecase {
-	return &proxyUsecase{factory: factory}
-}
-
-func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*assistant.ProxyResponse, apperrors.ApplicationError) {
-	app := u.factory()
-
-	profile, err := app.Repositories.UserProfile.Get(ctx, input.UserID)
-	if err != nil {
-		return nil, apperrors.NewInternalError(err)
-	}
-	if profile == nil {
-		return nil, apperrors.NewNotFoundError("profile not found")
+type (
+	ProxyUsecase interface {
+		Execute(context.Context, ProxyInput) (*ProxyOutput, apperrors.ApplicationError)
 	}
 
-	cfg := assistant.Config{
-		BaseURL: profile.AssistantBaseURL,
-		APIKey:  profile.AssistantAPIKey,
-	}
-	if !app.AssistantService.IsConfigured(cfg) {
-		return nil, apperrors.NewBadRequestError("assistant is not configured for this profile")
+	proxyUsecase struct {
+		contextFactory appcontext.Factory
 	}
 
-	response, proxyErr := app.AssistantService.Proxy(ctx, cfg, input.Method, input.Path, input.ContentType, input.Body)
+	ProxyInput struct {
+		UserID      string
+		Method      string
+		Path        string
+		ContentType string
+		Body        []byte
+	}
+
+	ProxyOutput struct {
+		StatusCode  int
+		ContentType string
+		Body        []byte
+	}
+)
+
+func NewProxyUsecase(contextFactory appcontext.Factory) ProxyUsecase {
+	return &proxyUsecase{contextFactory: contextFactory}
+}
+
+func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*ProxyOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
+
+	cfg := assistantcfg.Resolve(ctx, app)
+	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
+		return nil, apperrors.NewBadRequestError("the assistant is not configured for this platform")
+	}
+
+	response, proxyErr := app.Integrations.AssistantGateway.Proxy(ctx, cfg, input.Method, input.Path, input.ContentType, input.Body)
 	if proxyErr != nil {
 		return nil, apperrors.NewInternalError(proxyErr)
 	}
 
-	return response, nil
+	return toProxyOutput(response), nil
+}
+
+func toProxyOutput(response *assistant.ProxyResponse) *ProxyOutput {
+	return &ProxyOutput{StatusCode: response.StatusCode, ContentType: response.ContentType, Body: response.Body}
 }
