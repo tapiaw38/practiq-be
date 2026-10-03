@@ -2,7 +2,6 @@ package practicesheet
 
 import (
 	"context"
-	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -13,7 +12,7 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, string, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string, in CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -21,18 +20,17 @@ type (
 	}
 
 	CreateInput struct {
-		CourseID         string
-		TopicID          string `json:"topic_id"`
-		StrategyID       string `json:"strategy_id"`
-		Title            string `json:"title"`
-		Level            int    `json:"level"`
-		SheetType        string `json:"sheet_type"`
-		TestStyle        string `json:"test_style"`
-		ScheduledAt      *time.Time
-		AvailableUntil   *time.Time
-		MaxAttempts      *int
-		TimeLimitMinutes *int
+		TopicID          string   `json:"topic_id"`
+		StrategyID       string   `json:"strategy_id"`
+		Title            string   `json:"title" binding:"required"`
+		Level            int      `json:"level"`
+		SheetType        string   `json:"sheet_type"`
+		TestStyle        string   `json:"test_style"`
 		ExerciseIDs      []string `json:"exercise_ids"`
+		ScheduledAt      string   `json:"scheduled_at"`
+		AvailableUntil   string   `json:"available_until"`
+		MaxAttempts      *int     `json:"max_attempts"`
+		TimeLimitMinutes *int     `json:"time_limit_minutes"`
 	}
 
 	CreateOutput struct {
@@ -44,24 +42,33 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string, in CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+	if appErr := validateSheetTypeAndTestStyle(in.SheetType, in.TestStyle); appErr != nil {
+		return nil, appErr
+	}
+	scheduledAt, availableUntil, appErr := resolveWindow(in.ScheduledAt, in.AvailableUntil)
+	if appErr != nil {
+		return nil, appErr
+	}
+	maxAttempts := positiveOrNil(in.MaxAttempts)
+	timeLimitMinutes := positiveOrNil(in.TimeLimitMinutes)
 	app := u.contextFactory()
 
-	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID); appErr != nil {
+	if _, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID); appErr != nil {
 		return nil, appErr
 	}
 
-	level := input.Level
+	level := in.Level
 	if level < 1 {
 		level = 1
 	}
 
-	sheetType := input.SheetType
+	sheetType := in.SheetType
 	if sheetType != "level_test" {
 		sheetType = "practice"
 	}
 	if sheetType == sheetTypeLevelTest {
-		exists, err := app.Repositories.PracticeSheet.HasOtherLevelTest(ctx, input.CourseID, level, "")
+		exists, err := app.Repositories.PracticeSheet.HasOtherLevelTest(ctx, courseID, level, "")
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetCreateError, err)
 		}
@@ -69,34 +76,33 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 			return nil, apperrors.NewBadRequestError("this level already has a level test; edit or delete it first")
 		}
 	}
-	testStyle := input.TestStyle
+	testStyle := in.TestStyle
 	if testStyle != "canvas" {
 		testStyle = "keyboard"
 	}
 
-	scheduledAt := input.ScheduledAt
 	if sheetType != sheetTypeLevelTest {
 		scheduledAt = nil
 	}
 	id, err := app.Repositories.PracticeSheet.Create(ctx, domain.PracticeSheet{
-		CourseID:         input.CourseID,
-		TopicID:          input.TopicID,
-		StrategyID:       input.StrategyID,
-		Title:            input.Title,
+		CourseID:         courseID,
+		TopicID:          in.TopicID,
+		StrategyID:       in.StrategyID,
+		Title:            in.Title,
 		Level:            level,
 		SheetType:        sheetType,
 		TestStyle:        testStyle,
 		ScheduledAt:      scheduledAt,
-		MaxAttempts:      input.MaxAttempts,
-		TimeLimitMinutes: input.TimeLimitMinutes,
-		AvailableUntil:   input.AvailableUntil,
+		MaxAttempts:      maxAttempts,
+		TimeLimitMinutes: timeLimitMinutes,
+		AvailableUntil:   availableUntil,
 		CreatedBy:        "teacher",
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetCreateError, err)
 	}
 
-	for i, exerciseID := range input.ExerciseIDs {
+	for i, exerciseID := range in.ExerciseIDs {
 		if err := app.Repositories.PracticeSheet.AddExercise(ctx, id, exerciseID, i); err != nil {
 			return nil, apperrors.NewApplicationError(mappings.PracticeSheetCreateError, err)
 		}

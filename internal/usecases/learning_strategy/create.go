@@ -20,8 +20,8 @@ type (
 	}
 
 	CreateInput struct {
-		Name        string `json:"name"`
-		Code        string `json:"code"`
+		Name        string `json:"name" binding:"required"`
+		Code        string `json:"code" binding:"required"`
 		Description string `json:"description"`
 	}
 

@@ -26,7 +26,7 @@ func mismatch(kind, id, rowSchool, selectedSchool string) apperrors.ApplicationE
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, canCreate bool, teacherID, schoolID string, isSuperAdmin bool, in CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -34,15 +34,12 @@ type (
 	}
 
 	CreateInput struct {
-		TeacherID    string
-		SchoolID     string
-		IsSuperAdmin bool
-		GradeID      string `json:"grade_id"`
-		SubjectID    string `json:"subject_id"`
-		Title        string `json:"title"`
-		Description  string `json:"description"`
-		Level        string `json:"level"`
-		Subject      string `json:"subject"`
+		GradeID     string `json:"grade_id" binding:"required"`
+		SubjectID   string `json:"subject_id" binding:"required"`
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description"`
+		Level       string `json:"level"`
+		Subject     string `json:"subject"`
 	}
 
 	CreateOutput struct {
@@ -54,54 +51,54 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, canCreate bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, canCreate bool, teacherID, schoolID string, isSuperAdmin bool, in CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if !canCreate {
 		return nil, apperrors.NewForbiddenError()
 	}
-	if strings.TrimSpace(input.GradeID) == "" {
+	if strings.TrimSpace(in.GradeID) == "" {
 		return nil, apperrors.NewBadRequestError("grade_id is required")
 	}
-	if strings.TrimSpace(input.SubjectID) == "" {
+	if strings.TrimSpace(in.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
 	}
 
-	if strings.TrimSpace(input.SchoolID) == "" {
+	if strings.TrimSpace(schoolID) == "" {
 		return nil, apperrors.NewBadRequestError("seleccioná una escuela antes de crear un curso")
 	}
-	grade, err := app.Repositories.Grade.Get(ctx, input.GradeID)
+	grade, err := app.Repositories.Grade.Get(ctx, in.GradeID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeGetError, err)
 	}
 	if grade == nil {
 		return nil, apperrors.NewNotFoundError("grade not found")
 	}
-	if grade.SchoolID != input.SchoolID {
-		return nil, mismatch("grade", input.GradeID, grade.SchoolID, input.SchoolID)
+	if grade.SchoolID != schoolID {
+		return nil, mismatch("grade", in.GradeID, grade.SchoolID, schoolID)
 	}
-	subject, err := app.Repositories.Subject.Get(ctx, input.SubjectID)
+	subjectRow, err := app.Repositories.Subject.Get(ctx, in.SubjectID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.SubjectGetError, err)
 	}
-	if subject == nil {
+	if subjectRow == nil {
 		return nil, apperrors.NewNotFoundError("subject not found")
 	}
-	if subject.SchoolID != input.SchoolID {
-		return nil, mismatch("subject", input.SubjectID, subject.SchoolID, input.SchoolID)
+	if subjectRow.SchoolID != schoolID {
+		return nil, mismatch("subject", in.SubjectID, subjectRow.SchoolID, schoolID)
 	}
-	if appErr := school.EnsureAdministers(ctx, app, input.TeacherID, input.IsSuperAdmin, input.SchoolID); appErr != nil {
+	if appErr := school.EnsureAdministers(ctx, app, teacherID, isSuperAdmin, schoolID); appErr != nil {
 		return nil, appErr
 	}
 
 	id, err := app.Repositories.Course.Create(ctx, domain.Course{
-		TeacherID:   input.TeacherID,
-		GradeID:     input.GradeID,
-		SubjectID:   input.SubjectID,
-		Title:       input.Title,
-		Description: input.Description,
-		Level:       input.Level,
-		Subject:     input.Subject,
+		TeacherID:   teacherID,
+		GradeID:     in.GradeID,
+		SubjectID:   in.SubjectID,
+		Title:       in.Title,
+		Description: in.Description,
+		Level:       in.Level,
+		Subject:     in.Subject,
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseCreateError, err)

@@ -20,7 +20,7 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		studentID := middlewares.GetUserID(c)
-		var input submitInput
+		var input ucPS.SubmitInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -45,13 +45,13 @@ func NewSubmitAsyncHandler(uc ucPS.SubmitUsecase, repo submitjob.Repository) gin
 			return
 		}
 
-		go func(sheetID, uid, jid string, payload submitInput) {
+		go func(sheetID, uid, jid string, payload ucPS.SubmitInput) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 
 			ctx = ucPS.WithSubmissionReceivedAt(ctx, now)
 
-			output, appErr := uc.Execute(ctx, sheetID, uid, ucPS.SubmitInput{Attempts: payload.Attempts})
+			output, appErr := uc.Execute(ctx, sheetID, uid, payload)
 			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer finishCancel()
 			if appErr != nil {

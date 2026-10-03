@@ -120,10 +120,10 @@ func toNotebookData(nb *domain.Notebook) NotebookData {
 	}
 }
 
-func toPageData(id string, input AddPageInput, contentData string) PageData {
+func toPageData(id, notebookID string, input AddPageInput, contentData string) PageData {
 	return PageData{
 		ID:           id,
-		NotebookID:   input.NotebookID,
+		NotebookID:   notebookID,
 		PageNumber:   input.PageNumber,
 		Title:        input.Title,
 		ContentType:  input.ContentType,

@@ -2,7 +2,6 @@ package practicesheet
 
 import (
 	"context"
-	"time"
 
 	"github.com/tapiaw38/practiq-be/internal/domain"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -21,16 +20,16 @@ type (
 	}
 
 	UpdateInput struct {
-		Title            string
-		TopicID          string
-		Level            int
-		SheetType        string
-		TestStyle        string
-		ScheduledAt      *time.Time
-		AvailableUntil   *time.Time
-		MaxAttempts      *int
-		TimeLimitMinutes *int
-		ExerciseIDs      []string
+		Title            string   `json:"title" binding:"required"`
+		TopicID          string   `json:"topic_id"`
+		Level            int      `json:"level"`
+		SheetType        string   `json:"sheet_type"`
+		TestStyle        string   `json:"test_style"`
+		ExerciseIDs      []string `json:"exercise_ids"`
+		ScheduledAt      string   `json:"scheduled_at"`
+		AvailableUntil   string   `json:"available_until"`
+		MaxAttempts      *int     `json:"max_attempts"`
+		TimeLimitMinutes *int     `json:"time_limit_minutes"`
 	}
 
 	UpdateOutput struct {
@@ -43,6 +42,15 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 }
 
 func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+	if appErr := validateSheetTypeAndTestStyle(input.SheetType, input.TestStyle); appErr != nil {
+		return nil, appErr
+	}
+	scheduledAt, availableUntil, appErr := resolveWindow(input.ScheduledAt, input.AvailableUntil)
+	if appErr != nil {
+		return nil, appErr
+	}
+	maxAttempts := positiveOrNil(input.MaxAttempts)
+	timeLimitMinutes := positiveOrNil(input.TimeLimitMinutes)
 	app := u.contextFactory()
 
 	ps, err := app.Repositories.PracticeSheet.Get(ctx, id)
@@ -70,7 +78,6 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 			return nil, apperrors.NewBadRequestError("this level already has a level test; edit or delete it first")
 		}
 	}
-	scheduledAt := input.ScheduledAt
 	if input.SheetType != sheetTypeLevelTest {
 		scheduledAt = nil
 	}
@@ -82,9 +89,9 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		SheetType:        input.SheetType,
 		TestStyle:        input.TestStyle,
 		ScheduledAt:      scheduledAt,
-		MaxAttempts:      input.MaxAttempts,
-		TimeLimitMinutes: input.TimeLimitMinutes,
-		AvailableUntil:   input.AvailableUntil,
+		MaxAttempts:      maxAttempts,
+		TimeLimitMinutes: timeLimitMinutes,
+		AvailableUntil:   availableUntil,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.PracticeSheetUpdateError, err)
 	}

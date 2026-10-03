@@ -12,30 +12,18 @@ import (
 )
 
 type plansUsecaseStub struct {
-	output *ucSubscription.PlansOutput
+	output *ucSubscription.ListPlansOutput
 }
 
-func (s plansUsecaseStub) List(context.Context) (*ucSubscription.PlansOutput, apperrors.ApplicationError) {
+func (s plansUsecaseStub) Execute(context.Context) (*ucSubscription.ListPlansOutput, apperrors.ApplicationError) {
 	return s.output, nil
-}
-
-func (plansUsecaseStub) Create(context.Context, ucSubscription.PlanInput) (*ucSubscription.PlanOutput, apperrors.ApplicationError) {
-	return nil, nil
-}
-
-func (plansUsecaseStub) Update(context.Context, int, ucSubscription.PlanInput) (*ucSubscription.PlanOutput, apperrors.ApplicationError) {
-	return nil, nil
-}
-
-func (plansUsecaseStub) Deactivate(context.Context, int) (*ucSubscription.PlanOutput, apperrors.ApplicationError) {
-	return nil, nil
 }
 
 func TestPublicListPlansHidesRetiredPlans(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	app := gin.New()
 	app.GET("/api/public/subscription-plans", NewPublicListPlansHandler(plansUsecaseStub{
-		output: &ucSubscription.PlansOutput{Data: []ucSubscription.CatalogPlanData{
+		output: &ucSubscription.ListPlansOutput{Data: []ucSubscription.CatalogPlanData{
 			{PlanID: 1, Name: "Disponible", Active: true},
 			{PlanID: 2, Name: "Retirado", Active: false},
 		}},

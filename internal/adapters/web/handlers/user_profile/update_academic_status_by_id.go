@@ -10,7 +10,7 @@ import (
 
 func NewUpdateAcademicStatusByIDHandler(uc ucProfile.UpdateAcademicStatusUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var input academicStatusInput
+		var input ucProfile.UpdateAcademicStatusInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -22,7 +22,7 @@ func NewUpdateAcademicStatusByIDHandler(uc ucProfile.UpdateAcademicStatusUsecase
 			return
 		}
 
-		output, appErr := uc.Execute(c, profileID, input.AcademicStatus, c.GetHeader("Authorization"))
+		output, appErr := uc.Execute(c, profileID, c.GetHeader("Authorization"), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

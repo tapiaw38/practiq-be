@@ -16,16 +16,12 @@ import (
 
 type (
 	SaveSubmissionUsecase interface {
-		Execute(ctx context.Context, input SaveSubmissionInput) error
+		Execute(ctx context.Context, pageID, studentID string, version int64, input SaveSubmissionInput) error
 	}
 
 	SaveSubmissionInput struct {
-		PageID     string
-		StudentID  string
-		CanvasData string
-		AnswerText string
-
-		Version int64
+		CanvasData string `json:"canvas_data"`
+		AnswerText string `json:"answer_text"`
 	}
 
 	saveSubmissionUsecase struct{ contextFactory appcontext.Factory }
@@ -35,9 +31,9 @@ func NewSaveSubmissionUsecase(contextFactory appcontext.Factory) SaveSubmissionU
 	return &saveSubmissionUsecase{contextFactory: contextFactory}
 }
 
-func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissionInput) error {
+func (u *saveSubmissionUsecase) Execute(ctx context.Context, pageID, studentID string, version int64, input SaveSubmissionInput) error {
 	app := u.contextFactory()
-	page, err := app.Repositories.Notebook.GetPage(ctx, input.PageID)
+	page, err := app.Repositories.Notebook.GetPage(ctx, pageID)
 	if err != nil {
 		return err
 	}
@@ -51,7 +47,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	if notebook == nil {
 		return fmt.Errorf("notebook not found")
 	}
-	hasAccess, err := studentHasNotebookCourseAccess(ctx, app, input.StudentID, notebook.CourseID)
+	hasAccess, err := studentHasNotebookCourseAccess(ctx, app, studentID, notebook.CourseID)
 	if err != nil {
 		return err
 	}
@@ -63,7 +59,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 		return fmt.Errorf("this course is closed: it no longer accepts submissions")
 	}
 
-	if appErr := school.EnsureStudentCanWork(ctx, app, input.StudentID, notebook.CourseID); appErr != nil {
+	if appErr := school.EnsureStudentCanWork(ctx, app, studentID, notebook.CourseID); appErr != nil {
 		return fmt.Errorf("tu docente pausó tu acceso: podés ver lo que ya hiciste, pero no entregar")
 	}
 
@@ -75,8 +71,8 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 
 	canvasForOCR := input.CanvasData
 	submission := domain.NotebookSubmission{
-		PageID:     input.PageID,
-		StudentID:  input.StudentID,
+		PageID:     pageID,
+		StudentID:  studentID,
 		CanvasData: input.CanvasData,
 		AnswerText: input.AnswerText,
 	}
@@ -95,7 +91,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 				if resolved, err := resolveImageForOCR(ctx, app, canvasForOCR); err == nil {
 					canvasForOCR = resolved
 				} else {
-					log.Printf("[image_storage] notebook submission resolve failed page_id=%s err=%v", input.PageID, err)
+					log.Printf("[image_storage] notebook submission resolve failed page_id=%s err=%v", pageID, err)
 				}
 				canvasForOCR = normalizeCanvasDataURI(canvasForOCR)
 				if recognizedRaw, recognizeErr := app.Integrations.AssistantGateway.AnalyzeNotebookCanvas(ctx, assistantCfg, canvasForOCR, buildNotebookPromptContext(page)); recognizeErr == nil {
@@ -103,7 +99,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 					submission.AIRecognizedText = recognizedText
 					studentAnswer = recognizedText
 				} else {
-					log.Printf("[notebook] canvas analysis failed page_id=%s err=%v", input.PageID, recognizeErr)
+					log.Printf("[notebook] canvas analysis failed page_id=%s err=%v", pageID, recognizeErr)
 					submission.AIFeedback = "no se pudo analizar la imagen del cuaderno"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
@@ -124,7 +120,7 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 						submission.AIFeedback = "respuesta evaluada como incorrecta"
 					}
 				} else {
-					log.Printf("[notebook] evaluation failed page_id=%s err=%v", input.PageID, aiErr)
+					log.Printf("[notebook] evaluation failed page_id=%s err=%v", pageID, aiErr)
 					submission.AIFeedback = "no se pudo evaluar la respuesta"
 					submission.AIReviewedAt = ptrTime(time.Now().UTC())
 				}
@@ -136,13 +132,13 @@ func (u *saveSubmissionUsecase) Execute(ctx context.Context, input SaveSubmissio
 	}
 
 	submission.NeedsTeacherReview = submissionNeedsTeacherReview(hasStudentWork, submission.AIIsCorrect)
-	submission.Version = input.Version
+	submission.Version = version
 
 	if isLikelyImageData(submission.CanvasData) && app.ImageStorage != nil {
-		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", input.StudentID, submission.CanvasData); err == nil {
+		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", studentID, submission.CanvasData); err == nil {
 			submission.CanvasData = uploaded
 		} else {
-			log.Printf("[image_storage] notebook submission upload failed page_id=%s student_id=%s err=%v", input.PageID, input.StudentID, err)
+			log.Printf("[image_storage] notebook submission upload failed page_id=%s student_id=%s err=%v", pageID, studentID, err)
 		}
 	}
 

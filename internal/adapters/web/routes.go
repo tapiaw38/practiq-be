@@ -2,8 +2,6 @@ package web
 
 import (
 	"github.com/gin-gonic/gin"
-	gilliesettingsRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/gillie_settings"
-	sitecontactRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/site_contact"
 	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	userprofileRepo "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/user_profile"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/handlers/ai"
@@ -38,11 +36,11 @@ import (
 	ucSubscription "github.com/tapiaw38/practiq-be/internal/usecases/subscription"
 )
 
-func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, contacts sitecontactRepo.Repository, gillie gilliesettingsRepo.Repository, revoked *revocation.Checker) {
+func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submitjob.Repository, userProfiles userprofileRepo.Repository, revoked *revocation.Checker) {
 
 	public := app.Group("/api/public")
-	public.GET("/subscription-plans", subscription.NewPublicListPlansHandler(uc.Subscription.Plans))
-	public.GET("/site-contact", sitecontact.Public(contacts))
+	public.GET("/subscription-plans", subscription.NewPublicListPlansHandler(uc.Subscription.ListPlans))
+	public.GET("/site-contact", sitecontact.NewGetHandler(uc.SiteContact.Get))
 
 	api := app.Group("/api")
 	api.Use(middlewares.AuthMiddleware(revoked))
@@ -55,11 +53,11 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.PUT("/profile/avatar", userprofile.NewUpdateAvatarSeedHandler(uc.Profile.UpdateAvatarSeed))
 	adminOnly := api.Group("/")
 	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
-	adminOnly.GET("/site-contact", sitecontact.Get(contacts))
-	adminOnly.PUT("/site-contact", sitecontact.Update(contacts))
+	adminOnly.GET("/site-contact", sitecontact.NewGetHandler(uc.SiteContact.Get))
+	adminOnly.PUT("/site-contact", sitecontact.NewUpdateHandler(uc.SiteContact.Update))
 
-	adminOnly.GET("/gillie-settings", gilliesettings.Get(gillie))
-	adminOnly.PUT("/gillie-settings", gilliesettings.Update(gillie))
+	adminOnly.GET("/gillie-settings", gilliesettings.NewGetHandler(uc.GillieSettings.Get))
+	adminOnly.PUT("/gillie-settings", gilliesettings.NewUpdateHandler(uc.GillieSettings.Update))
 	teacherOnly := api.Group("/")
 	teacherOnly.Use(middlewares.RequireTeacher())
 
@@ -173,7 +171,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.POST("/notebook-submissions/:id/review", handlerNB.NewReviewSubmissionHandler(uc.Notebook.ReviewSubmission))
 	teacherOnly.PUT("/notebook-submissions/:id/teacher-review", handlerNB.NewTeacherReviewSubmissionHandler(uc.Notebook.TeacherReview))
 
-	teacherOnly.GET("/subscription-plans", subscription.NewListPlansHandler(uc.Subscription.Plans))
+	teacherOnly.GET("/subscription-plans", subscription.NewListPlansHandler(uc.Subscription.ListPlans))
 	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
 
 	teacherOnly.GET("/teachers/me/subscription/checkout-config", subscription.NewCheckoutConfigHandler(config.GetConfigService().ServerConfig.MercadoPagoPublicKey))
@@ -186,27 +184,27 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	teacherOnly.POST("/teachers/me/subscription/resume", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionResume))
 	teacherOnly.POST("/teachers/me/subscription/cancel", subscription.NewManageMineHandler(uc.Subscription.ManageMine, ucSubscription.ActionCancel))
 
-	adminOnly.GET("/schools", handlerSchool.NewListHandler(uc.School.Manage))
-	adminOnly.POST("/schools", handlerSchool.NewCreateHandler(uc.School.Manage))
-	adminOnly.POST("/schools/:id/suspend", handlerSchool.NewSuspendHandler(uc.School.Manage))
-	adminOnly.POST("/schools/:id/close", handlerSchool.NewCloseHandler(uc.School.Manage))
-	adminOnly.POST("/schools/:id/reopen", handlerSchool.NewReopenHandler(uc.School.Manage))
-	adminOnly.GET("/schools/:id/archive", handlerSchool.NewArchiveHandler(uc.School.Manage))
+	adminOnly.GET("/schools", handlerSchool.NewListHandler(uc.School.List))
+	adminOnly.POST("/schools", handlerSchool.NewCreateHandler(uc.School.Create))
+	adminOnly.POST("/schools/:id/suspend", handlerSchool.NewSuspendHandler(uc.School.Suspend))
+	adminOnly.POST("/schools/:id/close", handlerSchool.NewCloseHandler(uc.School.Close))
+	adminOnly.POST("/schools/:id/reopen", handlerSchool.NewReopenHandler(uc.School.Reopen))
+	adminOnly.GET("/schools/:id/archive", handlerSchool.NewArchiveHandler(uc.School.Archive))
 
-	api.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Manage))
+	api.GET("/schools/mine", handlerSchool.NewMineHandler(uc.School.Mine))
 
-	teacherOnly.PUT("/schools/:id", handlerSchool.NewUpdateHandler(uc.School.Manage))
-	teacherOnly.GET("/schools/:id/members", handlerSchool.NewListMembersHandler(uc.School.Manage))
-	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.Manage))
-	teacherOnly.DELETE("/schools/:id/members/:userId", handlerSchool.NewRemoveMemberHandler(uc.School.Manage))
+	teacherOnly.PUT("/schools/:id", handlerSchool.NewUpdateHandler(uc.School.Update))
+	teacherOnly.GET("/schools/:id/members", handlerSchool.NewListMembersHandler(uc.School.ListMembers))
+	teacherOnly.POST("/schools/:id/members", handlerSchool.NewAddMemberHandler(uc.School.AddMember))
+	teacherOnly.DELETE("/schools/:id/members/:userId", handlerSchool.NewRemoveMemberHandler(uc.School.RemoveMember))
 
-	teacherOnly.GET("/teachers/me/subscription/downgrade", subscription.NewDowngradePreviewHandler(uc.Subscription.Downgrade))
-	teacherOnly.POST("/teachers/me/subscription/downgrade", subscription.NewDowngradeApplyHandler(uc.Subscription.Downgrade))
-	teacherOnly.POST("/teachers/me/students/:studentId/reactivate", subscription.NewReactivateStudentHandler(uc.Subscription.Downgrade))
+	teacherOnly.GET("/teachers/me/subscription/downgrade", subscription.NewDowngradePreviewHandler(uc.Subscription.DowngradePreview))
+	teacherOnly.POST("/teachers/me/subscription/downgrade", subscription.NewDowngradeApplyHandler(uc.Subscription.DowngradeApply))
+	teacherOnly.POST("/teachers/me/students/:studentId/reactivate", subscription.NewReactivateStudentHandler(uc.Subscription.ReactivateStudent))
 
-	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.Plans))
-	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.Plans))
-	adminOnly.DELETE("/subscription-plans/:id", subscription.NewDeactivatePlanHandler(uc.Subscription.Plans))
+	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.CreatePlan))
+	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.UpdatePlan))
+	adminOnly.DELETE("/subscription-plans/:id", subscription.NewDeactivatePlanHandler(uc.Subscription.DeactivatePlan))
 
 	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
 	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))

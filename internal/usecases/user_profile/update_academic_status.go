@@ -12,11 +12,15 @@ import (
 
 type (
 	UpdateAcademicStatusUsecase interface {
-		Execute(ctx context.Context, id, status, bearerToken string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, id, bearerToken string, in UpdateAcademicStatusInput) (*UpdateAcademicStatusOutput, apperrors.ApplicationError)
 	}
 
 	updateAcademicStatusUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	UpdateAcademicStatusInput struct {
+		AcademicStatus string `json:"academic_status" binding:"required"`
 	}
 
 	UpdateAcademicStatusOutput struct {
@@ -28,7 +32,8 @@ func NewUpdateAcademicStatusUsecase(contextFactory appcontext.Factory) UpdateAca
 	return &updateAcademicStatusUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, status, bearerToken string) (*UpdateAcademicStatusOutput, apperrors.ApplicationError) {
+func (u *updateAcademicStatusUsecase) Execute(ctx context.Context, id, bearerToken string, in UpdateAcademicStatusInput) (*UpdateAcademicStatusOutput, apperrors.ApplicationError) {
+	status := in.AcademicStatus
 	app := u.contextFactory()
 
 	if status != "active" && status != "blocked" {

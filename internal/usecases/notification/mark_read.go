@@ -13,50 +13,13 @@ type (
 		Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError)
 	}
 
-	MarkAllReadUsecase interface {
-		Execute(ctx context.Context, userID string) (*MarkReadOutput, apperrors.ApplicationError)
-	}
-
-	DeleteUsecase interface {
-		Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError)
-	}
-
 	markReadUsecase struct {
 		contextFactory appcontext.Factory
-	}
-
-	markAllReadUsecase struct {
-		contextFactory appcontext.Factory
-	}
-
-	deleteUsecase struct {
-		contextFactory appcontext.Factory
-	}
-
-	MarkReadOutput struct {
-		Data OperationResultData `json:"data"`
 	}
 )
 
 func NewMarkReadUsecase(contextFactory appcontext.Factory) MarkReadUsecase {
 	return &markReadUsecase{contextFactory: contextFactory}
-}
-
-func NewMarkAllReadUsecase(contextFactory appcontext.Factory) MarkAllReadUsecase {
-	return &markAllReadUsecase{contextFactory: contextFactory}
-}
-
-func NewDeleteUsecase(contextFactory appcontext.Factory) DeleteUsecase {
-	return &deleteUsecase{contextFactory: contextFactory}
-}
-
-func (u *deleteUsecase) Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError) {
-	app := u.contextFactory()
-
-	if _, err := app.Repositories.Notification.Delete(ctx, id, userID); err != nil {
-		return nil, apperrors.NewApplicationError(mappings.NotificationUpdateError, err)
-	}
-	return &MarkReadOutput{Data: OperationResultData{Message: "notification deleted"}}, nil
 }
 
 func (u *markReadUsecase) Execute(ctx context.Context, id, userID string) (*MarkReadOutput, apperrors.ApplicationError) {
@@ -67,17 +30,7 @@ func (u *markReadUsecase) Execute(ctx context.Context, id, userID string) (*Mark
 		return nil, apperrors.NewApplicationError(mappings.NotificationUpdateError, err)
 	}
 	if !updated {
-
 		return &MarkReadOutput{Data: OperationResultData{Message: "notification already read"}}, nil
 	}
 	return &MarkReadOutput{Data: OperationResultData{Message: "notification marked as read"}}, nil
-}
-
-func (u *markAllReadUsecase) Execute(ctx context.Context, userID string) (*MarkReadOutput, apperrors.ApplicationError) {
-	app := u.contextFactory()
-
-	if err := app.Repositories.Notification.MarkAllRead(ctx, userID); err != nil {
-		return nil, apperrors.NewApplicationError(mappings.NotificationUpdateError, err)
-	}
-	return &MarkReadOutput{Data: OperationResultData{Message: "notifications marked as read"}}, nil
 }

@@ -13,7 +13,7 @@ import (
 
 type (
 	UpdateUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in UpdateInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	updateUsecase struct {
@@ -27,8 +27,7 @@ type (
 		Description string `json:"description"`
 		Level       string `json:"level"`
 		Subject     string `json:"subject"`
-
-		Status string `json:"status"`
+		Status      string `json:"status"`
 	}
 
 	UpdateOutput struct {
@@ -40,13 +39,13 @@ func NewUpdateUsecase(contextFactory appcontext.Factory) UpdateUsecase {
 	return &updateUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, input UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in UpdateInput) (*UpdateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if strings.TrimSpace(input.GradeID) == "" {
+	if strings.TrimSpace(in.GradeID) == "" {
 		return nil, apperrors.NewBadRequestError("grade_id is required")
 	}
-	if strings.TrimSpace(input.SubjectID) == "" {
+	if strings.TrimSpace(in.SubjectID) == "" {
 		return nil, apperrors.NewBadRequestError("subject_id is required")
 	}
 
@@ -62,7 +61,7 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
 
-	status := strings.TrimSpace(input.Status)
+	status := strings.TrimSpace(in.Status)
 	if status == "" {
 		status = current.Status
 	}
@@ -73,12 +72,12 @@ func (u *updateUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	}
 
 	if err := app.Repositories.Course.Update(ctx, id, domain.Course{
-		GradeID:     input.GradeID,
-		SubjectID:   input.SubjectID,
-		Title:       input.Title,
-		Description: input.Description,
-		Level:       input.Level,
-		Subject:     input.Subject,
+		GradeID:     in.GradeID,
+		SubjectID:   in.SubjectID,
+		Title:       in.Title,
+		Description: in.Description,
+		Level:       in.Level,
+		Subject:     in.Subject,
 		Status:      status,
 	}); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseUpdateError, err)

@@ -13,23 +13,12 @@ func NewCreateHandler(uc ucNB.CreateUsecase) gin.HandlerFunc {
 		courseID := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
 		isSuperAdmin := middlewares.IsSuperAdmin(c)
-		var input struct {
-			Title       string `json:"title" binding:"required"`
-			Description string `json:"description"`
-			Level       int    `json:"level"`
-			TopicID     string `json:"topic_id" binding:"required"`
-		}
+		var input ucNB.CreateInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
-		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, ucNB.CreateInput{
-			CourseID:    courseID,
-			Title:       input.Title,
-			Description: input.Description,
-			Level:       input.Level,
-			TopicID:     input.TopicID,
-		})
+		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, courseID, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

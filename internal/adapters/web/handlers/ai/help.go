@@ -9,31 +9,16 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
-type helpInput struct {
-	ExerciseID     string `json:"exercise_id"`
-	Question       string `json:"question" binding:"required"`
-	StudentAnswer  string `json:"student_answer"`
-	HelpType       string `json:"help_type"`
-	ConversationID string `json:"conversation_id"`
-}
-
 func NewHelpHandler(uc ucAI.HelpUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		studentID := middlewares.GetUserID(c)
-		var input helpInput
+		var input ucAI.HelpInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		output, appErr := uc.Execute(c, ucAI.HelpInput{
-			StudentID:      studentID,
-			ExerciseID:     input.ExerciseID,
-			Question:       input.Question,
-			StudentAnswer:  input.StudentAnswer,
-			HelpType:       input.HelpType,
-			ConversationID: input.ConversationID,
-		})
+		output, appErr := uc.Execute(c, studentID, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

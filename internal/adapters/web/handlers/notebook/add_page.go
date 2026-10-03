@@ -14,25 +14,12 @@ func NewAddPageHandler(uc ucNB.AddPageUsecase) gin.HandlerFunc {
 		notebookID := c.Param("id")
 		requesterID := middlewares.GetUserID(c)
 		isSuperAdmin := middlewares.IsSuperAdmin(c)
-		var input struct {
-			PageNumber   int    `json:"page_number"`
-			Title        string `json:"title"`
-			ContentType  string `json:"content_type"`
-			ContentData  string `json:"content_data"`
-			Instructions string `json:"instructions"`
-		}
+		var input ucNB.AddPageInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
-		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, ucNB.AddPageInput{
-			NotebookID:   notebookID,
-			PageNumber:   input.PageNumber,
-			Title:        input.Title,
-			ContentType:  input.ContentType,
-			ContentData:  input.ContentData,
-			Instructions: input.Instructions,
-		})
+		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, notebookID, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

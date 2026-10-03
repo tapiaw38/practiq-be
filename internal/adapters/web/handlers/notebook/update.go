@@ -15,21 +15,13 @@ func NewUpdateHandler(uc ucNB.UpdateUsecase) gin.HandlerFunc {
 		requesterID := middlewares.GetUserID(c)
 		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
-		var input struct {
-			Title       string `json:"title" binding:"required"`
-			Description string `json:"description"`
-			TopicID     string `json:"topic_id" binding:"required"`
-		}
+		var input ucNB.UpdateInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, ucNB.UpdateInput{
-			Title:       input.Title,
-			Description: input.Description,
-			TopicID:     input.TopicID,
-		})
+		out, appErr := uc.Execute(c, requesterID, isSuperAdmin, id, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

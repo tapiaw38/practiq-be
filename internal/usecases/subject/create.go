@@ -15,7 +15,7 @@ const subjectNameConstraint = "idx_subjects_school_name"
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, createdBy, schoolID string, isSuperAdmin bool, in CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -23,11 +23,8 @@ type (
 	}
 
 	CreateInput struct {
-		Name         string
-		Description  string
-		CreatedBy    string
-		SchoolID     string
-		IsSuperAdmin bool
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
 	}
 
 	CreateOutput struct {
@@ -39,18 +36,18 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, createdBy, requestedSchoolID string, isSuperAdmin bool, in CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	schoolID, appErr := school.OwnedSchoolIDSelected(ctx, app, input.CreatedBy, input.IsSuperAdmin, input.SchoolID)
+	schoolID, appErr := school.OwnedSchoolIDSelected(ctx, app, createdBy, isSuperAdmin, requestedSchoolID)
 	if appErr != nil {
 		return nil, appErr
 	}
 	id, err := app.Repositories.Subject.Create(ctx, domain.Subject{
 		SchoolID:    schoolID,
-		Name:        input.Name,
-		Description: input.Description,
-		CreatedBy:   input.CreatedBy,
+		Name:        in.Name,
+		Description: in.Description,
+		CreatedBy:   createdBy,
 	})
 	if err != nil {
 		if pgerr.IsUniqueViolation(err, subjectNameConstraint) {

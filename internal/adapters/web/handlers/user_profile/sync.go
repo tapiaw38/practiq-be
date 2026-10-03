@@ -8,21 +8,9 @@ import (
 	ucProfile "github.com/tapiaw38/practiq-be/internal/usecases/user_profile"
 )
 
-type syncInput struct {
-	ProfileType string `json:"profile_type"`
-
-	Timezone string `json:"timezone"`
-}
-type uiThemeInput struct {
-	UITheme string `json:"ui_theme"`
-}
-type academicStatusInput struct {
-	AcademicStatus string `json:"academic_status" binding:"required"`
-}
-
 func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var input syncInput
+		var input ucProfile.SyncInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -30,12 +18,7 @@ func NewSyncHandler(uc ucProfile.SyncUsecase) gin.HandlerFunc {
 
 		userID := middlewares.GetUserID(c)
 
-		output, appErr := uc.Execute(c, ucProfile.SyncInput{
-			ID:          userID,
-			ProfileType: input.ProfileType,
-			Timezone:    input.Timezone,
-			BearerToken: c.GetHeader("Authorization"),
-		})
+		output, appErr := uc.Execute(c, userID, c.GetHeader("Authorization"), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

@@ -13,11 +13,15 @@ import (
 
 type (
 	SetStatusUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, status string) (*UpdateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in SetStatusInput) (*UpdateOutput, apperrors.ApplicationError)
 	}
 
 	setStatusUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	SetStatusInput struct {
+		Status string `json:"status"`
 	}
 )
 
@@ -34,7 +38,8 @@ func ValidCourseStatus(status string) bool {
 	}
 }
 
-func (u *setStatusUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, status string) (*UpdateOutput, apperrors.ApplicationError) {
+func (u *setStatusUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id string, in SetStatusInput) (*UpdateOutput, apperrors.ApplicationError) {
+	status := in.Status
 	app := u.contextFactory()
 
 	status = strings.TrimSpace(status)

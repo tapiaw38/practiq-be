@@ -16,9 +16,9 @@ type (
 	}
 
 	UpdateInput struct {
-		Title       string
-		Description string
-		TopicID     string
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description"`
+		TopicID     string `json:"topic_id" binding:"required"`
 	}
 
 	UpdateOutput struct {

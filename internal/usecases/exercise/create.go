@@ -11,7 +11,7 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, string, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, topicID string, in CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -19,9 +19,8 @@ type (
 	}
 
 	CreateInput struct {
-		TopicID       string
-		Type          string `json:"type"`
-		Question      string `json:"question"`
+		Type          string `json:"type" binding:"required"`
+		Question      string `json:"question" binding:"required"`
 		CorrectAnswer string `json:"correct_answer"`
 		Explanation   string `json:"explanation"`
 		Difficulty    int    `json:"difficulty"`
@@ -37,21 +36,21 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, topicID string, in CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, input.TopicID); appErr != nil {
+	if appErr := requesterCanWriteTopic(ctx, app, requesterID, isSuperAdmin, topicID); appErr != nil {
 		return nil, appErr
 	}
 
-	if appErr := validateFillBlanks(input.Type, input.Question, input.Metadata, input.CorrectAnswer); appErr != nil {
+	if appErr := validateFillBlanks(in.Type, in.Question, in.Metadata, in.CorrectAnswer); appErr != nil {
 		return nil, appErr
 	}
-	if appErr := validateExerciseMediaURL(app, requesterID, input.Metadata, ""); appErr != nil {
+	if appErr := validateExerciseMediaURL(app, requesterID, in.Metadata, ""); appErr != nil {
 		return nil, appErr
 	}
 
-	difficulty := input.Difficulty
+	difficulty := in.Difficulty
 	if difficulty < 1 {
 		difficulty = 1
 	}
@@ -59,14 +58,14 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 		difficulty = 10
 	}
 
-	metadata := storeTeacherImage(ctx, app, requesterID, input.Metadata, domain.Exercise{})
+	metadata := storeTeacherImage(ctx, app, requesterID, in.Metadata, domain.Exercise{})
 
 	id, err := app.Repositories.Exercise.Create(ctx, domain.Exercise{
-		TopicID:       input.TopicID,
-		Type:          input.Type,
-		Question:      input.Question,
-		CorrectAnswer: input.CorrectAnswer,
-		Explanation:   input.Explanation,
+		TopicID:       topicID,
+		Type:          in.Type,
+		Question:      in.Question,
+		CorrectAnswer: in.CorrectAnswer,
+		Explanation:   in.Explanation,
 		Difficulty:    difficulty,
 		Metadata:      metadata,
 	})

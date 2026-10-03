@@ -16,11 +16,15 @@ import (
 
 type (
 	GeneratePDFUsecase interface {
-		Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter, bearerToken string) ([]byte, apperrors.ApplicationError)
+		Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter, bearerToken string) (*GeneratePDFOutput, apperrors.ApplicationError)
 	}
 
 	generatePDFUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	GeneratePDFOutput struct {
+		Content []byte
 	}
 )
 
@@ -28,7 +32,7 @@ func NewGeneratePDFUsecase(contextFactory appcontext.Factory) GeneratePDFUsecase
 	return &generatePDFUsecase{contextFactory: contextFactory}
 }
 
-func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter, bearerToken string) ([]byte, apperrors.ApplicationError) {
+func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSuperAdmin bool, filter domain.StudentReportFilter, bearerToken string) (*GeneratePDFOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if !isSuperAdmin {
@@ -154,7 +158,7 @@ func (u *generatePDFUsecase) Execute(ctx context.Context, teacherID string, isSu
 		return nil, apperrors.NewInternalError(err)
 	}
 
-	return pdfBytes, nil
+	return &GeneratePDFOutput{Content: pdfBytes}, nil
 }
 
 func dailyAttemptsForCourses(

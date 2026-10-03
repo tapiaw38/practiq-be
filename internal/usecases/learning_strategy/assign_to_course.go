@@ -21,7 +21,7 @@ type (
 	}
 
 	AssignToCourseInput struct {
-		StrategyID string `json:"strategy_id"`
+		StrategyID string `json:"strategy_id" binding:"required"`
 		IsDefault  bool   `json:"is_default"`
 		Config     string `json:"config"`
 	}

@@ -18,7 +18,7 @@ var allowedFolders = map[string]bool{
 
 const multipartOverhead = 1 << 20
 
-func NewHandler(uc ucUpload.Usecase) gin.HandlerFunc {
+func NewHandler(uc ucUpload.UploadUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 
 		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, storage.MaxUploadBytes+multipartOverhead)
@@ -50,7 +50,7 @@ func NewHandler(uc ucUpload.Usecase) gin.HandlerFunc {
 		}
 		defer file.Close()
 
-		output, appErr := uc.Execute(c, ucUpload.Input{
+		output, appErr := uc.Execute(c, ucUpload.UploadInput{
 			UserID:      middlewares.GetUserID(c),
 			Folder:      folder,
 			Filename:    fileHeader.Filename,

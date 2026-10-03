@@ -14,17 +14,16 @@ import (
 
 type (
 	UpdatePageUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdatePageInput) apperrors.ApplicationError
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, pageID string, input UpdatePageInput) apperrors.ApplicationError
 	}
 
 	UpdatePageInput struct {
-		PageID            string
-		Title             string
-		ContentType       string
-		ContentData       string
-		Instructions      string
-		StatementText     *string
-		StatementVerified *bool
+		Title             string  `json:"title"`
+		ContentType       string  `json:"content_type"`
+		ContentData       string  `json:"content_data"`
+		Instructions      string  `json:"instructions"`
+		StatementText     *string `json:"statement_text"`
+		StatementVerified *bool   `json:"statement_verified"`
 	}
 
 	updatePageUsecase struct{ contextFactory appcontext.Factory }
@@ -34,9 +33,9 @@ func NewUpdatePageUsecase(contextFactory appcontext.Factory) UpdatePageUsecase {
 	return &updatePageUsecase{contextFactory: contextFactory}
 }
 
-func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdatePageInput) apperrors.ApplicationError {
+func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, pageID string, input UpdatePageInput) apperrors.ApplicationError {
 	app := u.contextFactory()
-	page, err := app.Repositories.Notebook.GetPage(ctx, input.PageID)
+	page, err := app.Repositories.Notebook.GetPage(ctx, pageID)
 	if err != nil {
 		return apperrors.NewApplicationError(mappings.NotebookGetError, err)
 	}
@@ -59,7 +58,7 @@ func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isS
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", notebook.TeacherID, contentData); err == nil {
 			contentData = uploaded
 		} else {
-			log.Printf("[image_storage] notebook page update upload failed page_id=%s err=%v", input.PageID, err)
+			log.Printf("[image_storage] notebook page update upload failed page_id=%s err=%v", pageID, err)
 		}
 	}
 	statementText := page.StatementText
@@ -83,7 +82,7 @@ func (u *updatePageUsecase) Execute(ctx context.Context, requesterID string, isS
 	}
 
 	if err := app.Repositories.Notebook.UpdatePage(ctx, domain.NotebookPage{
-		ID:                input.PageID,
+		ID:                pageID,
 		Title:             input.Title,
 		ContentType:       input.ContentType,
 		ContentData:       contentData,

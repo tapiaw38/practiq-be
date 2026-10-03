@@ -20,9 +20,9 @@ type (
 	}
 
 	UpdateInput struct {
-		Title         string
-		ExtractedText string
-		FileURL       string
+		Title         string `json:"title" binding:"required"`
+		ExtractedText string `json:"extracted_text"`
+		FileURL       string `json:"file_url"`
 	}
 
 	UpdateOutput struct {

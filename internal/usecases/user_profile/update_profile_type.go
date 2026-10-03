@@ -12,10 +12,14 @@ import (
 
 type (
 	UpdateProfileTypeUsecase interface {
-		Execute(context.Context, string, string, string) (*UpdateProfileTypeOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, id, bearerToken string, in UpdateProfileTypeInput) (*UpdateProfileTypeOutput, apperrors.ApplicationError)
 	}
 
 	updateProfileTypeUsecase struct{ contextFactory appcontext.Factory }
+
+	UpdateProfileTypeInput struct {
+		ProfileType string `json:"profile_type" binding:"required"`
+	}
 
 	UpdateProfileTypeOutput struct {
 		Data ProfileData `json:"data"`
@@ -26,7 +30,8 @@ func NewUpdateProfileTypeUsecase(contextFactory appcontext.Factory) UpdateProfil
 	return &updateProfileTypeUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateProfileTypeUsecase) Execute(ctx context.Context, id, profileType, bearerToken string) (*UpdateProfileTypeOutput, apperrors.ApplicationError) {
+func (u *updateProfileTypeUsecase) Execute(ctx context.Context, id, bearerToken string, in UpdateProfileTypeInput) (*UpdateProfileTypeOutput, apperrors.ApplicationError) {
+	profileType := in.ProfileType
 	if profileType != "teacher" && profileType != "student" {
 		return nil, apperrors.NewBadRequestError("profile_type must be teacher or student")
 	}

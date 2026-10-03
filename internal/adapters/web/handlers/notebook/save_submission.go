@@ -18,22 +18,13 @@ func NewSaveSubmissionHandler(uc ucNB.SaveSubmissionUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		pageID := c.Param("id")
 		studentID := middlewares.GetUserID(c)
-		var input struct {
-			CanvasData string `json:"canvas_data"`
-			AnswerText string `json:"answer_text"`
-		}
+		var input ucNB.SaveSubmissionInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": "internal server error"})
 			return
 		}
 
-		if err := uc.Execute(c, ucNB.SaveSubmissionInput{
-			PageID:     pageID,
-			StudentID:  studentID,
-			CanvasData: input.CanvasData,
-			AnswerText: input.AnswerText,
-			Version:    time.Now().UTC().UnixNano(),
-		}); err != nil {
+		if err := uc.Execute(c, pageID, studentID, time.Now().UTC().UnixNano(), input); err != nil {
 
 			if errors.Is(err, notebookRepo.ErrStaleSubmission) {
 				c.JSON(http.StatusNoContent, nil)

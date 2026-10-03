@@ -8,24 +8,16 @@ import (
 	ucProfile "github.com/tapiaw38/practiq-be/internal/usecases/user_profile"
 )
 
-type avatarSeedInput struct {
-	AvatarSeed string `json:"avatar_seed"`
-}
-
 func NewUpdateAvatarSeedHandler(uc ucProfile.UpdateAvatarSeedUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var input avatarSeedInput
+		var input ucProfile.UpdateAvatarSeedInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
 		userID := middlewares.GetUserID(c)
-		output, appErr := uc.Execute(c, userID, middlewares.IsSuperAdmin(c), ucProfile.UpdateAvatarSeedInput{
-			ID:          userID,
-			AvatarSeed:  input.AvatarSeed,
-			BearerToken: c.GetHeader("Authorization"),
-		})
+		output, appErr := uc.Execute(c, userID, middlewares.IsSuperAdmin(c), userID, c.GetHeader("Authorization"), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

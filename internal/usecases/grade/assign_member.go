@@ -12,11 +12,15 @@ import (
 
 type (
 	AssignMemberUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID string, in AssignMemberInput) (*AssignMemberOutput, apperrors.ApplicationError)
 	}
 
 	assignMemberUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	AssignMemberInput struct {
+		UserID string `json:"user_id" binding:"required"`
 	}
 
 	AssignMemberOutput struct {
@@ -28,7 +32,8 @@ func NewAssignMemberUsecase(contextFactory appcontext.Factory) AssignMemberUseca
 	return &assignMemberUsecase{contextFactory: contextFactory}
 }
 
-func (u *assignMemberUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID, userID string) (*AssignMemberOutput, apperrors.ApplicationError) {
+func (u *assignMemberUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, gradeID string, in AssignMemberInput) (*AssignMemberOutput, apperrors.ApplicationError) {
+	userID := in.UserID
 	app := u.contextFactory()
 
 	grade, err := app.Repositories.Grade.Get(ctx, gradeID)

@@ -11,7 +11,7 @@ import (
 
 func NewUpdateUIThemeByIDHandler(uc ucProfile.UpdateUIThemeUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var input uiThemeInput
+		var input ucProfile.UpdateUIThemeInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -23,11 +23,7 @@ func NewUpdateUIThemeByIDHandler(uc ucProfile.UpdateUIThemeUsecase) gin.HandlerF
 			return
 		}
 
-		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), ucProfile.UpdateUIThemeInput{
-			ID:          profileID,
-			UITheme:     input.UITheme,
-			BearerToken: c.GetHeader("Authorization"),
-		})
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsSuperAdmin(c), profileID, c.GetHeader("Authorization"), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

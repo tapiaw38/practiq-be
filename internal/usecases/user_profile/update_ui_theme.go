@@ -14,7 +14,7 @@ import (
 
 type (
 	UpdateUIThemeUsecase interface {
-		Execute(context.Context, string, bool, UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string, in UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError)
 	}
 
 	updateUIThemeUsecase struct {
@@ -22,9 +22,7 @@ type (
 	}
 
 	UpdateUIThemeInput struct {
-		ID          string
-		UITheme     string `json:"ui_theme"`
-		BearerToken string
+		UITheme string `json:"ui_theme"`
 	}
 
 	UpdateUIThemeOutput struct {
@@ -36,14 +34,14 @@ func NewUpdateUIThemeUsecase(contextFactory appcontext.Factory) UpdateUIThemeUse
 	return &updateUIThemeUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateUIThemeUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError) {
+func (u *updateUIThemeUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string, in UpdateUIThemeInput) (*UpdateUIThemeOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.ID); appErr != nil {
+	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, id); appErr != nil {
 		return nil, appErr
 	}
 
-	uiTheme := strings.TrimSpace(input.UITheme)
+	uiTheme := strings.TrimSpace(in.UITheme)
 	if uiTheme == "" {
 		uiTheme = "primary"
 	}
@@ -51,11 +49,11 @@ func (u *updateUIThemeUsecase) Execute(ctx context.Context, requesterID string, 
 		return nil, apperrors.NewBadRequestError("ui_theme must be primary or secondary")
 	}
 
-	if err := app.Repositories.UserProfile.UpdateUITheme(ctx, input.ID, uiTheme); err != nil {
+	if err := app.Repositories.UserProfile.UpdateUITheme(ctx, id, uiTheme); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileSyncError, err)
 	}
 
-	updated, err := app.Repositories.UserProfile.Get(ctx, input.ID)
+	updated, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
@@ -63,11 +61,11 @@ func (u *updateUIThemeUsecase) Execute(ctx context.Context, requesterID string, 
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
 	if appErr != nil {
 		return nil, appErr
 	}
-	info := names[input.ID]
+	info := names[id]
 
-	return &UpdateUIThemeOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email, assistantcfg.Enabled(ctx, app))}, nil
+	return &UpdateUIThemeOutput{Data: toProfileData(*updated, identity.FullName(info, id), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }

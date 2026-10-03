@@ -19,9 +19,9 @@ type (
 	}
 
 	UpdateInput struct {
-		Title       string
-		Description string
-		OrderIndex  int
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description"`
+		OrderIndex  int    `json:"order_index"`
 	}
 
 	UpdateOutput struct {

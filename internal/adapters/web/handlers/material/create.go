@@ -8,33 +8,18 @@ import (
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
 )
 
-type createInput struct {
-	Title         string `json:"title" binding:"required"`
-	Type          string `json:"type" binding:"required"`
-	ExtractedText string `json:"extracted_text"`
-
-	FileURL string `json:"file_url"`
-}
-
 func NewCreateHandler(uc ucMaterial.CreateUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		courseID := c.Param("id")
 		userID := middlewares.GetUserID(c)
-		var input createInput
+		var input ucMaterial.CreateInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
 		isSuperAdmin := middlewares.IsSuperAdmin(c)
-		output, appErr := uc.Execute(c, userID, isSuperAdmin, ucMaterial.CreateInput{
-			CourseID:      courseID,
-			TeacherID:     userID,
-			Title:         input.Title,
-			Type:          input.Type,
-			ExtractedText: input.ExtractedText,
-			FileURL:       input.FileURL,
-		})
+		output, appErr := uc.Execute(c, userID, isSuperAdmin, courseID, userID, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

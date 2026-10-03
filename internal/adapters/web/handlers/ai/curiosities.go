@@ -8,24 +8,16 @@ import (
 	ucAI "github.com/tapiaw38/practiq-be/internal/usecases/ai"
 )
 
-type curiositiesInput struct {
-	CourseID string `json:"course_id" binding:"required"`
-}
-
 func NewGenerateCuriositiesHandler(uc ucAI.GenerateCuriositiesUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := middlewares.GetUserID(c)
-		var input curiositiesInput
+		var input ucAI.GenerateCuriositiesInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		output, appErr := uc.Execute(c, ucAI.GenerateCuriositiesInput{
-			UserID:       userID,
-			IsSuperAdmin: middlewares.IsSuperAdmin(c),
-			CourseID:     input.CourseID,
-		})
+		output, appErr := uc.Execute(c, userID, middlewares.IsSuperAdmin(c), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

@@ -444,4 +444,36 @@ var (
 		StatusCode:   http.StatusBadRequest,
 		Message:      "only students can redeem an invitation code",
 	}
+
+	SiteContactGetError = ErrorDetails{
+		InternalCode: "site_contact:read-error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "site contact unavailable",
+	}
+	SiteContactSaveError = ErrorDetails{
+		InternalCode: "site_contact:save-error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "could not save site contact",
+	}
+
+	GillieSettingsGetError = ErrorDetails{
+		InternalCode: "gillie:read-error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "could not read the assistant settings",
+	}
+	GillieSettingsSaveError = ErrorDetails{
+		InternalCode: "gillie:save-error",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "could not save the assistant settings",
+	}
+	GillieSettingsBadURLError = ErrorDetails{
+		InternalCode: "gillie:bad-url",
+		StatusCode:   http.StatusBadRequest,
+		Message:      "base_url is required",
+	}
+	GillieSettingsEncryptionError = ErrorDetails{
+		InternalCode: "gillie:encryption-unavailable",
+		StatusCode:   http.StatusInternalServerError,
+		Message:      "the server cannot encrypt the key: set GILLIE_CONFIG_SECRET",
+	}
 )

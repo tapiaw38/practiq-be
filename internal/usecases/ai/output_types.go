@@ -37,12 +37,12 @@ func toConversationData(c domain.AIConversation) ConversationData {
 	}
 }
 
-func toConversationOutputData(id string, input CreateConversationInput) ConversationData {
+func toConversationOutputData(id, studentID string, in CreateConversationInput) ConversationData {
 	return ConversationData{
 		ID:              id,
-		StudentID:       input.StudentID,
-		CourseID:        input.CourseID,
-		PracticeSheetID: input.PracticeSheetID,
+		StudentID:       studentID,
+		CourseID:        in.CourseID,
+		PracticeSheetID: in.PracticeSheetID,
 	}
 }
 

@@ -13,15 +13,17 @@ import (
 )
 
 type listUsecaseSpy struct {
-	got ucCourse.ListInput
+	teacherID string
+	studentID string
+	schoolID  string
 }
 
-func (s *listUsecaseSpy) Execute(_ context.Context, input ucCourse.ListInput) (*ucCourse.ListOutput, apperrors.ApplicationError) {
-	s.got = input
+func (s *listUsecaseSpy) Execute(_ context.Context, teacherID, studentID, schoolID string) (*ucCourse.ListOutput, apperrors.ApplicationError) {
+	s.teacherID, s.studentID, s.schoolID = teacherID, studentID, schoolID
 	return &ucCourse.ListOutput{Data: []ucCourse.CourseData{}}, nil
 }
 
-func listAs(t *testing.T, userID string, roles []auth.RoleClaim, schoolID string) ucCourse.ListInput {
+func listAs(t *testing.T, userID string, roles []auth.RoleClaim, schoolID string) *listUsecaseSpy {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -43,30 +45,30 @@ func listAs(t *testing.T, userID string, roles []auth.RoleClaim, schoolID string
 	if res.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", res.Code)
 	}
-	return spy.got
+	return spy
 }
 
 func TestListNarrowsATeacherToTheirOwnCourses(t *testing.T) {
 	got := listAs(t, "teacher-1", []auth.RoleClaim{{Name: "user"}}, "school-1")
 
-	if got.TeacherID != "teacher-1" {
-		t.Fatalf("TeacherID = %q, want the caller", got.TeacherID)
+	if got.teacherID != "teacher-1" {
+		t.Fatalf("TeacherID = %q, want the caller", got.teacherID)
 	}
-	if got.SchoolID != "school-1" {
-		t.Fatalf("SchoolID = %q, want the header value", got.SchoolID)
+	if got.schoolID != "school-1" {
+		t.Fatalf("SchoolID = %q, want the header value", got.schoolID)
 	}
 }
 
 func TestListShowsASuperAdminEveryCourseOfTheSelectedSchool(t *testing.T) {
 	got := listAs(t, "operator-1", []auth.RoleClaim{{Name: "superadmin"}}, "school-1")
 
-	if got.TeacherID != "" {
-		t.Fatalf("TeacherID = %q, want no ownership filter for a superadmin", got.TeacherID)
+	if got.teacherID != "" {
+		t.Fatalf("TeacherID = %q, want no ownership filter for a superadmin", got.teacherID)
 	}
-	if got.StudentID != "" {
-		t.Fatalf("StudentID = %q, want no student filter on role=teacher", got.StudentID)
+	if got.studentID != "" {
+		t.Fatalf("StudentID = %q, want no student filter on role=teacher", got.studentID)
 	}
-	if got.SchoolID != "school-1" {
-		t.Fatalf("SchoolID = %q, want the answer still bounded by the school", got.SchoolID)
+	if got.schoolID != "school-1" {
+		t.Fatalf("SchoolID = %q, want the answer still bounded by the school", got.schoolID)
 	}
 }

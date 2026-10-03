@@ -12,15 +12,14 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string, input CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	CreateInput struct {
-		CourseID    string
-		Title       string
-		Description string
-		Level       int
-		TopicID     string
+		Title       string `json:"title" binding:"required"`
+		Description string `json:"description"`
+		Level       int    `json:"level"`
+		TopicID     string `json:"topic_id" binding:"required"`
 	}
 
 	CreateOutput struct {
@@ -34,9 +33,9 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID string, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
-	course, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID)
+	course, appErr := school.EnsureCanManageCourse(ctx, app, requesterID, isSuperAdmin, courseID)
 	if appErr != nil {
 		return nil, appErr
 	}
@@ -50,7 +49,7 @@ func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuper
 	}
 
 	id, err := app.Repositories.Notebook.Create(ctx, domain.Notebook{
-		CourseID:    input.CourseID,
+		CourseID:    courseID,
 		TopicID:     input.TopicID,
 		TeacherID:   owner,
 		Title:       input.Title,

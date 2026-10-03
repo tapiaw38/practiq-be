@@ -91,7 +91,7 @@ func main() {
 
 	revoked := revocation.NewChecker(integ.AuthAPI.GetTokenVersion, 60*time.Second)
 
-	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, repos.SiteContact, repos.GillieSettings, revoked)
+	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, revoked)
 
 	startSubmitJobSweeper(repos.SubmitJob)
 

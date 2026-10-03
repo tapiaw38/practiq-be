@@ -6,3 +6,5 @@ tmp/
 coverage.out
 *.out
 vendor/
+.idea/
+/practiq-be

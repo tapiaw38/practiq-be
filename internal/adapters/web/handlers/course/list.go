@@ -14,18 +14,17 @@ func NewListHandler(uc ucCourse.ListUsecase) gin.HandlerFunc {
 		userID := middlewares.GetUserID(c)
 		role := c.Query("role")
 
-		input := ucCourse.ListInput{}
+		teacherID, studentID := "", ""
 		if role == "teacher" {
 
 			if !middlewares.IsSuperAdmin(c) {
-				input.TeacherID = userID
+				teacherID = userID
 			}
 		} else {
-			input.StudentID = userID
+			studentID = userID
 		}
-		input.SchoolID = c.GetHeader("X-School-ID")
 
-		output, appErr := uc.Execute(c, input)
+		output, appErr := uc.Execute(c, teacherID, studentID, c.GetHeader("X-School-ID"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

@@ -21,8 +21,8 @@ type (
 	}
 
 	UpdateInput struct {
-		Name        string
-		Description string
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
 	}
 
 	UpdateOutput struct {

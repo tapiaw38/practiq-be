@@ -8,29 +8,19 @@ import (
 	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 )
 
-type assignToCourseInput struct {
-	StrategyID string `json:"strategy_id" binding:"required"`
-	IsDefault  bool   `json:"is_default"`
-	Config     string `json:"config"`
-}
-
 func NewAssignToCourseHandler(uc ucLS.AssignToCourseUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		requesterID := middlewares.GetUserID(c)
 		courseID := c.Param("id")
 		isSuperAdmin := middlewares.IsSuperAdmin(c)
 
-		var input assignToCourseInput
+		var input ucLS.AssignToCourseInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		output, appErr := uc.Execute(c, requesterID, courseID, isSuperAdmin, ucLS.AssignToCourseInput{
-			StrategyID: input.StrategyID,
-			IsDefault:  input.IsDefault,
-			Config:     input.Config,
-		})
+		output, appErr := uc.Execute(c, requesterID, courseID, isSuperAdmin, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

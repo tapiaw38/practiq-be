@@ -22,9 +22,9 @@ type (
 	}
 
 	UpdateInput struct {
-		Name        string
-		Description string
-		VisualTheme string
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		VisualTheme string `json:"visual_theme" binding:"required"`
 	}
 
 	UpdateOutput struct {

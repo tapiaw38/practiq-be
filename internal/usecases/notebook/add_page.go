@@ -14,16 +14,15 @@ import (
 
 type (
 	AddPageUsecase interface {
-		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, notebookID string, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError)
 	}
 
 	AddPageInput struct {
-		NotebookID   string
-		PageNumber   int
-		Title        string
-		ContentType  string
-		ContentData  string
-		Instructions string
+		PageNumber   int    `json:"page_number"`
+		Title        string `json:"title"`
+		ContentType  string `json:"content_type"`
+		ContentData  string `json:"content_data"`
+		Instructions string `json:"instructions"`
 	}
 
 	AddPageOutput struct {
@@ -37,9 +36,9 @@ func NewAddPageUsecase(contextFactory appcontext.Factory) AddPageUsecase {
 	return &addPageUsecase{contextFactory: contextFactory}
 }
 
-func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError) {
+func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, notebookID string, input AddPageInput) (*AddPageOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
-	notebook, err := app.Repositories.Notebook.Get(ctx, input.NotebookID)
+	notebook, err := app.Repositories.Notebook.Get(ctx, notebookID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookGetError, err)
 	}
@@ -55,11 +54,11 @@ func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSupe
 		if uploaded, err := app.ImageStorage.UploadDataURI(ctx, "notebook", notebook.TeacherID, contentData); err == nil {
 			contentData = uploaded
 		} else {
-			log.Printf("[image_storage] notebook page upload failed notebook_id=%s err=%v", input.NotebookID, err)
+			log.Printf("[image_storage] notebook page upload failed notebook_id=%s err=%v", notebookID, err)
 		}
 	}
 	page := domain.NotebookPage{
-		NotebookID:   input.NotebookID,
+		NotebookID:   notebookID,
 		PageNumber:   input.PageNumber,
 		Title:        input.Title,
 		ContentType:  input.ContentType,
@@ -72,7 +71,7 @@ func (u *addPageUsecase) Execute(ctx context.Context, requesterID string, isSupe
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.NotebookUpdateError, err)
 	}
-	data := toPageData(id, input, contentData)
+	data := toPageData(id, notebookID, input, contentData)
 	data.ContentData = datauri.Resolve(ctx, app, data.ContentData)
 	data.StatementText = page.StatementText
 	return &AddPageOutput{Data: data}, nil

@@ -44,3 +44,7 @@ func toNotificationData(n domain.Notification) NotificationData {
 	}
 	return data
 }
+
+type MarkReadOutput struct {
+	Data OperationResultData `json:"data"`
+}

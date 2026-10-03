@@ -24,7 +24,7 @@ var defaultCuriosities = []string{
 
 type (
 	GenerateCuriositiesUsecase interface {
-		Execute(context.Context, GenerateCuriositiesInput) (*GenerateCuriositiesOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, userID string, isSuperAdmin bool, in GenerateCuriositiesInput) (*GenerateCuriositiesOutput, apperrors.ApplicationError)
 	}
 
 	generateCuriositiesUsecase struct {
@@ -32,9 +32,7 @@ type (
 	}
 
 	GenerateCuriositiesInput struct {
-		UserID       string
-		IsSuperAdmin bool
-		CourseID     string `json:"course_id" binding:"required"`
+		CourseID string `json:"course_id" binding:"required"`
 	}
 
 	GenerateCuriositiesOutput struct {
@@ -51,10 +49,10 @@ func NewGenerateCuriositiesUsecase(contextFactory appcontext.Factory) GenerateCu
 	return &generateCuriositiesUsecase{contextFactory: contextFactory}
 }
 
-func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input GenerateCuriositiesInput) (*GenerateCuriositiesOutput, apperrors.ApplicationError) {
+func (u *generateCuriositiesUsecase) Execute(ctx context.Context, userID string, isSuperAdmin bool, in GenerateCuriositiesInput) (*GenerateCuriositiesOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	course, err := app.Repositories.Course.Get(ctx, input.CourseID)
+	course, err := app.Repositories.Course.Get(ctx, in.CourseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 	}
@@ -62,10 +60,10 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		return nil, apperrors.NewNotFoundError("course not found")
 	}
 
-	_, manageErr := school.EnsureCanManageCourse(ctx, app, input.UserID, input.IsSuperAdmin, input.CourseID)
+	_, manageErr := school.EnsureCanManageCourse(ctx, app, userID, isSuperAdmin, in.CourseID)
 	manages := manageErr == nil
 	if !manages {
-		hasAccess, err := userHasCourseAccess(ctx, app, input.UserID, input.CourseID)
+		hasAccess, err := userHasCourseAccess(ctx, app, userID, in.CourseID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.CourseGetError, err)
 		}
@@ -74,26 +72,26 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 		}
 	}
 
-	cached, err := app.Repositories.CourseCuriosities.Get(ctx, input.CourseID)
+	cached, err := app.Repositories.CourseCuriosities.Get(ctx, in.CourseID)
 	if err != nil {
-		log.Printf("[ai_curiosities] warning: failed to get cached curiosities course_id=%s err=%v", input.CourseID, err)
+		log.Printf("[ai_curiosities] warning: failed to get cached curiosities course_id=%s err=%v", in.CourseID, err)
 	}
 	if cached != nil && len(cached.Curiosities) > 0 && !containsTechnicalFallback(cached.Curiosities) {
 		return &GenerateCuriositiesOutput{
 			Data: CuriositiesData{
-				CourseID:    input.CourseID,
+				CourseID:    in.CourseID,
 				Curiosities: cached.Curiosities,
 			},
 		}, nil
 	}
 	if cached != nil && len(cached.Curiosities) > 0 {
-		log.Printf("[ai_curiosities] warning: discarding technical fallback from cache course_id=%s", input.CourseID)
+		log.Printf("[ai_curiosities] warning: discarding technical fallback from cache course_id=%s", in.CourseID)
 	}
 
 	cfg := assistantcfg.Resolve(ctx, app)
 	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
 		log.Print("[ai_curiosities] warning: the assistant is not configured for this platform")
-		return u.fallbackResponse(input.CourseID), nil
+		return u.fallbackResponse(in.CourseID), nil
 	}
 
 	subject := course.SubjectName
@@ -107,26 +105,26 @@ func (u *generateCuriositiesUsecase) Execute(ctx context.Context, input Generate
 
 	curiosities, err := app.Integrations.AssistantGateway.GenerateCourseCuriosities(ctx, cfg, subject, topic, course.GradeName, 8)
 	if err != nil {
-		log.Printf("[ai_curiosities] warning: AI generation failed course_id=%s err=%v, falling back to defaults", input.CourseID, err)
-		return u.fallbackResponse(input.CourseID), nil
+		log.Printf("[ai_curiosities] warning: AI generation failed course_id=%s err=%v, falling back to defaults", in.CourseID, err)
+		return u.fallbackResponse(in.CourseID), nil
 	}
 
 	if len(curiosities) == 0 {
-		return u.fallbackResponse(input.CourseID), nil
+		return u.fallbackResponse(in.CourseID), nil
 	}
 
 	if manages {
 		if err := app.Repositories.CourseCuriosities.Upsert(ctx, domain.CourseCuriosities{
-			CourseID:    input.CourseID,
+			CourseID:    in.CourseID,
 			Curiosities: curiosities,
 		}); err != nil {
-			log.Printf("[ai_curiosities] warning: failed to cache curiosities course_id=%s err=%v", input.CourseID, err)
+			log.Printf("[ai_curiosities] warning: failed to cache curiosities course_id=%s err=%v", in.CourseID, err)
 		}
 	}
 
 	return &GenerateCuriositiesOutput{
 		Data: CuriositiesData{
-			CourseID:    input.CourseID,
+			CourseID:    in.CourseID,
 			Curiosities: curiosities,
 		},
 	}, nil

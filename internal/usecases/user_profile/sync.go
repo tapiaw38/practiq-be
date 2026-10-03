@@ -14,7 +14,7 @@ import (
 
 type (
 	SyncUsecase interface {
-		Execute(context.Context, SyncInput) (*SyncOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, id, bearerToken string, in SyncInput) (*SyncOutput, apperrors.ApplicationError)
 	}
 
 	syncUsecase struct {
@@ -22,11 +22,8 @@ type (
 	}
 
 	SyncInput struct {
-		ID          string
-		ProfileType string
-		Timezone    string
-
-		BearerToken string
+		ProfileType string `json:"profile_type"`
+		Timezone    string `json:"timezone"`
 	}
 
 	SyncOutput struct {
@@ -38,15 +35,15 @@ func NewSyncUsecase(contextFactory appcontext.Factory) SyncUsecase {
 	return &syncUsecase{contextFactory: contextFactory}
 }
 
-func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput, apperrors.ApplicationError) {
+func (u *syncUsecase) Execute(ctx context.Context, id, bearerToken string, in SyncInput) (*SyncOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	existing, err := app.Repositories.UserProfile.Get(ctx, input.ID)
+	existing, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 
-	profileType := input.ProfileType
+	profileType := in.ProfileType
 	if existing != nil {
 		profileType = existing.ProfileType
 	} else if profileType == "" {
@@ -57,26 +54,26 @@ func (u *syncUsecase) Execute(ctx context.Context, input SyncInput) (*SyncOutput
 	}
 
 	p := domain.UserProfile{
-		ID:          input.ID,
+		ID:          id,
 		ProfileType: profileType,
-		Timezone:    input.Timezone,
+		Timezone:    in.Timezone,
 	}
 
 	if err := app.Repositories.UserProfile.Upsert(ctx, p); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileSyncError, err)
 	}
 
-	updated, err := app.Repositories.UserProfile.Get(ctx, input.ID)
+	updated, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
 
-	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
 	if appErr != nil {
 		return nil, appErr
 	}
-	info := names[input.ID]
-	displayName := identity.FullName(info, input.ID)
+	info := names[id]
+	displayName := identity.FullName(info, id)
 
 	ensurePersonalSchool(ctx, app, *updated, displayName)
 

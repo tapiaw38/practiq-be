@@ -11,11 +11,15 @@ import (
 
 type (
 	ListGradesByUsersUsecase interface {
-		Execute(ctx context.Context, requesterID string, isTeacher bool, userIDs []string) (*ListGradesByUsersOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isTeacher bool, in ListGradesByUsersInput) (*ListGradesByUsersOutput, apperrors.ApplicationError)
 	}
 
 	listGradesByUsersUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	ListGradesByUsersInput struct {
+		UserIDs []string `json:"user_ids"`
 	}
 
 	ListGradesByUsersOutput struct {
@@ -37,7 +41,8 @@ func filterAllowedUserIDs(requesterID string, isTeacher bool, userIDs []string) 
 	return nil
 }
 
-func (u *listGradesByUsersUsecase) Execute(ctx context.Context, requesterID string, isTeacher bool, userIDs []string) (*ListGradesByUsersOutput, apperrors.ApplicationError) {
+func (u *listGradesByUsersUsecase) Execute(ctx context.Context, requesterID string, isTeacher bool, in ListGradesByUsersInput) (*ListGradesByUsersOutput, apperrors.ApplicationError) {
+	userIDs := in.UserIDs
 	allowedIDs := filterAllowedUserIDs(requesterID, isTeacher, userIDs)
 
 	app := u.contextFactory()

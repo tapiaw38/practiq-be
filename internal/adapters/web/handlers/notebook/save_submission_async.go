@@ -21,10 +21,7 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 	return func(c *gin.Context) {
 		pageID := c.Param("id")
 		studentID := middlewares.GetUserID(c)
-		var input struct {
-			CanvasData string `json:"canvas_data"`
-			AnswerText string `json:"answer_text"`
-		}
+		var input ucNB.SaveSubmissionInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -51,20 +48,11 @@ func NewSaveSubmissionAsyncHandler(uc ucNB.SaveSubmissionUsecase, repo submitjob
 			return
 		}
 
-		go func(pid, sid, jid string, ver int64, payload struct {
-			CanvasData string `json:"canvas_data"`
-			AnswerText string `json:"answer_text"`
-		}) {
+		go func(pid, sid, jid string, ver int64, payload ucNB.SaveSubmissionInput) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
 
-			err := uc.Execute(ctx, ucNB.SaveSubmissionInput{
-				PageID:     pid,
-				StudentID:  sid,
-				CanvasData: payload.CanvasData,
-				AnswerText: payload.AnswerText,
-				Version:    ver,
-			})
+			err := uc.Execute(ctx, pid, sid, ver, payload)
 			finishCtx, finishCancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer finishCancel()
 

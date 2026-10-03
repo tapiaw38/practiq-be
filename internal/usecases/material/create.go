@@ -14,7 +14,7 @@ import (
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, string, bool, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID, teacherID string, in CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -22,10 +22,8 @@ type (
 	}
 
 	CreateInput struct {
-		CourseID      string
-		TeacherID     string
-		Title         string `json:"title"`
-		Type          string `json:"type"`
+		Title         string `json:"title" binding:"required"`
+		Type          string `json:"type" binding:"required"`
 		ExtractedText string `json:"extracted_text"`
 		FileURL       string `json:"file_url"`
 	}
@@ -46,33 +44,33 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, courseID, teacherID string, in CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isSuperAdmin, input.CourseID); appErr != nil {
+	if appErr := requesterCanWriteCourse(ctx, app, requesterID, isSuperAdmin, courseID); appErr != nil {
 		return nil, appErr
 	}
 
-	if input.FileURL != "" && (app.ImageStorage == nil ||
-		!app.ImageStorage.OwnsFileURL(input.FileURL, materialsFolder, input.TeacherID)) {
+	if in.FileURL != "" && (app.ImageStorage == nil ||
+		!app.ImageStorage.OwnsFileURL(in.FileURL, materialsFolder, teacherID)) {
 		return nil, apperrors.NewApplicationError(mappings.MaterialCreateError,
 			errors.New("the file does not belong to this teacher"))
 	}
 
 	id, err := app.Repositories.Material.Create(ctx, domain.Material{
-		CourseID:      input.CourseID,
-		TeacherID:     input.TeacherID,
-		Title:         input.Title,
-		Type:          input.Type,
-		ExtractedText: input.ExtractedText,
-		FileURL:       input.FileURL,
-		Status:        materialStatus(input.FileURL),
+		CourseID:      courseID,
+		TeacherID:     teacherID,
+		Title:         in.Title,
+		Type:          in.Type,
+		ExtractedText: in.ExtractedText,
+		FileURL:       in.FileURL,
+		Status:        materialStatus(in.FileURL),
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialCreateError, err)
 	}
 
-	materials, err := app.Repositories.Material.List(ctx, materialRepo.ListFilter{CourseID: input.CourseID})
+	materials, err := app.Repositories.Material.List(ctx, materialRepo.ListFilter{CourseID: courseID})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.MaterialListError, err)
 	}

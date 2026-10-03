@@ -16,11 +16,15 @@ import (
 
 type (
 	RedeemUsecase interface {
-		Execute(ctx context.Context, studentID, rawCode, bearerToken string) (*RedeemOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, studentID, bearerToken string, in RedeemInput) (*RedeemOutput, apperrors.ApplicationError)
 	}
 
 	redeemUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	RedeemInput struct {
+		Code string `json:"code" binding:"required"`
 	}
 
 	RedeemOutput struct {
@@ -39,7 +43,8 @@ func NewRedeemUsecase(contextFactory appcontext.Factory) RedeemUsecase {
 	return &redeemUsecase{contextFactory: contextFactory}
 }
 
-func (u *redeemUsecase) Execute(ctx context.Context, studentID, rawCode, bearerToken string) (*RedeemOutput, apperrors.ApplicationError) {
+func (u *redeemUsecase) Execute(ctx context.Context, studentID, bearerToken string, in RedeemInput) (*RedeemOutput, apperrors.ApplicationError) {
+	rawCode := in.Code
 	app := u.contextFactory()
 	now := time.Now()
 

@@ -11,14 +11,12 @@ import (
 
 type (
 	TeacherReviewSubmissionUsecase interface {
-		Execute(ctx context.Context, submissionID string, input TeacherReviewInput) (*TeacherReviewSubmissionOutput, error)
+		Execute(ctx context.Context, submissionID, teacherID, bearerToken string, input TeacherReviewInput) (*TeacherReviewSubmissionOutput, error)
 	}
 
 	TeacherReviewInput struct {
-		IsCorrect   bool
-		Feedback    string
-		TeacherID   string
-		BearerToken string
+		IsCorrect bool   `json:"teacher_is_correct"`
+		Feedback  string `json:"teacher_feedback"`
 	}
 
 	TeacherReviewSubmissionOutput struct {
@@ -32,13 +30,13 @@ func NewTeacherReviewSubmissionUsecase(contextFactory appcontext.Factory) Teache
 	return &teacherReviewSubmissionUsecase{contextFactory: contextFactory}
 }
 
-func (u *teacherReviewSubmissionUsecase) Execute(ctx context.Context, submissionID string, input TeacherReviewInput) (*TeacherReviewSubmissionOutput, error) {
+func (u *teacherReviewSubmissionUsecase) Execute(ctx context.Context, submissionID, teacherID, bearerToken string, input TeacherReviewInput) (*TeacherReviewSubmissionOutput, error) {
 	app := u.contextFactory()
 	submission, err := app.Repositories.Notebook.GetFullSubmissionByID(ctx, submissionID)
 	if err != nil {
 		return nil, err
 	}
-	if submission == nil || (input.TeacherID != "" && submission.TeacherID != input.TeacherID) {
+	if submission == nil || (teacherID != "" && submission.TeacherID != teacherID) {
 		return nil, fmt.Errorf("submission not found")
 	}
 	if err := app.Repositories.Notebook.UpdateSubmissionTeacherReview(ctx, submissionID, input.IsCorrect, strings.TrimSpace(input.Feedback)); err != nil {
@@ -52,7 +50,7 @@ func (u *teacherReviewSubmissionUsecase) Execute(ctx context.Context, submission
 		return nil, fmt.Errorf("submission not found")
 	}
 
-	names, err := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{updated.StudentID})
+	names, err := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{updated.StudentID})
 	if err != nil {
 		return nil, err
 	}

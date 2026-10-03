@@ -16,7 +16,7 @@ const maxAvatarSeedLength = 64
 
 type (
 	UpdateAvatarSeedUsecase interface {
-		Execute(context.Context, string, bool, UpdateAvatarSeedInput) (*UpdateAvatarSeedOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string, in UpdateAvatarSeedInput) (*UpdateAvatarSeedOutput, apperrors.ApplicationError)
 	}
 
 	updateAvatarSeedUsecase struct {
@@ -24,9 +24,7 @@ type (
 	}
 
 	UpdateAvatarSeedInput struct {
-		ID          string
-		AvatarSeed  string `json:"avatar_seed"`
-		BearerToken string
+		AvatarSeed string `json:"avatar_seed"`
 	}
 
 	UpdateAvatarSeedOutput struct {
@@ -38,23 +36,23 @@ func NewUpdateAvatarSeedUsecase(contextFactory appcontext.Factory) UpdateAvatarS
 	return &updateAvatarSeedUsecase{contextFactory: contextFactory}
 }
 
-func (u *updateAvatarSeedUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, input UpdateAvatarSeedInput) (*UpdateAvatarSeedOutput, apperrors.ApplicationError) {
+func (u *updateAvatarSeedUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string, in UpdateAvatarSeedInput) (*UpdateAvatarSeedOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, input.ID); appErr != nil {
+	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, id); appErr != nil {
 		return nil, appErr
 	}
 
-	seed := strings.TrimSpace(input.AvatarSeed)
+	seed := strings.TrimSpace(in.AvatarSeed)
 	if !validAvatarSeed(seed) {
 		return nil, apperrors.NewBadRequestError("avatar_seed must be up to 64 letters, digits, hyphens or underscores")
 	}
 
-	if err := app.Repositories.UserProfile.UpdateAvatarSeed(ctx, input.ID, seed); err != nil {
+	if err := app.Repositories.UserProfile.UpdateAvatarSeed(ctx, id, seed); err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileSyncError, err)
 	}
 
-	updated, err := app.Repositories.UserProfile.Get(ctx, input.ID)
+	updated, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProfileGetError, err)
 	}
@@ -62,13 +60,13 @@ func (u *updateAvatarSeedUsecase) Execute(ctx context.Context, requesterID strin
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, input.BearerToken, []string{input.ID})
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
 	if appErr != nil {
 		return nil, appErr
 	}
-	info := names[input.ID]
+	info := names[id]
 
-	return &UpdateAvatarSeedOutput{Data: toProfileData(*updated, identity.FullName(info, input.ID), info.Email, assistantcfg.Enabled(ctx, app))}, nil
+	return &UpdateAvatarSeedOutput{Data: toProfileData(*updated, identity.FullName(info, id), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }
 
 func validAvatarSeed(seed string) bool {

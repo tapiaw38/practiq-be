@@ -16,15 +16,15 @@ import (
 const previewLinkTTL = time.Hour
 
 type (
-	Usecase interface {
-		Execute(context.Context, Input) (*Output, apperrors.ApplicationError)
+	UploadUsecase interface {
+		Execute(context.Context, UploadInput) (*UploadOutput, apperrors.ApplicationError)
 	}
 
-	usecase struct {
+	uploadUsecase struct {
 		contextFactory appcontext.Factory
 	}
 
-	Input struct {
+	UploadInput struct {
 		UserID string
 
 		Folder      string
@@ -34,7 +34,7 @@ type (
 		Size        int64
 	}
 
-	Output struct {
+	UploadOutput struct {
 		Data FileData `json:"data"`
 	}
 
@@ -49,11 +49,11 @@ type (
 	}
 )
 
-func NewUsecase(contextFactory appcontext.Factory) Usecase {
-	return &usecase{contextFactory: contextFactory}
+func NewUploadUsecase(contextFactory appcontext.Factory) UploadUsecase {
+	return &uploadUsecase{contextFactory: contextFactory}
 }
 
-func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.ApplicationError) {
+func (u *uploadUsecase) Execute(ctx context.Context, input UploadInput) (*UploadOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	if app.ImageStorage == nil || !app.ImageStorage.IsConfigured() {
@@ -95,7 +95,7 @@ func (u *usecase) Execute(ctx context.Context, input Input) (*Output, apperrors.
 
 	previewURL, _ := app.ImageStorage.PresignGetURL(url, previewLinkTTL)
 
-	return &Output{Data: FileData{
+	return &UploadOutput{Data: FileData{
 		URL:         url,
 		PreviewURL:  previewURL,
 		Filename:    input.Filename,

@@ -16,7 +16,7 @@ const gradeNameConstraint = "idx_grades_school_name"
 
 type (
 	CreateUsecase interface {
-		Execute(context.Context, CreateInput) (*CreateOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, createdBy, schoolID string, isSuperAdmin bool, in CreateInput) (*CreateOutput, apperrors.ApplicationError)
 	}
 
 	createUsecase struct {
@@ -24,12 +24,9 @@ type (
 	}
 
 	CreateInput struct {
-		Name         string
-		Description  string
-		VisualTheme  string
-		CreatedBy    string
-		SchoolID     string
-		IsSuperAdmin bool
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		VisualTheme string `json:"visual_theme"`
 	}
 
 	CreateOutput struct {
@@ -41,15 +38,15 @@ func NewCreateUsecase(contextFactory appcontext.Factory) CreateUsecase {
 	return &createUsecase{contextFactory: contextFactory}
 }
 
-func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*CreateOutput, apperrors.ApplicationError) {
+func (u *createUsecase) Execute(ctx context.Context, createdBy, requestedSchoolID string, isSuperAdmin bool, in CreateInput) (*CreateOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	schoolID, appErr := school.OwnedSchoolIDSelected(ctx, app, input.CreatedBy, input.IsSuperAdmin, input.SchoolID)
+	schoolID, appErr := school.OwnedSchoolIDSelected(ctx, app, createdBy, isSuperAdmin, requestedSchoolID)
 	if appErr != nil {
 		return nil, appErr
 	}
 
-	visualTheme := strings.TrimSpace(input.VisualTheme)
+	visualTheme := strings.TrimSpace(in.VisualTheme)
 	if visualTheme == "" {
 		visualTheme = "primary"
 	}
@@ -59,10 +56,10 @@ func (u *createUsecase) Execute(ctx context.Context, input CreateInput) (*Create
 
 	id, err := app.Repositories.Grade.Create(ctx, domain.Grade{
 		SchoolID:    schoolID,
-		Name:        input.Name,
-		Description: input.Description,
+		Name:        in.Name,
+		Description: in.Description,
 		VisualTheme: visualTheme,
-		CreatedBy:   input.CreatedBy,
+		CreatedBy:   createdBy,
 	})
 	if err != nil {
 		if pgerr.IsUniqueViolation(err, gradeNameConstraint) {

@@ -11,7 +11,7 @@ import (
 
 type (
 	CreateConversationUsecase interface {
-		Execute(context.Context, CreateConversationInput) (*CreateConversationOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, studentID string, in CreateConversationInput) (*CreateConversationOutput, apperrors.ApplicationError)
 	}
 
 	createConversationUsecase struct {
@@ -19,7 +19,6 @@ type (
 	}
 
 	CreateConversationInput struct {
-		StudentID       string
 		CourseID        string `json:"course_id"`
 		PracticeSheetID string `json:"practice_sheet_id"`
 	}
@@ -33,17 +32,17 @@ func NewCreateConversationUsecase(contextFactory appcontext.Factory) CreateConve
 	return &createConversationUsecase{contextFactory: contextFactory}
 }
 
-func (u *createConversationUsecase) Execute(ctx context.Context, input CreateConversationInput) (*CreateConversationOutput, apperrors.ApplicationError) {
+func (u *createConversationUsecase) Execute(ctx context.Context, studentID string, in CreateConversationInput) (*CreateConversationOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	id, err := app.Repositories.AIConversation.CreateConversation(ctx, domain.AIConversation{
-		StudentID:       input.StudentID,
-		CourseID:        input.CourseID,
-		PracticeSheetID: input.PracticeSheetID,
+		StudentID:       studentID,
+		CourseID:        in.CourseID,
+		PracticeSheetID: in.PracticeSheetID,
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AIConversationCreateError, err)
 	}
 
-	return &CreateConversationOutput{Data: toConversationOutputData(id, input)}, nil
+	return &CreateConversationOutput{Data: toConversationOutputData(id, studentID, in)}, nil
 }

@@ -11,7 +11,7 @@ import (
 
 type (
 	ProxyUsecase interface {
-		Execute(context.Context, ProxyInput) (*assistant.ProxyResponse, apperrors.ApplicationError)
+		Execute(context.Context, ProxyInput) (*ProxyOutput, apperrors.ApplicationError)
 	}
 
 	proxyUsecase struct {
@@ -25,13 +25,19 @@ type (
 		ContentType string
 		Body        []byte
 	}
+
+	ProxyOutput struct {
+		StatusCode  int
+		ContentType string
+		Body        []byte
+	}
 )
 
 func NewProxyUsecase(contextFactory appcontext.Factory) ProxyUsecase {
 	return &proxyUsecase{contextFactory: contextFactory}
 }
 
-func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*assistant.ProxyResponse, apperrors.ApplicationError) {
+func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*ProxyOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
 	cfg := assistantcfg.Resolve(ctx, app)
@@ -44,5 +50,9 @@ func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*assistan
 		return nil, apperrors.NewInternalError(proxyErr)
 	}
 
-	return response, nil
+	return toProxyOutput(response), nil
+}
+
+func toProxyOutput(response *assistant.ProxyResponse) *ProxyOutput {
+	return &ProxyOutput{StatusCode: response.StatusCode, ContentType: response.ContentType, Body: response.Body}
 }

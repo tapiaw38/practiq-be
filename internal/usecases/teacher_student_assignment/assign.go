@@ -13,11 +13,16 @@ import (
 
 type (
 	AssignUsecase interface {
-		Execute(context.Context, string, bool, string, string) (*AssignOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, in AssignInput) (*AssignOutput, apperrors.ApplicationError)
 	}
 
 	assignUsecase struct {
 		contextFactory appcontext.Factory
+	}
+
+	AssignInput struct {
+		TeacherID string `json:"teacher_id" binding:"required"`
+		StudentID string `json:"student_id" binding:"required"`
 	}
 
 	AssignOutput struct {
@@ -29,7 +34,8 @@ func NewAssignUsecase(contextFactory appcontext.Factory) AssignUsecase {
 	return &assignUsecase{contextFactory: contextFactory}
 }
 
-func (u *assignUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, teacherID, studentID string) (*AssignOutput, apperrors.ApplicationError) {
+func (u *assignUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, in AssignInput) (*AssignOutput, apperrors.ApplicationError) {
+	teacherID, studentID := in.TeacherID, in.StudentID
 	app := u.contextFactory()
 
 	if appErr := school.EnsureCanLinkTeacherStudent(ctx, app, requesterID, isSuperAdmin, teacherID, studentID); appErr != nil {

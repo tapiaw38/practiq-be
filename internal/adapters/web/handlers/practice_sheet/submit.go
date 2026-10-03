@@ -9,23 +9,17 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/middlewares"
 )
 
-type submitInput struct {
-	Attempts []ucPS.AttemptInput `json:"attempts"`
-}
-
 func NewSubmitHandler(uc ucPS.SubmitUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.Param("id")
 		studentID := middlewares.GetUserID(c)
-		var input submitInput
+		var input ucPS.SubmitInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
 		}
 
-		output, appErr := uc.Execute(c, id, studentID, ucPS.SubmitInput{
-			Attempts: input.Attempts,
-		})
+		output, appErr := uc.Execute(c, id, studentID, input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

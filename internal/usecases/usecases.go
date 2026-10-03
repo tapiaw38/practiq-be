@@ -9,6 +9,7 @@ import (
 	ucCourseProgress "github.com/tapiaw38/practiq-be/internal/usecases/course_progress"
 	ucEnrollment "github.com/tapiaw38/practiq-be/internal/usecases/enrollment"
 	ucExercise "github.com/tapiaw38/practiq-be/internal/usecases/exercise"
+	ucGillie "github.com/tapiaw38/practiq-be/internal/usecases/gillie_settings"
 	ucGrade "github.com/tapiaw38/practiq-be/internal/usecases/grade"
 	ucLS "github.com/tapiaw38/practiq-be/internal/usecases/learning_strategy"
 	ucMaterial "github.com/tapiaw38/practiq-be/internal/usecases/material"
@@ -16,6 +17,7 @@ import (
 	ucNotification "github.com/tapiaw38/practiq-be/internal/usecases/notification"
 	ucPracticeSheet "github.com/tapiaw38/practiq-be/internal/usecases/practice_sheet"
 	ucSchool "github.com/tapiaw38/practiq-be/internal/usecases/school"
+	ucSiteContact "github.com/tapiaw38/practiq-be/internal/usecases/site_contact"
 	ucInvitation "github.com/tapiaw38/practiq-be/internal/usecases/student_invitation"
 	ucProgress "github.com/tapiaw38/practiq-be/internal/usecases/student_progress"
 	ucReport "github.com/tapiaw38/practiq-be/internal/usecases/student_report"
@@ -85,17 +87,32 @@ type ExerciseUsecases struct {
 }
 
 type SchoolUsecases struct {
-	Manage ucSchool.ManageUsecase
+	List         ucSchool.ListUsecase
+	Mine         ucSchool.MineUsecase
+	Create       ucSchool.CreateUsecase
+	Update       ucSchool.UpdateUsecase
+	Suspend      ucSchool.SuspendUsecase
+	Close        ucSchool.CloseUsecase
+	Reopen       ucSchool.ReopenUsecase
+	Archive      ucSchool.ArchiveUsecase
+	AddMember    ucSchool.AddMemberUsecase
+	RemoveMember ucSchool.RemoveMemberUsecase
+	ListMembers  ucSchool.ListMembersUsecase
 }
 
 type SubscriptionUsecases struct {
-	GetMine        ucSubscription.GetMineUsecase
-	ManageMine     ucSubscription.ManageMineUsecase
-	Subscribe      ucSubscription.SubscribeUsecase
-	HostedCheckout ucSubscription.HostedCheckoutUsecase
-	ChangePlan     ucSubscription.ChangePlanUsecase
-	Plans          ucSubscription.PlansUsecase
-	Downgrade      ucSubscription.DowngradeUsecase
+	GetMine           ucSubscription.GetMineUsecase
+	ManageMine        ucSubscription.ManageMineUsecase
+	Subscribe         ucSubscription.SubscribeUsecase
+	HostedCheckout    ucSubscription.HostedCheckoutUsecase
+	ChangePlan        ucSubscription.ChangePlanUsecase
+	ListPlans         ucSubscription.ListPlansUsecase
+	CreatePlan        ucSubscription.CreatePlanUsecase
+	UpdatePlan        ucSubscription.UpdatePlanUsecase
+	DeactivatePlan    ucSubscription.DeactivatePlanUsecase
+	DowngradePreview  ucSubscription.DowngradePreviewUsecase
+	DowngradeApply    ucSubscription.DowngradeApplyUsecase
+	ReactivateStudent ucSubscription.ReactivateStudentUsecase
 }
 
 type MaterialUsecases struct {
@@ -191,7 +208,7 @@ type AttemptReviewUsecases struct {
 }
 
 type UploadUsecases struct {
-	Upload ucUpload.Usecase
+	Upload ucUpload.UploadUsecase
 }
 
 type NotificationUsecases struct {
@@ -229,6 +246,18 @@ type Usecases struct {
 	Notification     NotificationUsecases
 	Upload           UploadUsecases
 	AttemptReview    AttemptReviewUsecases
+	SiteContact      SiteContactUsecases
+	GillieSettings   GillieSettingsUsecases
+}
+
+type SiteContactUsecases struct {
+	Get    ucSiteContact.GetUsecase
+	Update ucSiteContact.UpdateUsecase
+}
+
+type GillieSettingsUsecases struct {
+	Get    ucGillie.GetUsecase
+	Update ucGillie.UpdateUsecase
 }
 
 func NewUsecases(contextFactory appcontext.Factory) *Usecases {
@@ -247,7 +276,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			StatementImage: ucAttemptReview.NewStatementImageUsecase(contextFactory),
 		},
 		Upload: UploadUsecases{
-			Upload: ucUpload.NewUsecase(contextFactory),
+			Upload: ucUpload.NewUploadUsecase(contextFactory),
 		},
 		Notification: NotificationUsecases{
 			List:        ucNotification.NewListUsecase(contextFactory),
@@ -298,16 +327,39 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			StatementImage: ucExercise.NewStatementImageUsecase(contextFactory),
 		},
 		School: SchoolUsecases{
-			Manage: ucSchool.NewManageUsecase(contextFactory),
+			List:         ucSchool.NewListUsecase(contextFactory),
+			Mine:         ucSchool.NewMineUsecase(contextFactory),
+			Create:       ucSchool.NewCreateUsecase(contextFactory),
+			Update:       ucSchool.NewUpdateUsecase(contextFactory),
+			Suspend:      ucSchool.NewSuspendUsecase(contextFactory),
+			Close:        ucSchool.NewCloseUsecase(contextFactory),
+			Reopen:       ucSchool.NewReopenUsecase(contextFactory),
+			Archive:      ucSchool.NewArchiveUsecase(contextFactory),
+			AddMember:    ucSchool.NewAddMemberUsecase(contextFactory),
+			RemoveMember: ucSchool.NewRemoveMemberUsecase(contextFactory),
+			ListMembers:  ucSchool.NewListMembersUsecase(contextFactory),
+		},
+		SiteContact: SiteContactUsecases{
+			Get:    ucSiteContact.NewGetUsecase(contextFactory),
+			Update: ucSiteContact.NewUpdateUsecase(contextFactory),
+		},
+		GillieSettings: GillieSettingsUsecases{
+			Get:    ucGillie.NewGetUsecase(contextFactory),
+			Update: ucGillie.NewUpdateUsecase(contextFactory),
 		},
 		Subscription: SubscriptionUsecases{
-			GetMine:        ucSubscription.NewGetMineUsecase(contextFactory),
-			ManageMine:     ucSubscription.NewManageMineUsecase(contextFactory),
-			Subscribe:      ucSubscription.NewSubscribeUsecase(contextFactory),
-			HostedCheckout: ucSubscription.NewHostedCheckoutUsecase(contextFactory),
-			ChangePlan:     ucSubscription.NewChangePlanUsecase(contextFactory),
-			Plans:          ucSubscription.NewPlansUsecase(contextFactory),
-			Downgrade:      ucSubscription.NewDowngradeUsecase(contextFactory),
+			GetMine:           ucSubscription.NewGetMineUsecase(contextFactory),
+			ManageMine:        ucSubscription.NewManageMineUsecase(contextFactory),
+			Subscribe:         ucSubscription.NewSubscribeUsecase(contextFactory),
+			HostedCheckout:    ucSubscription.NewHostedCheckoutUsecase(contextFactory),
+			ChangePlan:        ucSubscription.NewChangePlanUsecase(contextFactory),
+			ListPlans:         ucSubscription.NewListPlansUsecase(contextFactory),
+			CreatePlan:        ucSubscription.NewCreatePlanUsecase(contextFactory),
+			UpdatePlan:        ucSubscription.NewUpdatePlanUsecase(contextFactory),
+			DeactivatePlan:    ucSubscription.NewDeactivatePlanUsecase(contextFactory),
+			DowngradePreview:  ucSubscription.NewDowngradePreviewUsecase(contextFactory),
+			DowngradeApply:    ucSubscription.NewDowngradeApplyUsecase(contextFactory),
+			ReactivateStudent: ucSubscription.NewReactivateStudentUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
 			Create: ucMaterial.NewCreateUsecase(contextFactory),

@@ -47,7 +47,7 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 			filter.To = &t
 		}
 
-		pdfBytes, appErr := uc.Execute(c, teacherID, isSuperAdmin, filter, c.GetHeader("Authorization"))
+		output, appErr := uc.Execute(c, teacherID, isSuperAdmin, filter, c.GetHeader("Authorization"))
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)
@@ -62,8 +62,8 @@ func NewGeneratePDFHandler(uc ucReport.GeneratePDFUsecase) gin.HandlerFunc {
 
 		c.Header("Content-Type", "application/pdf")
 		c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
-		c.Header("Content-Length", fmt.Sprintf("%d", len(pdfBytes)))
+		c.Header("Content-Length", fmt.Sprintf("%d", len(output.Content)))
 
-		c.Data(http.StatusOK, "application/pdf", pdfBytes)
+		c.Data(http.StatusOK, "application/pdf", output.Content)
 	}
 }

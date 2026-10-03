@@ -11,13 +11,9 @@ import (
 
 const maxBatchUserIDs = 200
 
-type listGradesByUsersInput struct {
-	UserIDs []string `json:"user_ids"`
-}
-
 func NewListGradesByUsersHandler(uc ucGrade.ListGradesByUsersUsecase) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var input listGradesByUsersInput
+		var input ucGrade.ListGradesByUsersInput
 		if err := c.ShouldBindJSON(&input); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"code": "common:bad-request", "message": err.Error()})
 			return
@@ -27,7 +23,7 @@ func NewListGradesByUsersHandler(uc ucGrade.ListGradesByUsersUsecase) gin.Handle
 			return
 		}
 
-		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsTeacher(c), input.UserIDs)
+		output, appErr := uc.Execute(c, middlewares.GetUserID(c), middlewares.IsTeacher(c), input)
 		if appErr != nil {
 			appErr.Log(c)
 			c.JSON(appErr.StatusCode(), appErr)

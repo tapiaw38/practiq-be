@@ -40,7 +40,7 @@ var mockResponses = map[string][]string{
 
 type (
 	HelpUsecase interface {
-		Execute(context.Context, HelpInput) (*HelpOutput, apperrors.ApplicationError)
+		Execute(ctx context.Context, studentID string, in HelpInput) (*HelpOutput, apperrors.ApplicationError)
 	}
 
 	helpUsecase struct {
@@ -48,7 +48,6 @@ type (
 	}
 
 	HelpInput struct {
-		StudentID      string
 		ExerciseID     string `json:"exercise_id"`
 		Question       string `json:"question"`
 		StudentAnswer  string `json:"student_answer"`
@@ -65,11 +64,11 @@ func NewHelpUsecase(contextFactory appcontext.Factory) HelpUsecase {
 	return &helpUsecase{contextFactory: contextFactory}
 }
 
-func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput, apperrors.ApplicationError) {
+func (u *helpUsecase) Execute(ctx context.Context, studentID string, in HelpInput) (*HelpOutput, apperrors.ApplicationError) {
 	app := u.contextFactory()
 
-	if input.ExerciseID != "" {
-		exercise, err := app.Repositories.Exercise.Get(ctx, input.ExerciseID)
+	if in.ExerciseID != "" {
+		exercise, err := app.Repositories.Exercise.Get(ctx, in.ExerciseID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
 		}
@@ -78,7 +77,7 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 			if topic == nil {
 				return nil, apperrors.NewForbiddenError()
 			}
-			hasAccess, err := studentHasCourseAccess(ctx, app, input.StudentID, topic.CourseID)
+			hasAccess, err := studentHasCourseAccess(ctx, app, studentID, topic.CourseID)
 			if err != nil {
 				return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
 			}
@@ -88,17 +87,17 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 		}
 	}
 
-	helpType := input.HelpType
+	helpType := in.HelpType
 	if helpType == "" {
 		helpType = "hint"
 	}
 
-	response := u.getAIResponse(ctx, app, input, helpType)
+	response := u.getAIResponse(ctx, app, studentID, in, helpType)
 
 	id, err := app.Repositories.AIConversation.CreateHelpRequest(ctx, domain.AIHelpRequest{
-		StudentID:  input.StudentID,
-		ExerciseID: input.ExerciseID,
-		Question:   input.Question,
+		StudentID:  studentID,
+		ExerciseID: in.ExerciseID,
+		Question:   in.Question,
 		AIResponse: response,
 		HelpType:   helpType,
 	})
@@ -106,37 +105,37 @@ func (u *helpUsecase) Execute(ctx context.Context, input HelpInput) (*HelpOutput
 		return nil, apperrors.NewApplicationError(mappings.AIHelpError, err)
 	}
 
-	if input.ConversationID != "" {
-		conversation, err := app.Repositories.AIConversation.Get(ctx, input.ConversationID)
+	if in.ConversationID != "" {
+		conversation, err := app.Repositories.AIConversation.Get(ctx, in.ConversationID)
 		if err != nil {
 			return nil, apperrors.NewApplicationError(mappings.AIConversationGetError, err)
 		}
-		if conversation == nil || conversation.StudentID != input.StudentID {
+		if conversation == nil || conversation.StudentID != studentID {
 			return nil, apperrors.NewForbiddenError()
 		}
-		u.persistMessages(ctx, app, input.ConversationID, input.Question, helpType, response)
+		u.persistMessages(ctx, app, in.ConversationID, in.Question, helpType, response)
 	}
 
 	return &HelpOutput{Data: toHelpOutputData(id, response, helpType)}, nil
 }
 
-func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context, input HelpInput, helpType string) string {
-	profile, err := app.Repositories.UserProfile.Get(ctx, input.StudentID)
+func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context, studentID string, in HelpInput, helpType string) string {
+	profile, err := app.Repositories.UserProfile.Get(ctx, studentID)
 	if err != nil {
-		log.Printf("[ai_help] warning: failed to get user profile student_id=%s err=%v", input.StudentID, err)
+		log.Printf("[ai_help] warning: failed to get user profile student_id=%s err=%v", studentID, err)
 		return getMockResponse(helpType)
 	}
 	if profile == nil {
-		log.Printf("[ai_help] warning: no profile for student_id=%s", input.StudentID)
+		log.Printf("[ai_help] warning: no profile for student_id=%s", studentID)
 		return getMockResponse(helpType)
 	}
 
 	var exercise *domain.Exercise
 	gradeName := ""
-	if input.ExerciseID != "" {
-		exercise, err = app.Repositories.Exercise.Get(ctx, input.ExerciseID)
+	if in.ExerciseID != "" {
+		exercise, err = app.Repositories.Exercise.Get(ctx, in.ExerciseID)
 		if err != nil {
-			log.Printf("[ai_help] warning: failed to get exercise exercise_id=%s err=%v", input.ExerciseID, err)
+			log.Printf("[ai_help] warning: failed to get exercise exercise_id=%s err=%v", in.ExerciseID, err)
 		}
 
 		if exercise != nil && exercise.TopicID != "" {
@@ -148,17 +147,17 @@ func (u *helpUsecase) getAIResponse(ctx context.Context, app *appcontext.Context
 		}
 	}
 
-	history, historyErr := app.Repositories.AIConversation.ListRecentHelpRequests(ctx, input.StudentID, input.ExerciseID, 3)
+	history, historyErr := app.Repositories.AIConversation.ListRecentHelpRequests(ctx, studentID, in.ExerciseID, 3)
 	if historyErr != nil {
-		log.Printf("[ai_help] warning: failed to load exercise memory student_id=%s exercise_id=%s err=%v", input.StudentID, input.ExerciseID, historyErr)
+		log.Printf("[ai_help] warning: failed to load exercise memory student_id=%s exercise_id=%s err=%v", studentID, in.ExerciseID, historyErr)
 	}
-	prompt := buildHelpPrompt(helpType, input.Question, input.StudentAnswer, exercise, gradeName, history)
+	prompt := buildHelpPrompt(helpType, in.Question, in.StudentAnswer, exercise, gradeName, history)
 
 	cfg := assistantcfg.Resolve(ctx, app)
 
 	aiResponse, err := app.Integrations.AssistantGateway.AskHelp(ctx, cfg, prompt)
 	if err != nil {
-		log.Printf("[ai_help] warning: assistant call failed student_id=%s err=%v, falling back to mock", input.StudentID, err)
+		log.Printf("[ai_help] warning: assistant call failed student_id=%s err=%v, falling back to mock", studentID, err)
 		return getMockResponse(helpType)
 	}
 
