@@ -77,7 +77,7 @@ func main() {
 	app := gin.Default()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: []string{cfg.ServerConfig.FrontendURL, "https://app.practiq.com.ar", "https://practiq.com.ar", "https://www.practiq.com.ar", "https://practiq-landing.onrender.com", "http://localhost:5174", "http://localhost:5173", "http://localhost:4321", "http://127.0.0.1:4321", "https://localhost", "capacitor://localhost"},
+		AllowOrigins: []string{cfg.ServerConfig.FrontendURL, "https://app.practiq.com.ar", "https://practiq.com.ar", "https://www.practiq.com.ar", "https://practiq-landing.onrender.com", "http://localhost:5174", "http://localhost:5173", "http://localhost:4321", "http://127.0.0.1:4321", "https://localhost"},
 
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-School-ID"},
