@@ -8,3 +8,7 @@ import (
 func NewProxySendMessageHandler(uc ucAI.ProxyUsecase) gin.HandlerFunc {
 	return proxyToAssistant(uc, messagePath, enrichTutorMessage)
 }
+
+func NewProxyStreamMessageHandler(uc ucAI.ProxyUsecase) gin.HandlerFunc {
+	return proxyStreamToAssistant(uc, streamMessagePath, enrichTutorMessage)
+}

@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
@@ -12,6 +13,7 @@ import (
 type (
 	ProxyUsecase interface {
 		Execute(context.Context, ProxyInput) (*ProxyOutput, apperrors.ApplicationError)
+		ExecuteStream(context.Context, ProxyInput, func(int, string, []byte) error) (int, string, apperrors.ApplicationError)
 	}
 
 	proxyUsecase struct {
@@ -51,6 +53,19 @@ func (u *proxyUsecase) Execute(ctx context.Context, input ProxyInput) (*ProxyOut
 	}
 
 	return toProxyOutput(response), nil
+}
+
+func (u *proxyUsecase) ExecuteStream(ctx context.Context, input ProxyInput, write func(int, string, []byte) error) (int, string, apperrors.ApplicationError) {
+	app := u.contextFactory()
+	cfg := assistantcfg.Resolve(ctx, app)
+	if !app.Integrations.AssistantGateway.IsConfigured(cfg) {
+		return 0, "", apperrors.NewBadRequestError("the assistant is not configured for this platform")
+	}
+	status, contentType, err := app.Integrations.AssistantGateway.ProxyStream(ctx, cfg, input.Method, input.Path, input.ContentType, input.Body, write)
+	if err != nil {
+		return 0, "", apperrors.NewInternalError(fmt.Errorf("assistant stream proxy: %w", err))
+	}
+	return status, contentType, nil
 }
 
 func toProxyOutput(response *assistant.ProxyResponse) *ProxyOutput {

@@ -59,6 +59,44 @@ func (g *gateway) Proxy(ctx context.Context, cfg Config, method, path, contentTy
 	}, nil
 }
 
+func (g *gateway) ProxyStream(ctx context.Context, cfg Config, method, path, contentType string, body []byte, write func(int, string, []byte) error) (int, string, error) {
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	fullURL := baseURL + path
+	if err := validateAssistantURL(fullURL); err != nil {
+		return 0, "", fmt.Errorf("URL validation failed: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, bytes.NewReader(body))
+	if err != nil {
+		return 0, "", err
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	req.Header.Set("x-api-key", strings.TrimSpace(cfg.APIKey))
+	resp, err := g.client.Do(req)
+	if err != nil {
+		return 0, "", err
+	}
+	defer resp.Body.Close()
+	buffer := make([]byte, 4096)
+	for {
+		n, readErr := resp.Body.Read(buffer)
+		if n > 0 {
+			chunk := append([]byte(nil), buffer[:n]...)
+			if err := write(resp.StatusCode, resp.Header.Get("Content-Type"), chunk); err != nil {
+				return resp.StatusCode, resp.Header.Get("Content-Type"), err
+			}
+		}
+		if readErr == io.EOF {
+			break
+		}
+		if readErr != nil {
+			return resp.StatusCode, resp.Header.Get("Content-Type"), readErr
+		}
+	}
+	return resp.StatusCode, resp.Header.Get("Content-Type"), nil
+}
+
 func allowedPrivateHostnames() []string {
 	raw := strings.TrimSpace(os.Getenv("ASSISTANT_PROXY_ALLOWED_PRIVATE_HOSTNAMES"))
 	if raw == "" {

@@ -20,6 +20,7 @@ type Gateway interface {
 	AskHelp(ctx context.Context, cfg Config, prompt string) (string, error)
 	GenerateCourseCuriosities(ctx context.Context, cfg Config, subject, topic, gradeName string, count int) ([]string, error)
 	Proxy(ctx context.Context, cfg Config, method, path, contentType string, body []byte) (*ProxyResponse, error)
+	ProxyStream(ctx context.Context, cfg Config, method, path, contentType string, body []byte, write func(int, string, []byte) error) (int, string, error)
 }
 
 type gateway struct {
