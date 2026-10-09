@@ -9,40 +9,40 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type CreateConversationUsecase interface {
-	Execute(context.Context, CreateConversationInput) (*ConversationOutput, apperrors.ApplicationError)
+type (
+	CreateConversationUsecase interface {
+		Execute(ctx context.Context, studentID string, in CreateConversationInput) (*CreateConversationOutput, apperrors.ApplicationError)
+	}
+
+	createConversationUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	CreateConversationInput struct {
+		CourseID        string `json:"course_id"`
+		PracticeSheetID string `json:"practice_sheet_id"`
+	}
+
+	CreateConversationOutput struct {
+		Data ConversationData `json:"data"`
+	}
+)
+
+func NewCreateConversationUsecase(contextFactory appcontext.Factory) CreateConversationUsecase {
+	return &createConversationUsecase{contextFactory: contextFactory}
 }
 
-type createConversationUsecase struct {
-	factory appcontext.Factory
-}
-
-type CreateConversationInput struct {
-	StudentID       string
-	CourseID        string `json:"course_id"`
-	PracticeSheetID string `json:"practice_sheet_id"`
-}
-
-func NewCreateConversationUsecase(factory appcontext.Factory) CreateConversationUsecase {
-	return &createConversationUsecase{factory: factory}
-}
-
-func (u *createConversationUsecase) Execute(ctx context.Context, input CreateConversationInput) (*ConversationOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *createConversationUsecase) Execute(ctx context.Context, studentID string, in CreateConversationInput) (*CreateConversationOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	id, err := app.Repositories.AIConversation.CreateConversation(ctx, domain.AIConversation{
-		StudentID:       input.StudentID,
-		CourseID:        input.CourseID,
-		PracticeSheetID: input.PracticeSheetID,
+		StudentID:       studentID,
+		CourseID:        in.CourseID,
+		PracticeSheetID: in.PracticeSheetID,
 	})
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.AIConversationCreateError, err)
 	}
 
-	return &ConversationOutput{Data: ConversationData{
-		ID:              id,
-		StudentID:       input.StudentID,
-		CourseID:        input.CourseID,
-		PracticeSheetID: input.PracticeSheetID,
-	}}, nil
+	return &CreateConversationOutput{Data: toConversationOutputData(id, studentID, in)}, nil
 }

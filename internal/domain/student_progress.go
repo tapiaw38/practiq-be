@@ -14,5 +14,5 @@ type StudentTopicProgress struct {
 	StreakDays      int
 	LastPracticedAt *time.Time
 	UpdatedAt       time.Time
-	TopicTitle      string // joined field
+	TopicTitle      string
 }
