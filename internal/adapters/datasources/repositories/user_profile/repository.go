@@ -12,6 +12,7 @@ type Repository interface {
 	Get(context.Context, string) (*domain.UserProfile, error)
 	UpdateUITheme(context.Context, string, string) error
 	UpdateAvatarSeed(ctx context.Context, id, seed string) error
+	UpdateColorScheme(ctx context.Context, id, scheme string) error
 	UpdateAcademicStatus(context.Context, string, string) error
 	UpdateProfileType(context.Context, string, string) error
 }

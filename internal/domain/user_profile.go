@@ -7,8 +7,9 @@ type UserProfile struct {
 	ProfileType    string
 	AcademicStatus string
 
-	Timezone string
-	UITheme  string
+	Timezone    string
+	UITheme     string
+	ColorScheme string
 
 	AvatarSeed string
 	CreatedAt  time.Time

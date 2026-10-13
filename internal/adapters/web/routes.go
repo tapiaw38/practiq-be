@@ -51,6 +51,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	api.GET("/profile/:id", userprofile.NewGetByIDHandler(uc.Profile.Get))
 	api.PUT("/profile/ui-theme", userprofile.NewUpdateUIThemeHandler(uc.Profile.UpdateUITheme))
 	api.PUT("/profile/avatar", userprofile.NewUpdateAvatarSeedHandler(uc.Profile.UpdateAvatarSeed))
+	api.PUT("/profile/color-scheme", userprofile.NewUpdateColorSchemeHandler(uc.Profile.UpdateColorScheme))
 	adminOnly := api.Group("/")
 	adminOnly.Use(middlewares.RequireRoles(middlewares.RoleSuperAdmin))
 	adminOnly.GET("/site-contact", sitecontact.NewGetHandler(uc.SiteContact.Get))

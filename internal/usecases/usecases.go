@@ -162,6 +162,7 @@ type ProfileUsecases struct {
 	FindByEmail          ucProfile.FindByEmailUsecase
 	UpdateUITheme        ucProfile.UpdateUIThemeUsecase
 	UpdateAvatarSeed     ucProfile.UpdateAvatarSeedUsecase
+	UpdateColorScheme    ucProfile.UpdateColorSchemeUsecase
 	UpdateAcademicStatus ucProfile.UpdateAcademicStatusUsecase
 	UpdateProfileType    ucProfile.UpdateProfileTypeUsecase
 }
@@ -403,6 +404,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			FindByEmail:          ucProfile.NewFindByEmailUsecase(contextFactory),
 			UpdateUITheme:        ucProfile.NewUpdateUIThemeUsecase(contextFactory),
 			UpdateAvatarSeed:     ucProfile.NewUpdateAvatarSeedUsecase(contextFactory),
+			UpdateColorScheme:    ucProfile.NewUpdateColorSchemeUsecase(contextFactory),
 			UpdateAcademicStatus: ucProfile.NewUpdateAcademicStatusUsecase(contextFactory),
 			UpdateProfileType:    ucProfile.NewUpdateProfileTypeUsecase(contextFactory),
 		},

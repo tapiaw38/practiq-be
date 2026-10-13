@@ -11,6 +11,7 @@ type (
 		AcademicStatus string `json:"academic_status"`
 		UITheme        string `json:"ui_theme"`
 		AvatarSeed     string `json:"avatar_seed"`
+		ColorScheme    string `json:"color_scheme"`
 
 		AssistantEnabled bool   `json:"assistant_enabled"`
 		CreatedAt        string `json:"created_at"`
@@ -26,6 +27,7 @@ func toProfileData(p domain.UserProfile, name, email string, assistantEnabled bo
 		AcademicStatus:   p.AcademicStatus,
 		UITheme:          p.UITheme,
 		AvatarSeed:       p.AvatarSeed,
+		ColorScheme:      p.ColorScheme,
 		AssistantEnabled: assistantEnabled,
 		CreatedAt:        p.CreatedAt.Format("2006-01-02T15:04:05Z"),
 	}
