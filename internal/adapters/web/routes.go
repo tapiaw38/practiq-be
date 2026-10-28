@@ -175,6 +175,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 
 	teacherOnly.GET("/subscription-plans", subscription.NewListPlansHandler(uc.Subscription.ListPlans))
 	teacherOnly.GET("/teachers/me/subscription", subscription.NewGetMineHandler(uc.Subscription.GetMine))
+	teacherOnly.GET("/teachers/me/subscription/billing-history", subscription.NewBillingHistoryHandler(uc.Subscription.BillingHistory))
 
 	teacherOnly.GET("/teachers/me/subscription/checkout-config", subscription.NewCheckoutConfigHandler(config.GetConfigService().ServerConfig.MercadoPagoPublicKey))
 	teacherOnly.POST("/teachers/me/subscription", subscription.NewSubscribeHandler(uc.Subscription.Subscribe))

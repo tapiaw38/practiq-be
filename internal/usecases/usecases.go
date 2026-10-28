@@ -102,6 +102,7 @@ type SchoolUsecases struct {
 
 type SubscriptionUsecases struct {
 	GetMine           ucSubscription.GetMineUsecase
+	BillingHistory    ucSubscription.BillingHistoryUsecase
 	ManageMine        ucSubscription.ManageMineUsecase
 	Subscribe         ucSubscription.SubscribeUsecase
 	HostedCheckout    ucSubscription.HostedCheckoutUsecase
@@ -350,6 +351,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 		},
 		Subscription: SubscriptionUsecases{
 			GetMine:           ucSubscription.NewGetMineUsecase(contextFactory),
+			BillingHistory:    ucSubscription.NewBillingHistoryUsecase(contextFactory),
 			ManageMine:        ucSubscription.NewManageMineUsecase(contextFactory),
 			Subscribe:         ucSubscription.NewSubscribeUsecase(contextFactory),
 			HostedCheckout:    ucSubscription.NewHostedCheckoutUsecase(contextFactory),

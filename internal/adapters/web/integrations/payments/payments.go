@@ -63,6 +63,15 @@ type (
 		CurrentPeriodEnd *Timestamp `json:"current_period_end"`
 	}
 
+	BillingCycle struct {
+		SubscriptionID int       `json:"subscription_id"`
+		Status         string    `json:"status"`
+		Amount         float64   `json:"amount"`
+		Currency       string    `json:"currency"`
+		PeriodStart    Timestamp `json:"period_start"`
+		PeriodEnd      Timestamp `json:"period_end"`
+	}
+
 	HostedSubscriptionInput struct {
 		PlanID     int    `json:"plan_id"`
 		UserID     string `json:"user_id"`
@@ -96,6 +105,7 @@ type (
 		GetEntitlement(ctx context.Context, userID string) (*Entitlement, error)
 
 		ListSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
+		ListBillingCycles(ctx context.Context, userID string) ([]BillingCycle, error)
 
 		CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error)
 
@@ -221,6 +231,15 @@ func (c *client) ListSubscriptions(ctx context.Context, userID string) ([]Subscr
 		return nil, err
 	}
 	return subscriptions, nil
+}
+
+func (c *client) ListBillingCycles(ctx context.Context, userID string) ([]BillingCycle, error) {
+	var cycles []BillingCycle
+	path := "/api/v1/subscriptions/subscriptions/user/" + url.PathEscape(userID) + "/billing-cycles"
+	if err := c.get(ctx, path, &cycles); err != nil {
+		return nil, err
+	}
+	return cycles, nil
 }
 
 func (c *client) CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error) {
