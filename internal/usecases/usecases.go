@@ -114,6 +114,7 @@ type SubscriptionUsecases struct {
 	DowngradePreview  ucSubscription.DowngradePreviewUsecase
 	DowngradeApply    ucSubscription.DowngradeApplyUsecase
 	ReactivateStudent ucSubscription.ReactivateStudentUsecase
+	AdminList         ucSubscription.AdminListUsecase
 }
 
 type MaterialUsecases struct {
@@ -363,6 +364,7 @@ func NewUsecases(contextFactory appcontext.Factory) *Usecases {
 			DowngradePreview:  ucSubscription.NewDowngradePreviewUsecase(contextFactory),
 			DowngradeApply:    ucSubscription.NewDowngradeApplyUsecase(contextFactory),
 			ReactivateStudent: ucSubscription.NewReactivateStudentUsecase(contextFactory),
+			AdminList:         ucSubscription.NewAdminListUsecase(contextFactory),
 		},
 		Material: MaterialUsecases{
 			Create: ucMaterial.NewCreateUsecase(contextFactory),

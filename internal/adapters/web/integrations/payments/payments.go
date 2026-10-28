@@ -63,6 +63,15 @@ type (
 		CurrentPeriodEnd *Timestamp `json:"current_period_end"`
 	}
 
+	AdminBillingCycle struct {
+		Status           string     `json:"status"`
+		Amount           float64    `json:"amount"`
+		Currency         string     `json:"currency"`
+		PeriodStart      *Timestamp `json:"period_start"`
+		PeriodEnd        *Timestamp `json:"period_end"`
+		GatewayPaymentID string     `json:"gateway_payment_id"`
+	}
+
 	BillingCycle struct {
 		SubscriptionID int       `json:"subscription_id"`
 		Status         string    `json:"status"`
@@ -70,6 +79,19 @@ type (
 		Currency       string    `json:"currency"`
 		PeriodStart    Timestamp `json:"period_start"`
 		PeriodEnd      Timestamp `json:"period_end"`
+	}
+
+	AdminSubscription struct {
+		ID               int                `json:"id"`
+		UserID           string             `json:"user_id"`
+		PayerEmail       string             `json:"payer_email"`
+		PlanID           int                `json:"plan_id"`
+		PlanName         string             `json:"plan_name"`
+		Status           string             `json:"status"`
+		CurrentPeriodEnd *Timestamp         `json:"current_period_end"`
+		NextPaymentAt    *Timestamp         `json:"next_payment_at"`
+		CreatedAt        Timestamp          `json:"created_at"`
+		LastCycle        *AdminBillingCycle `json:"last_cycle"`
 	}
 
 	HostedSubscriptionInput struct {
@@ -106,6 +128,8 @@ type (
 
 		ListSubscriptions(ctx context.Context, userID string) ([]Subscription, error)
 		ListBillingCycles(ctx context.Context, userID string) ([]BillingCycle, error)
+
+		ListAllSubscriptions(ctx context.Context, status string) ([]AdminSubscription, error)
 
 		CreateSubscription(ctx context.Context, in SubscriptionInput) (*Subscription, error)
 
@@ -227,6 +251,18 @@ func (c *client) get(ctx context.Context, path string, out any) error {
 func (c *client) ListSubscriptions(ctx context.Context, userID string) ([]Subscription, error) {
 	var subscriptions []Subscription
 	path := fmt.Sprintf("/api/v1/subscriptions/subscriptions/user/%s", url.PathEscape(userID))
+	if err := c.get(ctx, path, &subscriptions); err != nil {
+		return nil, err
+	}
+	return subscriptions, nil
+}
+
+func (c *client) ListAllSubscriptions(ctx context.Context, status string) ([]AdminSubscription, error) {
+	var subscriptions []AdminSubscription
+	path := "/api/v1/subscriptions/subscriptions/admin"
+	if status != "" {
+		path += "?status=" + url.QueryEscape(status)
+	}
 	if err := c.get(ctx, path, &subscriptions); err != nil {
 		return nil, err
 	}

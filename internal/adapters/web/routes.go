@@ -208,6 +208,7 @@ func RegisterRoutes(app *gin.Engine, uc *usecases.Usecases, submitJobRepo submit
 	adminOnly.POST("/subscription-plans", subscription.NewCreatePlanHandler(uc.Subscription.CreatePlan))
 	adminOnly.PUT("/subscription-plans/:id", subscription.NewUpdatePlanHandler(uc.Subscription.UpdatePlan))
 	adminOnly.DELETE("/subscription-plans/:id", subscription.NewDeactivatePlanHandler(uc.Subscription.DeactivatePlan))
+	adminOnly.GET("/subscriptions", subscription.NewAdminListHandler(uc.Subscription.AdminList))
 
 	teacherOnly.GET("/attempt-reviews", handlerReview.NewListHandler(uc.AttemptReview.List))
 	teacherOnly.POST("/attempt-reviews/:id", handlerReview.NewReviewHandler(uc.AttemptReview.Review))

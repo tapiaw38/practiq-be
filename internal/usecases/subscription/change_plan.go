@@ -82,6 +82,10 @@ func changePlanMessage(code string) string {
 		return "Tu suscripción está pausada. Reanudala antes de cambiar de plan."
 	case strings.Contains(code, "plan_not_found"):
 		return "Ese plan no existe."
+	case strings.Contains(code, "payment_outcome_unknown"), strings.Contains(code, "plan_change_in_progress"):
+		return "Estamos verificando el cobro anterior. Esperá unos minutos y probá de nuevo; no intentamos otro cobro."
+	case strings.Contains(code, "payment_rejected"):
+		return "La tarjeta fue rechazada al cobrar la diferencia. Probá con otra."
 	case strings.Contains(code, "rejected"), strings.Contains(code, "token"):
 		return "La tarjeta fue rechazada al cobrar la diferencia. Probá con otra."
 	default:
