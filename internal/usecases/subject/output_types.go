@@ -2,21 +2,15 @@ package subject
 
 import "github.com/tapiaw38/practiq-be/internal/domain"
 
-type SubjectData struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	CreatedBy   string `json:"created_by"`
-	CreatedAt   string `json:"created_at"`
-}
-
-type SubjectOutput struct {
-	Data SubjectData `json:"data"`
-}
-
-type SubjectListOutput struct {
-	Data []SubjectData `json:"data"`
-}
+type (
+	SubjectData struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+		CreatedBy   string `json:"created_by"`
+		CreatedAt   string `json:"created_at"`
+	}
+)
 
 func toSubjectData(subject domain.Subject) SubjectData {
 	return SubjectData{

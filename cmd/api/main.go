@@ -1,19 +1,50 @@
 package main
 
 import (
+	"context"
 	"log"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/tapiaw38/practiq-be/internal/adapters/datasources"
 	"github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories"
+	submitjob "github.com/tapiaw38/practiq-be/internal/adapters/datasources/repositories/submit_job"
 	"github.com/tapiaw38/practiq-be/internal/adapters/web"
+	"github.com/tapiaw38/practiq-be/internal/adapters/web/integrations"
 	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
-	"github.com/tapiaw38/practiq-be/internal/platform/assistant"
 	"github.com/tapiaw38/practiq-be/internal/platform/config"
 	"github.com/tapiaw38/practiq-be/internal/platform/database"
-	"github.com/tapiaw38/practiq-be/internal/platform/strategy"
+	"github.com/tapiaw38/practiq-be/internal/platform/revocation"
+	"github.com/tapiaw38/practiq-be/internal/platform/storage"
 	"github.com/tapiaw38/practiq-be/internal/usecases"
 )
+
+const staleSubmitJobAfter = 10 * time.Minute
+
+func startSubmitJobSweeper(repo submitjob.Repository) {
+	sweep := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		closed, err := repo.FailStale(ctx, staleSubmitJobAfter)
+		if err != nil {
+			log.Printf("[submit_jobs] could not close interrupted submissions: %v", err)
+			return
+		}
+		if closed > 0 {
+			log.Printf("[submit_jobs] closed %d interrupted submission(s)", closed)
+		}
+	}
+
+	sweep()
+	go func() {
+		ticker := time.NewTicker(staleSubmitJobAfter)
+		defer ticker.Stop()
+		for range ticker.C {
+			sweep()
+		}
+	}()
+}
 
 func main() {
 	loadConfig()
@@ -31,26 +62,38 @@ func main() {
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	repos := repositories.NewRepositories(db)
-	kumon := strategy.NewKumonStrategy()
-	assistantService := assistant.NewService()
-	factory := appcontext.NewFactory(repos, kumon, assistantService)
+	ds := datasources.CreateDatasources(db)
+	reposFactory := repositories.NewFactory(ds)
+	repos := reposFactory()
+	integ := integrations.CreateIntegrations(
+		cfg.ServerConfig.AuthAPIURL,
+		cfg.ServerConfig.PaymentsURL,
+		cfg.ServerConfig.PaymentsAPIKey,
+	)
+	imageStorage := storage.NewS3ImageStorage(cfg.S3Config)
+	factory := appcontext.NewFactory(repos, integ, imageStorage)
 	uc := usecases.NewUsecases(factory)
 
 	app := gin.Default()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{cfg.ServerConfig.FrontendURL, "http://localhost:5174", "http://localhost:5173"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowOrigins: []string{cfg.ServerConfig.FrontendURL, "https://app.practiq.com.ar", "https://practiq.com.ar", "https://www.practiq.com.ar", "https://practiq-landing.onrender.com", "http://localhost:5174", "http://localhost:5173", "http://localhost:4321", "http://127.0.0.1:4321", "https://localhost"},
+
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "X-School-ID"},
 		AllowCredentials: true,
+		MaxAge:           2 * time.Hour,
 	}))
 
 	app.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "service": "practiq-be"})
 	})
 
-	web.RegisterRoutes(app, uc)
+	revoked := revocation.NewChecker(integ.AuthAPI.GetTokenVersion, 60*time.Second)
+
+	web.RegisterRoutes(app, uc, repos.SubmitJob, repos.UserProfile, revoked)
+
+	startSubmitJobSweeper(repos.SubmitJob)
 
 	port := cfg.ServerConfig.Port
 	log.Printf("practiq-be running on port %s", port)
