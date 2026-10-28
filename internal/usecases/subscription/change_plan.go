@@ -65,7 +65,11 @@ func (u *changePlanUsecase) Execute(ctx context.Context, teacherID, bearerToken 
 	})
 	if err != nil {
 		if rejected, ok := payments.IsRejected(err); ok {
-			return nil, apperrors.NewBadRequestError(changePlanMessage(rejected.Code))
+			message := changePlanMessage(rejected.Code)
+			if rejected.StatusCode == 409 {
+				return nil, apperrors.NewConflictError(message)
+			}
+			return nil, apperrors.NewBadRequestError(message)
 		}
 		return nil, apperrors.NewApplicationError(mappings.SubscriptionUnavailableError, err)
 	}
