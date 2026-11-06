@@ -1,0 +1,42 @@
+package domain
+
+import "testing"
+
+func TestPersonalSchoolName(t *testing.T) {
+	cases := []struct {
+		name        string
+		teacherName string
+		want        string
+	}{
+		{
+			name:        "the teacher's name makes the school's",
+			teacherName: "Ana García",
+			want:        "Mi escuela de Ana García",
+		},
+		{
+
+			name:        "no name keeps the placeholder",
+			teacherName: "",
+			want:        PlaceholderSchoolName,
+		},
+		{
+
+			name:        "whitespace is no name",
+			teacherName: "   ",
+			want:        PlaceholderSchoolName,
+		},
+		{
+			name:        "surrounding spaces are trimmed",
+			teacherName: "  Ana García  ",
+			want:        "Mi escuela de Ana García",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := PersonalSchoolName(tc.teacherName); got != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

@@ -3,25 +3,38 @@ package userprofile
 import (
 	"context"
 
+	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
 	apperrors "github.com/tapiaw38/practiq-be/internal/platform/errors"
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
-	"github.com/tapiaw38/practiq-be/internal/platform/appcontext"
+	"github.com/tapiaw38/practiq-be/internal/platform/identity"
+	"github.com/tapiaw38/practiq-be/internal/usecases/assistantcfg"
+	"github.com/tapiaw38/practiq-be/internal/usecases/school"
 )
 
-type GetUsecase interface {
-	Execute(context.Context, string) (*ProfileOutput, apperrors.ApplicationError)
+type (
+	GetUsecase interface {
+		Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string) (*GetOutput, apperrors.ApplicationError)
+	}
+
+	getUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetOutput struct {
+		Data ProfileData `json:"data"`
+	}
+)
+
+func NewGetUsecase(contextFactory appcontext.Factory) GetUsecase {
+	return &getUsecase{contextFactory: contextFactory}
 }
 
-type getUsecase struct {
-	factory appcontext.Factory
-}
+func (u *getUsecase) Execute(ctx context.Context, requesterID string, isSuperAdmin bool, id, bearerToken string) (*GetOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
-func NewGetUsecase(factory appcontext.Factory) GetUsecase {
-	return &getUsecase{factory: factory}
-}
-
-func (u *getUsecase) Execute(ctx context.Context, id string) (*ProfileOutput, apperrors.ApplicationError) {
-	app := u.factory()
+	if appErr := school.EnsureCanViewAssignmentsFor(ctx, app, requesterID, isSuperAdmin, id); appErr != nil {
+		return nil, appErr
+	}
 
 	p, err := app.Repositories.UserProfile.Get(ctx, id)
 	if err != nil {
@@ -31,5 +44,11 @@ func (u *getUsecase) Execute(ctx context.Context, id string) (*ProfileOutput, ap
 		return nil, apperrors.NewNotFoundError("profile not found")
 	}
 
-	return &ProfileOutput{Data: toProfileData(*p)}, nil
+	names, appErr := identity.Names(ctx, app.Integrations.AuthAPI, bearerToken, []string{id})
+	if appErr != nil {
+		return nil, appErr
+	}
+	info := names[id]
+
+	return &GetOutput{Data: toProfileData(*p, identity.FullName(info, id), info.Email, assistantcfg.Enabled(ctx, app))}, nil
 }

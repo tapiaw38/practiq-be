@@ -8,20 +8,26 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type ListUserGradesUsecase interface {
-	Execute(context.Context, string) (*GradeListOutput, apperrors.ApplicationError)
+type (
+	ListUserGradesUsecase interface {
+		Execute(context.Context, string) (*ListUserGradesOutput, apperrors.ApplicationError)
+	}
+
+	listUserGradesUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	ListUserGradesOutput struct {
+		Data []GradeData `json:"data"`
+	}
+)
+
+func NewListUserGradesUsecase(contextFactory appcontext.Factory) ListUserGradesUsecase {
+	return &listUserGradesUsecase{contextFactory: contextFactory}
 }
 
-type listUserGradesUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewListUserGradesUsecase(factory appcontext.Factory) ListUserGradesUsecase {
-	return &listUserGradesUsecase{factory: factory}
-}
-
-func (u *listUserGradesUsecase) Execute(ctx context.Context, userID string) (*GradeListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *listUserGradesUsecase) Execute(ctx context.Context, userID string) (*ListUserGradesOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 	grades, err := app.Repositories.Grade.ListUserGrades(ctx, userID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.GradeListError, err)
@@ -30,5 +36,5 @@ func (u *listUserGradesUsecase) Execute(ctx context.Context, userID string) (*Gr
 	for _, grade := range grades {
 		data = append(data, toGradeData(grade))
 	}
-	return &GradeListOutput{Data: data}, nil
+	return &ListUserGradesOutput{Data: data}, nil
 }

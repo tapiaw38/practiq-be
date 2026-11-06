@@ -8,33 +8,41 @@ import (
 	"github.com/tapiaw38/practiq-be/internal/platform/errors/mappings"
 )
 
-type GetCourseProgressUsecase interface {
-	Execute(context.Context, string, string) (*ProgressListOutput, apperrors.ApplicationError)
+type (
+	GetCourseProgressUsecase interface {
+		Execute(context.Context, string, string) (*GetCourseProgressOutput, apperrors.ApplicationError)
+	}
+
+	getCourseProgressUsecase struct {
+		contextFactory appcontext.Factory
+	}
+
+	GetCourseProgressOutput struct {
+		Data                 []ProgressData `json:"data"`
+		LastPracticedSheetID string         `json:"last_practiced_sheet_id,omitempty"`
+	}
+)
+
+func NewGetCourseProgressUsecase(contextFactory appcontext.Factory) GetCourseProgressUsecase {
+	return &getCourseProgressUsecase{contextFactory: contextFactory}
 }
 
-type getCourseProgressUsecase struct {
-	factory appcontext.Factory
-}
-
-func NewGetCourseProgressUsecase(factory appcontext.Factory) GetCourseProgressUsecase {
-	return &getCourseProgressUsecase{factory: factory}
-}
-
-func (u *getCourseProgressUsecase) Execute(ctx context.Context, studentID, courseID string) (*ProgressListOutput, apperrors.ApplicationError) {
-	app := u.factory()
+func (u *getCourseProgressUsecase) Execute(ctx context.Context, studentID, courseID string) (*GetCourseProgressOutput, apperrors.ApplicationError) {
+	app := u.contextFactory()
 
 	list, err := app.Repositories.StudentProgress.ListByStudentAndCourse(ctx, studentID, courseID)
 	if err != nil {
 		return nil, apperrors.NewApplicationError(mappings.ProgressGetError, err)
 	}
 
+	loc := studentLocation(ctx, app, studentID)
 	var data []ProgressData
 	for _, p := range list {
-		data = append(data, toProgressData(p))
+		data = append(data, toProgressData(p, loc))
 	}
 	if data == nil {
 		data = []ProgressData{}
 	}
 
-	return &ProgressListOutput{Data: data}, nil
+	return &GetCourseProgressOutput{Data: data}, nil
 }

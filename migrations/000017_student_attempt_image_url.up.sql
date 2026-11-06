@@ -1,0 +1,2 @@
+ALTER TABLE student_attempts
+ADD COLUMN IF NOT EXISTS image_url TEXT DEFAULT '';
